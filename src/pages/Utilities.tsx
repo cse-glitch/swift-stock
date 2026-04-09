@@ -43,8 +43,8 @@ const Utilities = () => {
 
   const handleCsvExport = () => {
     const csv = Papa.unparse(items.map(i => ({
-      SKU: i.sku, ProductName: i.productName, Weight_kg: formatNumber(i.weight),
-      Length_cm: formatNumber(i.length), Width_cm: formatNumber(i.width), Height_cm: formatNumber(i.height),
+      SKU: i.sku, ProductName: i.productName, Weight_kg: i.weight != null ? formatNumber(i.weight) : "",
+      Length_cm: i.length != null ? formatNumber(i.length) : "", Width_cm: i.width != null ? formatNumber(i.width) : "", Height_cm: i.height != null ? formatNumber(i.height) : "",
       Quantity: i.quantity, LastUpdated: new Date(i.lastUpdated).toISOString(),
     })));
     downloadFile(csv, `inventory-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv");
