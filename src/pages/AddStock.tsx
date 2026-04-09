@@ -130,7 +130,7 @@ const AddStock = () => {
       if (memoryFill) {
         setForm(f => ({ ...f, productName: "", sku: "", quantity: "1" }));
       } else {
-        setForm(defaultForm);
+        setForm(getDefaultForm());
       }
       setErrors({});
     } catch (err: any) {
