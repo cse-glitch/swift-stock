@@ -49,6 +49,25 @@ const History = () => {
 
   const hasFilters = search || reasonFilter !== "All" || dateFrom || dateTo;
 
+  const exportCSV = () => {
+    const rows = filtered.map(r => ({
+      Date: format(new Date(r.timestamp), "yyyy-MM-dd HH:mm:ss"),
+      SKU: r.sku,
+      "Product Name": r.productName,
+      "Qty Removed": r.quantityRemoved,
+      Reason: r.reason,
+      Note: r.note || "",
+    }));
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `removal-history-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const DatePicker = ({ date, onSelect, placeholder }: { date?: Date; onSelect: (d?: Date) => void; placeholder: string }) => (
     <Popover>
       <PopoverTrigger asChild>
