@@ -50,13 +50,13 @@ const AddStock = () => {
     if (!form.productName.trim()) e.productName = "Required";
     if (!form.sku.trim()) e.sku = "Required";
     const w = parseFloat(form.weight);
-    if (isNaN(w) || w <= 0) e.weight = "Must be positive";
+    if (form.weight && (isNaN(w) || w <= 0)) e.weight = "Must be positive";
     const l = parseFloat(form.length);
-    if (isNaN(l) || l <= 0) e.length = "Must be positive";
+    if (form.length && (isNaN(l) || l <= 0)) e.length = "Must be positive";
     const wd = parseFloat(form.width);
-    if (isNaN(wd) || wd <= 0) e.width = "Must be positive";
+    if (form.width && (isNaN(wd) || wd <= 0)) e.width = "Must be positive";
     const h = parseFloat(form.height);
-    if (isNaN(h) || h <= 0) e.height = "Must be positive";
+    if (form.height && (isNaN(h) || h <= 0)) e.height = "Must be positive";
     const q = parseInt(form.quantity);
     if (isNaN(q) || q < 1) e.quantity = "Must be ≥ 1";
     setErrors(e);
