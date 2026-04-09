@@ -1,6 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type InventoryItem } from "@/lib/db";
-import { displayWeight, displayDim, calcVolumeCm3, cm3ToM3, cm3ToFt3, formatNumber, kgToLb, HEAVY_THRESHOLD_KG } from "@/lib/units";
+import { calcVolumeCm3, cm3ToM3, cm3ToFt3, formatNumber, kgToLb } from "@/lib/units";
+import { getSettings } from "@/lib/settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
