@@ -1,4 +1,4 @@
-import { LayoutDashboard, PackagePlus, PackageMinus, Settings, Package } from "lucide-react";
+import { LayoutDashboard, PackagePlus, PackageMinus, History, Settings, Wrench, Package } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
