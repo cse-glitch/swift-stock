@@ -123,8 +123,8 @@ const Utilities = () => {
         <div class="sku">${selectedItem.sku}</div>
         <div class="name">${selectedItem.productName}</div>
         <div class="details">
-          Weight: ${formatNumber(selectedItem.weight)} kg<br/>
-          Dims: ${formatNumber(selectedItem.length)} × ${formatNumber(selectedItem.width)} × ${formatNumber(selectedItem.height)} cm
+          ${selectedItem.weight != null ? `Weight: ${formatNumber(selectedItem.weight)} kg<br/>` : ""}
+          ${selectedItem.length != null ? `Dims: ${formatNumber(selectedItem.length)} × ${formatNumber(selectedItem.width ?? 0)} × ${formatNumber(selectedItem.height ?? 0)} cm` : ""}
         </div>
       </div>
       <script>window.print(); window.close();</script>
