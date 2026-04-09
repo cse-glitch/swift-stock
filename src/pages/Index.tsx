@@ -1,6 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type InventoryItem } from "@/lib/db";
-import { displayWeight, displayDim, calcVolumeCm3, cm3ToM3, cm3ToFt3, formatNumber, kgToLb, HEAVY_THRESHOLD_KG } from "@/lib/units";
+import { calcVolumeCm3, cm3ToM3, cm3ToFt3, formatNumber, kgToLb } from "@/lib/units";
+import { getSettings } from "@/lib/settings";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ type SortDir = 'asc' | 'desc';
 
 const Dashboard = () => {
   const items = useLiveQuery(() => db.items.toArray()) ?? [];
+  const settings = getSettings();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>('lastUpdated');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -143,7 +145,7 @@ const Dashboard = () => {
                 <TableBody>
                   {filtered.map(item => {
                     const vol = calcVolumeCm3(item.length, item.width, item.height);
-                    const isHeavy = item.weight >= HEAVY_THRESHOLD_KG;
+                    const isHeavy = item.weight >= settings.heavyThresholdKg;
                     return (
                       <TableRow key={item.id} className={isHeavy ? "bg-destructive/5" : ""}>
                         <TableCell className="font-mono text-sm">{item.sku}</TableCell>

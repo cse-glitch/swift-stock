@@ -7,7 +7,9 @@ import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import AddStock from "./pages/AddStock";
 import RemoveStock from "./pages/RemoveStock";
+import History from "./pages/History";
 import Utilities from "./pages/Utilities";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,7 +25,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/add" element={<AddStock />} />
             <Route path="/remove" element={<RemoveStock />} />
+            <Route path="/history" element={<History />} />
             <Route path="/utilities" element={<Utilities />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>

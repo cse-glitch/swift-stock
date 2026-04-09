@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { db } from "@/lib/db";
 import { toStorageWeight, toStorageDim, calcVolumeCm3, cm3ToM3, formatNumber } from "@/lib/units";
+import { getSettings } from "@/lib/settings";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,16 @@ interface FormData {
   quantity: string;
 }
 
-const defaultForm: FormData = {
-  productName: "", sku: "", weight: "", weightUnit: "kg",
-  length: "", width: "", height: "", sizeUnit: "cm", quantity: "1",
+const getDefaultForm = (): FormData => {
+  const s = getSettings();
+  return {
+    productName: "", sku: "", weight: "", weightUnit: s.defaultWeightUnit,
+    length: "", width: "", height: "", sizeUnit: s.defaultSizeUnit, quantity: "1",
+  };
 };
 
 const AddStock = () => {
+  const defaultForm = getDefaultForm();
   const saved = localStorage.getItem(UNITS_KEY);
   const initial = saved ? { ...defaultForm, ...JSON.parse(saved) } : defaultForm;
 
@@ -125,7 +130,7 @@ const AddStock = () => {
       if (memoryFill) {
         setForm(f => ({ ...f, productName: "", sku: "", quantity: "1" }));
       } else {
-        setForm(defaultForm);
+        setForm(getDefaultForm());
       }
       setErrors({});
     } catch (err: any) {

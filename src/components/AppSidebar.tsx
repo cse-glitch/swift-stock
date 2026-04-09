@@ -1,4 +1,4 @@
-import { LayoutDashboard, PackagePlus, PackageMinus, Settings, Package } from "lucide-react";
+import { LayoutDashboard, PackagePlus, PackageMinus, History, Settings, Wrench, Package } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -18,7 +18,9 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Add Stock", url: "/add", icon: PackagePlus },
   { title: "Remove Stock", url: "/remove", icon: PackageMinus },
-  { title: "Utilities", url: "/utilities", icon: Settings },
+  { title: "History", url: "/history", icon: History },
+  { title: "Utilities", url: "/utilities", icon: Wrench },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
