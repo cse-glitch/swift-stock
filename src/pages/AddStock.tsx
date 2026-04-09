@@ -33,6 +33,7 @@ const getDefaultForm = (): FormData => {
 };
 
 const AddStock = () => {
+  const defaultForm = getDefaultForm();
   const saved = localStorage.getItem(UNITS_KEY);
   const initial = saved ? { ...defaultForm, ...JSON.parse(saved) } : defaultForm;
 
