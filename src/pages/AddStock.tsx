@@ -77,10 +77,10 @@ const AddStock = () => {
     e.preventDefault();
     if (!validate()) return;
 
-    const weightKg = toStorageWeight(parseFloat(form.weight), form.weightUnit);
-    const lengthCm = toStorageDim(parseFloat(form.length), form.sizeUnit);
-    const widthCm = toStorageDim(parseFloat(form.width), form.sizeUnit);
-    const heightCm = toStorageDim(parseFloat(form.height), form.sizeUnit);
+    const weightKg = form.weight ? toStorageWeight(parseFloat(form.weight), form.weightUnit) : undefined;
+    const lengthCm = form.length ? toStorageDim(parseFloat(form.length), form.sizeUnit) : undefined;
+    const widthCm = form.width ? toStorageDim(parseFloat(form.width), form.sizeUnit) : undefined;
+    const heightCm = form.height ? toStorageDim(parseFloat(form.height), form.sizeUnit) : undefined;
     const qty = parseInt(form.quantity);
 
     try {

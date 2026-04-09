@@ -144,21 +144,22 @@ const Dashboard = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map(item => {
-                    const vol = calcVolumeCm3(item.length, item.width, item.height);
-                    const isHeavy = item.weight >= settings.heavyThresholdKg;
+                    const vol = calcVolumeCm3(item.length ?? 0, item.width ?? 0, item.height ?? 0);
+                    const isHeavy = item.weight != null && item.weight >= settings.heavyThresholdKg;
+                    const hasDims = item.length != null && item.width != null && item.height != null;
                     return (
                       <TableRow key={item.id} className={isHeavy ? "bg-destructive/5" : ""}>
                         <TableCell className="font-mono text-sm">{item.sku}</TableCell>
                         <TableCell className="font-medium">{item.productName}</TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">
-                          {formatNumber(item.weight)} kg
+                          {item.weight != null ? `${formatNumber(item.weight)} kg` : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {formatNumber(item.length)}×{formatNumber(item.width)}×{formatNumber(item.height)} cm
+                          {hasDims ? `${formatNumber(item.length!)}×${formatNumber(item.width!)}×${formatNumber(item.height!)} cm` : "—"}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatNumber(cm3ToM3(vol), 4)} m³
+                          {hasDims ? `${formatNumber(cm3ToM3(vol), 4)} m³` : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(item.lastUpdated).toLocaleDateString()}
