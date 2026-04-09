@@ -43,8 +43,8 @@ const Utilities = () => {
 
   const handleCsvExport = () => {
     const csv = Papa.unparse(items.map(i => ({
-      SKU: i.sku, ProductName: i.productName, Weight_kg: formatNumber(i.weight),
-      Length_cm: formatNumber(i.length), Width_cm: formatNumber(i.width), Height_cm: formatNumber(i.height),
+      SKU: i.sku, ProductName: i.productName, Weight_kg: i.weight != null ? formatNumber(i.weight) : "",
+      Length_cm: i.length != null ? formatNumber(i.length) : "", Width_cm: i.width != null ? formatNumber(i.width) : "", Height_cm: i.height != null ? formatNumber(i.height) : "",
       Quantity: i.quantity, LastUpdated: new Date(i.lastUpdated).toISOString(),
     })));
     downloadFile(csv, `inventory-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv");
@@ -123,8 +123,8 @@ const Utilities = () => {
         <div class="sku">${selectedItem.sku}</div>
         <div class="name">${selectedItem.productName}</div>
         <div class="details">
-          Weight: ${formatNumber(selectedItem.weight)} kg<br/>
-          Dims: ${formatNumber(selectedItem.length)} × ${formatNumber(selectedItem.width)} × ${formatNumber(selectedItem.height)} cm
+          ${selectedItem.weight != null ? `Weight: ${formatNumber(selectedItem.weight)} kg<br/>` : ""}
+          ${selectedItem.length != null ? `Dims: ${formatNumber(selectedItem.length)} × ${formatNumber(selectedItem.width ?? 0)} × ${formatNumber(selectedItem.height ?? 0)} cm` : ""}
         </div>
       </div>
       <script>window.print(); window.close();</script>

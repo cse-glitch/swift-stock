@@ -4,12 +4,12 @@ export interface InventoryItem {
   id?: number;
   sku: string;
   productName: string;
-  weight: number;       // stored in kg
-  weightUnit: 'kg' | 'lb';
-  length: number;       // stored in cm
-  width: number;        // stored in cm
-  height: number;       // stored in cm
-  sizeUnit: 'cm' | 'in';
+  weight?: number;       // stored in kg, optional
+  weightUnit?: 'kg' | 'lb';
+  length?: number;       // stored in cm, optional
+  width?: number;        // stored in cm, optional
+  height?: number;       // stored in cm, optional
+  sizeUnit?: 'cm' | 'in';
   quantity: number;
   lastUpdated: Date;
 }

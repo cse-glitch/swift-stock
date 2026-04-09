@@ -36,8 +36,8 @@ const Dashboard = () => {
         case 'sku': cmp = a.sku.localeCompare(b.sku); break;
         case 'productName': cmp = a.productName.localeCompare(b.productName); break;
         case 'quantity': cmp = a.quantity - b.quantity; break;
-        case 'weight': cmp = a.weight - b.weight; break;
-        case 'volume': cmp = calcVolumeCm3(a.length, a.width, a.height) - calcVolumeCm3(b.length, b.width, b.height); break;
+        case 'weight': cmp = (a.weight ?? 0) - (b.weight ?? 0); break;
+        case 'volume': cmp = calcVolumeCm3(a.length ?? 0, a.width ?? 0, a.height ?? 0) - calcVolumeCm3(b.length ?? 0, b.width ?? 0, b.height ?? 0); break;
         case 'lastUpdated': cmp = new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime(); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
@@ -46,8 +46,8 @@ const Dashboard = () => {
   }, [items, search, sortKey, sortDir]);
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
-  const totalMassKg = items.reduce((s, i) => s + i.weight * i.quantity, 0);
-  const totalVolCm3 = items.reduce((s, i) => s + calcVolumeCm3(i.length, i.width, i.height) * i.quantity, 0);
+  const totalMassKg = items.reduce((s, i) => s + (i.weight ?? 0) * i.quantity, 0);
+  const totalVolCm3 = items.reduce((s, i) => s + calcVolumeCm3(i.length ?? 0, i.width ?? 0, i.height ?? 0) * i.quantity, 0);
   const uniqueSkus = items.length;
 
   const SortHeader = ({ label, k }: { label: string; k: SortKey }) => (
@@ -144,21 +144,22 @@ const Dashboard = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map(item => {
-                    const vol = calcVolumeCm3(item.length, item.width, item.height);
-                    const isHeavy = item.weight >= settings.heavyThresholdKg;
+                    const vol = calcVolumeCm3(item.length ?? 0, item.width ?? 0, item.height ?? 0);
+                    const isHeavy = item.weight != null && item.weight >= settings.heavyThresholdKg;
+                    const hasDims = item.length != null && item.width != null && item.height != null;
                     return (
                       <TableRow key={item.id} className={isHeavy ? "bg-destructive/5" : ""}>
                         <TableCell className="font-mono text-sm">{item.sku}</TableCell>
                         <TableCell className="font-medium">{item.productName}</TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">
-                          {formatNumber(item.weight)} kg
+                          {item.weight != null ? `${formatNumber(item.weight)} kg` : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {formatNumber(item.length)}×{formatNumber(item.width)}×{formatNumber(item.height)} cm
+                          {hasDims ? `${formatNumber(item.length!)}×${formatNumber(item.width!)}×${formatNumber(item.height!)} cm` : "—"}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatNumber(cm3ToM3(vol), 4)} m³
+                          {hasDims ? `${formatNumber(cm3ToM3(vol), 4)} m³` : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(item.lastUpdated).toLocaleDateString()}
