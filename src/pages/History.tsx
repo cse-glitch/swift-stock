@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { format } from "date-fns";
+import Papa from "papaparse";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, CalendarIcon, History as HistoryIcon, X } from "lucide-react";
+import { Search, CalendarIcon, History as HistoryIcon, X, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const REASONS = ["All", "Sold", "Damaged", "Expired", "Returned", "Other"] as const;
@@ -48,6 +49,25 @@ const History = () => {
 
   const hasFilters = search || reasonFilter !== "All" || dateFrom || dateTo;
 
+  const exportCSV = () => {
+    const rows = filtered.map(r => ({
+      Date: format(new Date(r.timestamp), "yyyy-MM-dd HH:mm:ss"),
+      SKU: r.sku,
+      "Product Name": r.productName,
+      "Qty Removed": r.quantityRemoved,
+      Reason: r.reason,
+      Note: r.note || "",
+    }));
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `removal-history-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const DatePicker = ({ date, onSelect, placeholder }: { date?: Date; onSelect: (d?: Date) => void; placeholder: string }) => (
     <Popover>
       <PopoverTrigger asChild>
@@ -64,9 +84,14 @@ const History = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Removal History</h1>
-        <p className="text-muted-foreground">View all past stock removals with filtering</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Removal History</h1>
+          <p className="text-muted-foreground">View all past stock removals with filtering</p>
+        </div>
+        <Button variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>
+          <Download className="mr-2 h-4 w-4" /> Export CSV
+        </Button>
       </div>
 
       {/* Filters */}
