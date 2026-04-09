@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { db } from "@/lib/db";
 import { toStorageWeight, toStorageDim, calcVolumeCm3, cm3ToM3, formatNumber } from "@/lib/units";
+import { getSettings } from "@/lib/settings";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
