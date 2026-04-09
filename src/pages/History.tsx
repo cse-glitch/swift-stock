@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { format } from "date-fns";
+import Papa from "papaparse";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, CalendarIcon, History as HistoryIcon, X } from "lucide-react";
+import { Search, CalendarIcon, History as HistoryIcon, X, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const REASONS = ["All", "Sold", "Damaged", "Expired", "Returned", "Other"] as const;
