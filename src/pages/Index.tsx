@@ -15,6 +15,7 @@ type SortDir = 'asc' | 'desc';
 
 const Dashboard = () => {
   const items = useLiveQuery(() => db.items.toArray()) ?? [];
+  const settings = getSettings();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>('lastUpdated');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
