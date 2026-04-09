@@ -36,8 +36,8 @@ const Dashboard = () => {
         case 'sku': cmp = a.sku.localeCompare(b.sku); break;
         case 'productName': cmp = a.productName.localeCompare(b.productName); break;
         case 'quantity': cmp = a.quantity - b.quantity; break;
-        case 'weight': cmp = a.weight - b.weight; break;
-        case 'volume': cmp = calcVolumeCm3(a.length, a.width, a.height) - calcVolumeCm3(b.length, b.width, b.height); break;
+        case 'weight': cmp = (a.weight ?? 0) - (b.weight ?? 0); break;
+        case 'volume': cmp = calcVolumeCm3(a.length ?? 0, a.width ?? 0, a.height ?? 0) - calcVolumeCm3(b.length ?? 0, b.width ?? 0, b.height ?? 0); break;
         case 'lastUpdated': cmp = new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime(); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
