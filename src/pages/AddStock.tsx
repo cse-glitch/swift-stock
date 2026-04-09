@@ -24,9 +24,12 @@ interface FormData {
   quantity: string;
 }
 
-const defaultForm: FormData = {
-  productName: "", sku: "", weight: "", weightUnit: "kg",
-  length: "", width: "", height: "", sizeUnit: "cm", quantity: "1",
+const getDefaultForm = (): FormData => {
+  const s = getSettings();
+  return {
+    productName: "", sku: "", weight: "", weightUnit: s.defaultWeightUnit,
+    length: "", width: "", height: "", sizeUnit: s.defaultSizeUnit, quantity: "1",
+  };
 };
 
 const AddStock = () => {
