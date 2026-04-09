@@ -93,7 +93,6 @@ const History = () => {
           <Download className="mr-2 h-4 w-4" /> Export CSV
         </Button>
       </div>
-      </div>
 
       {/* Filters */}
       <Card>
