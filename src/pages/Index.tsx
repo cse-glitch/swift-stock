@@ -145,7 +145,7 @@ const Dashboard = () => {
                 <TableBody>
                   {filtered.map(item => {
                     const vol = calcVolumeCm3(item.length, item.width, item.height);
-                    const isHeavy = item.weight >= HEAVY_THRESHOLD_KG;
+                    const isHeavy = item.weight >= settings.heavyThresholdKg;
                     return (
                       <TableRow key={item.id} className={isHeavy ? "bg-destructive/5" : ""}>
                         <TableCell className="font-mono text-sm">{item.sku}</TableCell>

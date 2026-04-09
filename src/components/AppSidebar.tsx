@@ -18,7 +18,9 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Add Stock", url: "/add", icon: PackagePlus },
   { title: "Remove Stock", url: "/remove", icon: PackageMinus },
-  { title: "Utilities", url: "/utilities", icon: Settings },
+  { title: "History", url: "/history", icon: History },
+  { title: "Utilities", url: "/utilities", icon: Wrench },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

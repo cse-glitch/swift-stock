@@ -25,7 +25,9 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/add" element={<AddStock />} />
             <Route path="/remove" element={<RemoveStock />} />
+            <Route path="/history" element={<History />} />
             <Route path="/utilities" element={<Utilities />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
