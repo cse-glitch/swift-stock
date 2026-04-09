@@ -46,8 +46,8 @@ const Dashboard = () => {
   }, [items, search, sortKey, sortDir]);
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
-  const totalMassKg = items.reduce((s, i) => s + i.weight * i.quantity, 0);
-  const totalVolCm3 = items.reduce((s, i) => s + calcVolumeCm3(i.length, i.width, i.height) * i.quantity, 0);
+  const totalMassKg = items.reduce((s, i) => s + (i.weight ?? 0) * i.quantity, 0);
+  const totalVolCm3 = items.reduce((s, i) => s + calcVolumeCm3(i.length ?? 0, i.width ?? 0, i.height ?? 0) * i.quantity, 0);
   const uniqueSkus = items.length;
 
   const SortHeader = ({ label, k }: { label: string; k: SortKey }) => (
