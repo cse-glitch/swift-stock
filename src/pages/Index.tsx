@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Package, Weight, Box, Hash, Search, AlertTriangle, ArrowUpDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Package, Weight, Box, Hash, Search, AlertTriangle, ArrowUpDown, Tag } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -17,8 +18,14 @@ const Dashboard = () => {
   const items = useLiveQuery(() => db.items.toArray()) ?? [];
   const settings = getSettings();
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>('lastUpdated');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+
+  const categories = useMemo(() => {
+    const cats = new Set(items.map(i => i.category).filter(Boolean) as string[]);
+    return Array.from(cats).sort();
+  }, [items]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -28,7 +35,8 @@ const Dashboard = () => {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     let result = items.filter(i =>
-      i.sku.toLowerCase().includes(q) || i.productName.toLowerCase().includes(q)
+      (i.sku.toLowerCase().includes(q) || i.productName.toLowerCase().includes(q)) &&
+      (categoryFilter === "all" || (i.category ?? "") === categoryFilter)
     );
     result.sort((a, b) => {
       let cmp = 0;
@@ -43,7 +51,7 @@ const Dashboard = () => {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return result;
-  }, [items, search, sortKey, sortDir]);
+  }, [items, search, categoryFilter, sortKey, sortDir]);
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
   const totalMassKg = items.reduce((s, i) => s + (i.weight ?? 0) * i.quantity, 0);
@@ -109,14 +117,30 @@ const Dashboard = () => {
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Inventory</CardTitle>
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by SKU or name..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-9"
-              />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {categories.length > 0 && (
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-full sm:w-40">
+                    <Tag className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by SKU or name..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -134,6 +158,7 @@ const Dashboard = () => {
                   <TableRow>
                     <TableHead><SortHeader label="SKU" k="sku" /></TableHead>
                     <TableHead><SortHeader label="Product Name" k="productName" /></TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead className="text-right"><SortHeader label="Qty" k="quantity" /></TableHead>
                     <TableHead className="text-right"><SortHeader label="Weight" k="weight" /></TableHead>
                     <TableHead>Dimensions</TableHead>
@@ -151,6 +176,13 @@ const Dashboard = () => {
                       <TableRow key={item.id} className={isHeavy ? "bg-destructive/5" : ""}>
                         <TableCell className="font-mono text-sm">{item.sku}</TableCell>
                         <TableCell className="font-medium">{item.productName}</TableCell>
+                        <TableCell>
+                          {item.category ? (
+                            <Badge variant="secondary" className="text-xs">{item.category}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">{item.quantity}</TableCell>
                         <TableCell className="text-right">
                           {item.weight != null ? `${formatNumber(item.weight)} kg` : <span className="text-muted-foreground">—</span>}

@@ -4,6 +4,7 @@ export interface InventoryItem {
   id?: number;
   sku: string;
   productName: string;
+  category?: string;
   weight?: number;       // stored in kg, optional
   weightUnit?: 'kg' | 'lb';
   length?: number;       // stored in cm, optional
@@ -32,6 +33,10 @@ class InventoryDB extends Dexie {
     super('InventoryManager');
     this.version(1).stores({
       items: '++id, &sku, productName, weight, lastUpdated',
+      removals: '++id, sku, reason, timestamp',
+    });
+    this.version(2).stores({
+      items: '++id, &sku, productName, category, weight, lastUpdated',
       removals: '++id, sku, reason, timestamp',
     });
   }
