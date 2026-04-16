@@ -43,7 +43,8 @@ const Utilities = () => {
 
   const handleCsvExport = () => {
     const csv = Papa.unparse(items.map(i => ({
-      SKU: i.sku, ProductName: i.productName, Weight_kg: i.weight != null ? formatNumber(i.weight) : "",
+      SKU: i.sku, ProductName: i.productName, Category: i.category ?? "",
+      Weight_kg: i.weight != null ? formatNumber(i.weight) : "",
       Length_cm: i.length != null ? formatNumber(i.length) : "", Width_cm: i.width != null ? formatNumber(i.width) : "", Height_cm: i.height != null ? formatNumber(i.height) : "",
       Quantity: i.quantity, LastUpdated: new Date(i.lastUpdated).toISOString(),
     })));
@@ -71,6 +72,7 @@ const Utilities = () => {
       const toAdd: InventoryItem[] = importData.map((row: any) => ({
         sku: String(row.SKU || row.sku || "").trim(),
         productName: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
+        category: String(row.Category || row.category || "").trim() || undefined,
         weight: parseFloat(row.Weight_kg || row.weight || "0") || 0,
         weightUnit: "kg" as const,
         length: parseFloat(row.Length_cm || row.length || "0") || 0,

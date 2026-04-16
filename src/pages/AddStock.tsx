@@ -15,6 +15,7 @@ const UNITS_KEY = "inv_lastEntry";
 interface FormData {
   productName: string;
   sku: string;
+  category: string;
   weight: string;
   weightUnit: 'kg' | 'lb';
   length: string;
@@ -27,7 +28,7 @@ interface FormData {
 const getDefaultForm = (): FormData => {
   const s = getSettings();
   return {
-    productName: "", sku: "", weight: "", weightUnit: s.defaultWeightUnit,
+    productName: "", sku: "", category: "", weight: "", weightUnit: s.defaultWeightUnit,
     length: "", width: "", height: "", sizeUnit: s.defaultSizeUnit, quantity: "1",
   };
 };
@@ -94,6 +95,7 @@ const AddStock = () => {
           height: heightCm,
           weightUnit: form.weightUnit,
           sizeUnit: form.sizeUnit,
+          category: form.category.trim() || undefined,
           lastUpdated: new Date(),
         });
         toast({
@@ -104,6 +106,7 @@ const AddStock = () => {
         await db.items.add({
           sku: form.sku.trim(),
           productName: form.productName.trim(),
+          category: form.category.trim() || undefined,
           weight: weightKg,
           weightUnit: form.weightUnit,
           length: lengthCm,
@@ -128,7 +131,7 @@ const AddStock = () => {
 
       // Reset form
       if (memoryFill) {
-        setForm(f => ({ ...f, productName: "", sku: "", quantity: "1" }));
+        setForm(f => ({ ...f, productName: "", sku: "", quantity: "1", category: "" }));
       } else {
         setForm(getDefaultForm());
       }
@@ -193,6 +196,12 @@ const AddStock = () => {
                 <Input id="sku" value={form.sku} onChange={e => set("sku", e.target.value)} placeholder="WDG-001" className="font-mono" />
                 <FieldError field="sku" />
               </div>
+            </div>
+
+            {/* Category */}
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Input id="category" value={form.category} onChange={e => set("category", e.target.value)} placeholder="e.g. Electronics, Furniture, Apparel" />
             </div>
 
             {/* Weight */}
