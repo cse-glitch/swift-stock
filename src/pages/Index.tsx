@@ -72,14 +72,15 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Overview of your inventory</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 lg:grid-rows-2">
+        <Card className="col-span-2 row-span-2 flex flex-col justify-between">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Items</CardTitle>
-            <Hash className="h-4 w-4 text-muted-foreground" />
+            <Hash className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalItems.toLocaleString()}</div>
+            <div className="text-5xl font-bold tracking-tight">{totalItems.toLocaleString()}</div>
+            <p className="text-sm text-muted-foreground mt-2">{uniqueSkus} unique SKUs in stock</p>
           </CardContent>
         </Card>
         <Card>
@@ -102,13 +103,14 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground">{formatNumber(cm3ToFt3(totalVolCm3), 2)} ft³</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Unique SKUs</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{uniqueSkus}</div>
+            <p className="text-xs text-muted-foreground">{categories.length} categories</p>
           </CardContent>
         </Card>
       </div>
