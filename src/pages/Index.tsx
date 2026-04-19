@@ -73,43 +73,51 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 lg:grid-rows-2">
-        <Card className="col-span-2 row-span-2 flex flex-col justify-between">
+        <Card className="col-span-2 row-span-2 flex flex-col justify-between bg-gradient-to-br from-primary/5 via-card to-accent/5 border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Items</CardTitle>
-            <Hash className="h-5 w-5 text-muted-foreground" />
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Hash className="h-5 w-5 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-5xl font-bold tracking-tight">{totalItems.toLocaleString()}</div>
+            <div className="text-5xl font-bold tracking-tight text-foreground">{totalItems.toLocaleString()}</div>
             <p className="text-sm text-muted-foreground mt-2">{uniqueSkus} unique SKUs in stock</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gradient-to-br from-secondary/50 via-card to-muted/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Mass</CardTitle>
-            <Weight className="h-4 w-4 text-muted-foreground" />
+            <div className="p-1.5 rounded-lg bg-accent/10">
+              <Weight className="h-4 w-4 text-accent" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(totalMassKg)} kg</div>
+            <div className="text-2xl font-bold text-foreground">{formatNumber(totalMassKg)} kg</div>
             <p className="text-xs text-muted-foreground">{formatNumber(kgToLb(totalMassKg))} lb</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gradient-to-br from-muted/30 via-card to-secondary/50">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Volume</CardTitle>
-            <Box className="h-4 w-4 text-muted-foreground" />
+            <div className="p-1.5 rounded-lg bg-primary/10">
+              <Box className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(cm3ToM3(totalVolCm3), 3)} m³</div>
+            <div className="text-2xl font-bold text-foreground">{formatNumber(cm3ToM3(totalVolCm3), 3)} m³</div>
             <p className="text-xs text-muted-foreground">{formatNumber(cm3ToFt3(totalVolCm3), 2)} ft³</p>
           </CardContent>
         </Card>
-        <Card className="col-span-2">
+        <Card className="col-span-2 bg-gradient-to-r from-card via-muted/20 to-card border-l-4 border-l-primary/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Unique SKUs</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <div className="p-1.5 rounded-lg bg-secondary/60">
+              <Package className="h-4 w-4 text-secondary-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{uniqueSkus}</div>
+            <div className="text-2xl font-bold text-foreground">{uniqueSkus}</div>
             <p className="text-xs text-muted-foreground">{categories.length} categories</p>
           </CardContent>
         </Card>
