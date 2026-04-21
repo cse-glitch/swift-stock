@@ -69,7 +69,7 @@ const Utilities = () => {
   const handleImportConfirm = async () => {
     if (!importData) return;
     try {
-      const toAdd: InventoryItem[] = importData.map((row: any) => ({
+      const toAdd: LegacyItem[] = importData.map((row: any) => ({
         sku: String(row.SKU || row.sku || "").trim(),
         productName: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
         category: String(row.Category || row.category || "").trim() || undefined,
