@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type InventoryItem } from "@/lib/db";
+import { db, type LegacyItem } from "@/lib/db";
 import { formatNumber } from "@/lib/units";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,7 +69,7 @@ const Utilities = () => {
   const handleImportConfirm = async () => {
     if (!importData) return;
     try {
-      const toAdd: InventoryItem[] = importData.map((row: any) => ({
+      const toAdd: LegacyItem[] = importData.map((row: any) => ({
         sku: String(row.SKU || row.sku || "").trim(),
         productName: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
         category: String(row.Category || row.category || "").trim() || undefined,

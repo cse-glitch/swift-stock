@@ -1,231 +1,190 @@
-import { useLiveQuery } from "dexie-react-hooks";
-import { db, type InventoryItem } from "@/lib/db";
-import { calcVolumeCm3, cm3ToM3, cm3ToFt3, formatNumber, kgToLb } from "@/lib/units";
-import { getSettings } from "@/lib/settings";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, Weight, Box, Hash, Search, AlertTriangle, ArrowUpDown, Tag } from "lucide-react";
-import { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
+import { useBusiness } from '@/contexts/BusinessContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase, Package,
+  TrendingUp, AlertTriangle, BoxesIcon, Store,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-type SortKey = 'sku' | 'productName' | 'quantity' | 'weight' | 'volume' | 'lastUpdated';
-type SortDir = 'asc' | 'desc';
+const iconMap: Record<string, LucideIcon> = {
+  ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase,
+};
 
 const Dashboard = () => {
-  const items = useLiveQuery(() => db.items.toArray()) ?? [];
-  const settings = getSettings();
-  const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [sortKey, setSortKey] = useState<SortKey>('lastUpdated');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const { businesses, activeBusiness, activeBusinessId } = useBusiness();
+  const products = useLiveQuery(() =>
+    activeBusinessId
+      ? db.products.where('businessId').equals(activeBusinessId).toArray()
+      : db.products.toArray()
+  , [activeBusinessId]) ?? [];
 
-  const categories = useMemo(() => {
-    const cats = new Set(items.map(i => i.category).filter(Boolean) as string[]);
-    return Array.from(cats).sort();
-  }, [items]);
+  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
+  const recentLogs = useLiveQuery(() =>
+    db.inventoryLog.orderBy('timestamp').reverse().limit(10).toArray()
+  ) ?? [];
 
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('asc'); }
-  };
+  // Compute stats
+  const activeBusinesses = businesses.filter(b => b.isActive);
+  const productsByBusiness = (bId: number) => products.filter(p => p.businessId === bId);
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    let result = items.filter(i =>
-      (i.sku.toLowerCase().includes(q) || i.productName.toLowerCase().includes(q)) &&
-      (categoryFilter === "all" || (i.category ?? "") === categoryFilter)
-    );
-    result.sort((a, b) => {
-      let cmp = 0;
-      switch (sortKey) {
-        case 'sku': cmp = a.sku.localeCompare(b.sku); break;
-        case 'productName': cmp = a.productName.localeCompare(b.productName); break;
-        case 'quantity': cmp = a.quantity - b.quantity; break;
-        case 'weight': cmp = (a.weight ?? 0) - (b.weight ?? 0); break;
-        case 'volume': cmp = calcVolumeCm3(a.length ?? 0, a.width ?? 0, a.height ?? 0) - calcVolumeCm3(b.length ?? 0, b.width ?? 0, b.height ?? 0); break;
-        case 'lastUpdated': cmp = new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime(); break;
-      }
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-    return result;
-  }, [items, search, categoryFilter, sortKey, sortDir]);
-
-  const totalItems = items.reduce((s, i) => s + i.quantity, 0);
-  const totalMassKg = items.reduce((s, i) => s + (i.weight ?? 0) * i.quantity, 0);
-  const totalVolCm3 = items.reduce((s, i) => s + calcVolumeCm3(i.length ?? 0, i.width ?? 0, i.height ?? 0) * i.quantity, 0);
-  const uniqueSkus = items.length;
-
-  const SortHeader = ({ label, k }: { label: string; k: SortKey }) => (
-    <Button variant="ghost" size="sm" className="h-auto p-0 font-medium text-muted-foreground hover:text-foreground" onClick={() => toggleSort(k)}>
-      {label}
-      <ArrowUpDown className="ml-1 h-3 w-3" />
-    </Button>
-  );
+  const totalProducts = products.length;
+  const relevantVariants = variants.filter(v => products.some(p => p.id === v.productId));
+  const totalStock = relevantVariants.reduce((s, v) => s + v.stock, 0);
+  const lowStockItems = relevantVariants.filter(v => v.stock > 0 && v.stock <= v.lowStockThreshold);
+  const outOfStock = relevantVariants.filter(v => v.stock === 0);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your inventory</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {activeBusiness ? activeBusiness.name : 'Dashboard'}
+        </h1>
+        <p className="text-muted-foreground">
+          {activeBusiness ? `Overview for ${activeBusiness.name}` : `Managing ${activeBusinesses.length} businesses`}
+        </p>
       </div>
 
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 lg:grid-rows-2">
-        <Card className="col-span-2 row-span-2 flex flex-col justify-between bg-gradient-to-br from-primary/5 via-card to-accent/5 border-primary/10">
+      {/* Summary Cards */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-gradient-to-br from-primary/5 via-card to-accent/5 border-primary/10">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Items</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
             <div className="p-2 rounded-lg bg-primary/10">
-              <Hash className="h-5 w-5 text-primary" />
+              <BoxesIcon className="h-4 w-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-5xl font-bold tracking-tight text-foreground">{totalItems.toLocaleString()}</div>
-            <p className="text-sm text-muted-foreground mt-2">{uniqueSkus} unique SKUs in stock</p>
+            <div className="text-3xl font-bold">{totalProducts}</div>
+            <p className="text-xs text-muted-foreground">{relevantVariants.length} variants</p>
           </CardContent>
         </Card>
+
+        <Card className="bg-gradient-to-br from-accent/5 via-card to-primary/5">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Stock</CardTitle>
+            <div className="p-2 rounded-lg bg-accent/10">
+              <Package className="h-4 w-4 text-accent" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalStock.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">units across variants</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-warning/5 via-card to-destructive/5">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Low Stock</CardTitle>
+            <div className="p-2 rounded-lg bg-warning/10">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{lowStockItems.length}</div>
+            <p className="text-xs text-muted-foreground">{outOfStock.length} out of stock</p>
+          </CardContent>
+        </Card>
+
         <Card className="bg-gradient-to-br from-secondary/50 via-card to-muted/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Mass</CardTitle>
-            <div className="p-1.5 rounded-lg bg-accent/10">
-              <Weight className="h-4 w-4 text-accent" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Businesses</CardTitle>
+            <div className="p-2 rounded-lg bg-secondary/60">
+              <Store className="h-4 w-4 text-secondary-foreground" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatNumber(totalMassKg)} kg</div>
-            <p className="text-xs text-muted-foreground">{formatNumber(kgToLb(totalMassKg))} lb</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-muted/30 via-card to-secondary/50">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Volume</CardTitle>
-            <div className="p-1.5 rounded-lg bg-primary/10">
-              <Box className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatNumber(cm3ToM3(totalVolCm3), 3)} m³</div>
-            <p className="text-xs text-muted-foreground">{formatNumber(cm3ToFt3(totalVolCm3), 2)} ft³</p>
-          </CardContent>
-        </Card>
-        <Card className="col-span-2 bg-gradient-to-r from-card via-muted/20 to-card border-l-4 border-l-primary/30">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Unique SKUs</CardTitle>
-            <div className="p-1.5 rounded-lg bg-secondary/60">
-              <Package className="h-4 w-4 text-secondary-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{uniqueSkus}</div>
-            <p className="text-xs text-muted-foreground">{categories.length} categories</p>
+            <div className="text-3xl font-bold">{activeBusinesses.length}</div>
+            <p className="text-xs text-muted-foreground">active pages</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Inventory</CardTitle>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              {categories.length > 0 && (
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-full sm:w-40">
-                    <Tag className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search by SKU or name..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
+      {/* Per-Business Cards */}
+      {!activeBusiness && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Business Overview</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {activeBusinesses.map(b => {
+              const Icon = iconMap[b.icon] ?? Store;
+              const bProducts = productsByBusiness(b.id!);
+              const bVariants = variants.filter(v => bProducts.some(p => p.id === v.productId));
+              const bStock = bVariants.reduce((s, v) => s + v.stock, 0);
+              const bLow = bVariants.filter(v => v.stock > 0 && v.stock <= v.lowStockThreshold).length;
+
+              return (
+                <Card
+                  key={b.id}
+                  className="hover:shadow-md transition-shadow cursor-default border-l-4"
+                  style={{ borderLeftColor: `hsl(${b.color})` }}
+                >
+                  <CardHeader className="flex flex-row items-center gap-3 pb-2">
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded-lg shrink-0"
+                      style={{ backgroundColor: `hsl(${b.color} / 0.12)`, color: `hsl(${b.color})` }}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <CardTitle className="text-sm truncate">{b.name}</CardTitle>
+                      <p className="text-xs text-muted-foreground capitalize">{b.type}</p>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{bProducts.length} products</span>
+                      <span className="font-medium">{bStock.toLocaleString()} units</span>
+                    </div>
+                    {bLow > 0 && (
+                      <Badge variant="destructive" className="mt-2 gap-1 text-xs">
+                        <AlertTriangle className="h-3 w-3" />
+                        {bLow} low stock
+                      </Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-        </CardHeader>
-        <CardContent>
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Package className="h-12 w-12 mb-4 opacity-40" />
-              <p className="text-lg font-medium">No items found</p>
-              <p className="text-sm">Add stock to get started</p>
-            </div>
-          ) : (
-            <div className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead><SortHeader label="SKU" k="sku" /></TableHead>
-                    <TableHead><SortHeader label="Product Name" k="productName" /></TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right"><SortHeader label="Qty" k="quantity" /></TableHead>
-                    <TableHead className="text-right"><SortHeader label="Weight" k="weight" /></TableHead>
-                    <TableHead>Dimensions</TableHead>
-                    <TableHead className="text-right"><SortHeader label="Volume" k="volume" /></TableHead>
-                    <TableHead><SortHeader label="Updated" k="lastUpdated" /></TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map(item => {
-                    const vol = calcVolumeCm3(item.length ?? 0, item.width ?? 0, item.height ?? 0);
-                    const isHeavy = item.weight != null && item.weight >= settings.heavyThresholdKg;
-                    const hasDims = item.length != null && item.width != null && item.height != null;
-                    return (
-                      <TableRow key={item.id} className={isHeavy ? "bg-destructive/5" : ""}>
-                        <TableCell className="font-mono text-sm">{item.sku}</TableCell>
-                        <TableCell className="font-medium">{item.productName}</TableCell>
-                        <TableCell>
-                          {item.category ? (
-                            <Badge variant="secondary" className="text-xs">{item.category}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">{item.quantity}</TableCell>
-                        <TableCell className="text-right">
-                          {item.weight != null ? `${formatNumber(item.weight)} kg` : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {hasDims ? `${formatNumber(item.length!)}×${formatNumber(item.width!)}×${formatNumber(item.height!)} cm` : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {hasDims ? `${formatNumber(cm3ToM3(vol), 4)} m³` : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(item.lastUpdated).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {isHeavy && (
-                            <Badge variant="destructive" className="gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              Heavy
-                            </Badge>
-                          )}
-                          {item.quantity === 0 && (
-                            <Badge variant="outline">Out of Stock</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
+
+      {/* Recent Activity */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
+        {recentLogs.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <TrendingUp className="h-12 w-12 mb-4 opacity-40" />
+              <p className="text-lg font-medium">No activity yet</p>
+              <p className="text-sm">Add products and stock to get started</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="space-y-3">
+                {recentLogs.map(log => (
+                  <div key={log.id} className="flex items-center justify-between text-sm py-2 border-b last:border-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={log.type === 'add' ? 'default' : log.type === 'remove' ? 'destructive' : 'secondary'} className="text-xs">
+                        {log.type}
+                      </Badge>
+                      <span className="text-muted-foreground">{log.reason}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-medium">{log.type === 'remove' ? '-' : '+'}{log.quantity}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(log.timestamp).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
