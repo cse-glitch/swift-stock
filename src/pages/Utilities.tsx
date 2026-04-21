@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type InventoryItem } from "@/lib/db";
+import { db, type LegacyItem } from "@/lib/db";
 import { formatNumber } from "@/lib/units";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
