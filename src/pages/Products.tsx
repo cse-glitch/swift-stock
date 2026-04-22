@@ -253,6 +253,41 @@ function ProductDialog({
       return;
     }
 
+    // Check product SKU uniqueness within the business
+    const bizId = Number(businessId);
+    const existingProduct = await db.products
+      .where('businessId').equals(bizId)
+      .and(p => p.sku === sku.trim())
+      .first();
+    if (existingProduct && existingProduct.id !== product?.id) {
+      toast({ title: 'Duplicate Product SKU', description: `SKU "${sku.trim()}" already exists in this business.`, variant: 'destructive' });
+      return;
+    }
+
+    // Check variant SKU uniqueness within the business
+    const variantSkus = variantsList.map(v => v.sku.trim()).filter(Boolean);
+    const duplicateInForm = variantSkus.filter((s, i) => variantSkus.indexOf(s) !== i);
+    if (duplicateInForm.length > 0) {
+      toast({ title: 'Duplicate Variant SKUs', description: `These variant SKUs are duplicated: ${[...new Set(duplicateInForm)].join(', ')}`, variant: 'destructive' });
+      return;
+    }
+
+    if (variantSkus.length > 0) {
+      // Get all existing variant SKUs for this business (excluding current product's variants)
+      const bizProducts = await db.products.where('businessId').equals(bizId).toArray();
+      const bizProductIds = bizProducts.map(p => p.id!).filter(id => id !== product?.id);
+      const existingVariants = bizProductIds.length > 0
+        ? await db.variants.where('productId').anyOf(bizProductIds).toArray()
+        : [];
+      const existingVarSkus = new Set(existingVariants.map(v => v.sku));
+
+      const conflicts = variantSkus.filter(s => existingVarSkus.has(s));
+      if (conflicts.length > 0) {
+        toast({ title: 'Duplicate Variant SKUs', description: `These SKUs already exist in this business: ${conflicts.join(', ')}`, variant: 'destructive' });
+        return;
+      }
+    }
+
     const productData: Omit<Product, 'id'> = {
       businessId: Number(businessId),
       categoryId: categoryId !== 'none' ? Number(categoryId) : undefined,
