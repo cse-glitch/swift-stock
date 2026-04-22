@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Product, type Variant, type Business } from '@/lib/db';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { getBusinessConfig } from '@/lib/business-config';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { normalizeSku, validateSkuFormat, checkSkuConflicts, type SkuConflict } from '@/lib/sku-validation';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,12 +12,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { VariantManager } from '@/components/VariantManager';
 import { DynamicAttributeEditor } from '@/components/DynamicAttributeEditor';
-import { Plus, Search, BoxesIcon, AlertTriangle, Pencil, Eye } from 'lucide-react';
+import { Plus, Search, BoxesIcon, AlertTriangle, Pencil, ShieldAlert } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export default function Products() {
@@ -60,16 +61,6 @@ export default function Products() {
     return businesses.find(b => b.id === p.businessId);
   }
 
-  function openAdd() {
-    setEditingProduct(null);
-    setDialogOpen(true);
-  }
-
-  function openEdit(product: Product) {
-    setEditingProduct(product);
-    setDialogOpen(true);
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -79,12 +70,11 @@ export default function Products() {
             {activeBusiness ? `Managing ${activeBusiness.name}` : 'All business products'}
           </p>
         </div>
-        <Button onClick={openAdd}>
+        <Button onClick={() => { setEditingProduct(null); setDialogOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" /> Add Product
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -101,7 +91,6 @@ export default function Products() {
         </Select>
       </div>
 
-      {/* Product Table */}
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -173,11 +162,9 @@ export default function Products() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(product)}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingProduct(product); setDialogOpen(true); }}>
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -239,7 +226,15 @@ function ProductDialog({
     existingVariants.map(({ id, productId, ...rest }) => rest)
   );
 
-  // Reset form when dialog opens with different product
+  // Inline error states
+  const [skuError, setSkuError] = useState<string | null>(null);
+  const [variantSkuErrors, setVariantSkuErrors] = useState<Record<number, string>>({});
+
+  // Conflict confirmation modal
+  const [conflictModalOpen, setConflictModalOpen] = useState(false);
+  const [pendingConflicts, setPendingConflicts] = useState<SkuConflict[]>([]);
+  const [saving, setSaving] = useState(false);
+
   const selectedBiz = businesses.find(b => b.id === Number(businessId));
   const config = selectedBiz ? getBusinessConfig(selectedBiz.type) : null;
   const bizCategories = categories.filter(c => c.businessId === Number(businessId));
@@ -247,52 +242,82 @@ function ProductDialog({
     ? (config.type === 'properties' ? 'listing' : 'physical')
     : config?.type === 'services' ? 'service' : 'physical';
 
+  // Normalize SKU on change
+  function handleSkuChange(raw: string) {
+    const normalized = normalizeSku(raw);
+    setSku(normalized);
+    const fmtErr = validateSkuFormat(normalized);
+    setSkuError(fmtErr);
+  }
+
   async function handleSave() {
+    // 1. Basic required fields
     if (!name.trim() || !sku.trim() || !businessId) {
       toast({ title: 'Missing fields', description: 'Name, SKU, and business are required.', variant: 'destructive' });
       return;
     }
 
-    // Check product SKU uniqueness within the business
+    // 2. Format validation
+    const normalizedSku = normalizeSku(sku);
+    const fmtErr = validateSkuFormat(normalizedSku);
+    if (fmtErr) {
+      setSkuError(fmtErr);
+      toast({ title: 'Invalid SKU format', description: fmtErr, variant: 'destructive' });
+      return;
+    }
+
+    // Validate variant SKU formats
+    const varFmtErrors: Record<number, string> = {};
+    variantsList.forEach((v, i) => {
+      if (v.sku) {
+        const err = validateSkuFormat(normalizeSku(v.sku));
+        if (err) varFmtErrors[i] = err;
+      }
+    });
+    if (Object.keys(varFmtErrors).length > 0) {
+      setVariantSkuErrors(varFmtErrors);
+      toast({ title: 'Invalid variant SKU format', description: 'Fix the highlighted variant SKUs.', variant: 'destructive' });
+      return;
+    }
+
+    // 3. Uniqueness checks
+    setSaving(true);
     const bizId = Number(businessId);
-    const existingProduct = await db.products
-      .where('businessId').equals(bizId)
-      .and(p => p.sku === sku.trim())
-      .first();
-    if (existingProduct && existingProduct.id !== product?.id) {
-      toast({ title: 'Duplicate Product SKU', description: `SKU "${sku.trim()}" already exists in this business.`, variant: 'destructive' });
-      return;
-    }
+    const normalizedVariantSkus = variantsList.map(v => normalizeSku(v.sku));
+    const { productError, variantErrors, conflicts } = await checkSkuConflicts(
+      bizId, normalizedSku, normalizedVariantSkus, product?.id
+    );
 
-    // Check variant SKU uniqueness within the business
-    const variantSkus = variantsList.map(v => v.sku.trim()).filter(Boolean);
-    const duplicateInForm = variantSkus.filter((s, i) => variantSkus.indexOf(s) !== i);
-    if (duplicateInForm.length > 0) {
-      toast({ title: 'Duplicate Variant SKUs', description: `These variant SKUs are duplicated: ${[...new Set(duplicateInForm)].join(', ')}`, variant: 'destructive' });
-      return;
-    }
+    if (productError || Object.keys(variantErrors).length > 0) {
+      setSkuError(productError);
+      setVariantSkuErrors(variantErrors);
 
-    if (variantSkus.length > 0) {
-      // Get all existing variant SKUs for this business (excluding current product's variants)
-      const bizProducts = await db.products.where('businessId').equals(bizId).toArray();
-      const bizProductIds = bizProducts.map(p => p.id!).filter(id => id !== product?.id);
-      const existingVariants = bizProductIds.length > 0
-        ? await db.variants.where('productId').anyOf(bizProductIds).toArray()
-        : [];
-      const existingVarSkus = new Set(existingVariants.map(v => v.sku));
-
-      const conflicts = variantSkus.filter(s => existingVarSkus.has(s));
       if (conflicts.length > 0) {
-        toast({ title: 'Duplicate Variant SKUs', description: `These SKUs already exist in this business: ${conflicts.join(', ')}`, variant: 'destructive' });
+        // Show confirmation modal with conflict details
+        setPendingConflicts(conflicts);
+        setConflictModalOpen(true);
+        setSaving(false);
         return;
       }
+
+      toast({ title: 'SKU conflicts found', description: 'Fix the highlighted fields.', variant: 'destructive' });
+      setSaving(false);
+      return;
     }
+
+    await commitSave(normalizedSku, normalizedVariantSkus);
+  }
+
+  async function commitSave(finalSku?: string, finalVariantSkus?: string[]) {
+    setSaving(true);
+    const normalizedSku = finalSku ?? normalizeSku(sku);
+    const normalizedVarSkus = finalVariantSkus ?? variantsList.map(v => normalizeSku(v.sku));
 
     const productData: Omit<Product, 'id'> = {
       businessId: Number(businessId),
       categoryId: categoryId !== 'none' ? Number(categoryId) : undefined,
       name: name.trim(),
-      sku: sku.trim(),
+      sku: normalizedSku,
       type: productType,
       description: description.trim() || undefined,
       basePrice: basePrice ? Number(basePrice) : undefined,
@@ -313,170 +338,236 @@ function ProductDialog({
       if (isEdit && product?.id) {
         await db.products.update(product.id, productData);
         productId = product.id;
-        // Clear old variants
         await db.variants.where('productId').equals(productId).delete();
       } else {
         productId = await db.products.add(productData as Product);
       }
 
-      // Save variants
       if (variantsList.length > 0) {
         await db.variants.bulkAdd(
-          variantsList.map(v => ({ ...v, productId }) as Variant)
+          variantsList.map((v, i) => ({
+            ...v,
+            sku: normalizedVarSkus[i],
+            productId,
+          }) as Variant)
         );
       }
 
       toast({ title: isEdit ? 'Product updated' : 'Product added' });
+      setSkuError(null);
+      setVariantSkuErrors({});
       onOpenChange(false);
     } catch (err) {
       toast({ title: 'Error', description: String(err), variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <BoxesIcon className="h-5 w-5 text-primary" />
-            {isEdit ? 'Edit Product' : 'New Product'}
-            {config && (
-              <Badge variant="secondary" className="ml-2 capitalize">{config.productLabel}</Badge>
-            )}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BoxesIcon className="h-5 w-5 text-primary" />
+              {isEdit ? 'Edit Product' : 'New Product'}
+              {config && (
+                <Badge variant="secondary" className="ml-2 capitalize">{config.productLabel}</Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
 
-        <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="basic" className="flex-1">Basic Info</TabsTrigger>
-            <TabsTrigger value="attributes" className="flex-1">Attributes</TabsTrigger>
-            {config?.hasVariants && <TabsTrigger value="variants" className="flex-1">Variants</TabsTrigger>}
-            <TabsTrigger value="advanced" className="flex-1">Advanced</TabsTrigger>
-          </TabsList>
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="basic" className="flex-1">Basic Info</TabsTrigger>
+              <TabsTrigger value="attributes" className="flex-1">Attributes</TabsTrigger>
+              {config?.hasVariants && <TabsTrigger value="variants" className="flex-1">Variants</TabsTrigger>}
+              <TabsTrigger value="advanced" className="flex-1">Advanced</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="basic" className="space-y-4 mt-4">
-            {!activeBusiness && (
-              <div>
-                <Label>Business</Label>
-                <Select value={businessId} onValueChange={setBusinessId}>
-                  <SelectTrigger><SelectValue placeholder="Select business" /></SelectTrigger>
-                  <SelectContent>
-                    {businesses.map(b => (
-                      <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <TabsContent value="basic" className="space-y-4 mt-4">
+              {!activeBusiness && (
+                <div>
+                  <Label>Business</Label>
+                  <Select value={businessId} onValueChange={setBusinessId}>
+                    <SelectTrigger><SelectValue placeholder="Select business" /></SelectTrigger>
+                    <SelectContent>
+                      {businesses.map(b => (
+                        <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Product Name</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Product name" />
-              </div>
-              <div>
-                <Label>SKU</Label>
-                <Input value={sku} onChange={e => setSku(e.target.value)} placeholder="PRD-001" className="font-mono" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Category</Label>
-                <Select value={categoryId} onValueChange={setCategoryId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {bizCategories.map(c => (
-                      <SelectItem key={c.id} value={c.id!.toString()}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Base Price</Label>
-                <Input type="number" value={basePrice} onChange={e => setBasePrice(e.target.value)} placeholder="0.00" />
-              </div>
-            </div>
-
-            <div>
-              <Label>Description</Label>
-              <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description..." rows={3} />
-            </div>
-
-            <div>
-              <Label>Tags (comma-separated)</Label>
-              <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="summer, new arrival, trending" />
-            </div>
-
-            <div>
-              <Label>Status</Label>
-              <Select value={status} onValueChange={v => setStatus(v as 'active' | 'draft' | 'archived')}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="attributes" className="mt-4">
-            {config ? (
-              <DynamicAttributeEditor fields={config.attributeFields} values={attributes} onChange={setAttributes} />
-            ) : (
-              <p className="text-sm text-muted-foreground py-4 text-center">Select a business first to see type-specific attributes.</p>
-            )}
-          </TabsContent>
-
-          {config?.hasVariants && (
-            <TabsContent value="variants" className="mt-4">
-              <VariantManager
-                variants={variantsList}
-                onChange={setVariantsList}
-                attributeLabels={config.variantAttributes}
-              />
-            </TabsContent>
-          )}
-
-          <TabsContent value="advanced" className="space-y-4 mt-4">
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">Seasonal Product</p>
-                <p className="text-xs text-muted-foreground">Mark as available only during certain periods</p>
-              </div>
-              <Switch checked={isSeasonal} onCheckedChange={setIsSeasonal} />
-            </div>
-
-            {isSeasonal && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Season Start</Label>
-                  <Input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} />
+                  <Label>Product Name</Label>
+                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="Product name" />
                 </div>
                 <div>
-                  <Label>Season End</Label>
-                  <Input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} />
+                  <Label>SKU</Label>
+                  <Input
+                    value={sku}
+                    onChange={e => handleSkuChange(e.target.value)}
+                    placeholder="PRD-001"
+                    className={`font-mono uppercase ${skuError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                    maxLength={30}
+                  />
+                  {skuError && (
+                    <p className="text-xs text-destructive mt-1">{skuError}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-0.5">A-Z, 0-9, hyphens. 2–30 chars. Auto-uppercased.</p>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Category</Label>
+                  <Select value={categoryId} onValueChange={setCategoryId}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {bizCategories.map(c => (
+                        <SelectItem key={c.id} value={c.id!.toString()}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Base Price</Label>
+                  <Input type="number" value={basePrice} onChange={e => setBasePrice(e.target.value)} placeholder="0.00" />
+                </div>
+              </div>
+
+              <div>
+                <Label>Description</Label>
+                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description..." rows={3} />
+              </div>
+
+              <div>
+                <Label>Tags (comma-separated)</Label>
+                <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="summer, new arrival, trending" />
+              </div>
+
+              <div>
+                <Label>Status</Label>
+                <Select value={status} onValueChange={v => setStatus(v as 'active' | 'draft' | 'archived')}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="attributes" className="mt-4">
+              {config ? (
+                <DynamicAttributeEditor fields={config.attributeFields} values={attributes} onChange={setAttributes} />
+              ) : (
+                <p className="text-sm text-muted-foreground py-4 text-center">Select a business first to see type-specific attributes.</p>
+              )}
+            </TabsContent>
+
+            {config?.hasVariants && (
+              <TabsContent value="variants" className="mt-4">
+                <VariantManager
+                  variants={variantsList}
+                  onChange={setVariantsList}
+                  attributeLabels={config.variantAttributes}
+                  skuErrors={variantSkuErrors}
+                />
+              </TabsContent>
             )}
 
-            <div className="flex items-center justify-between rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium text-foreground">Expiry Tracking</p>
-                <p className="text-xs text-muted-foreground">Enable for perishable items (agro/food)</p>
+            <TabsContent value="advanced" className="space-y-4 mt-4">
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Seasonal Product</p>
+                  <p className="text-xs text-muted-foreground">Mark as available only during certain periods</p>
+                </div>
+                <Switch checked={isSeasonal} onCheckedChange={setIsSeasonal} />
               </div>
-              <Switch checked={expiryTracking} onCheckedChange={setExpiryTracking} />
-            </div>
-          </TabsContent>
-        </Tabs>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave}>{isEdit ? 'Update' : 'Create Product'}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              {isSeasonal && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Season Start</Label>
+                    <Input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Season End</Label>
+                    <Input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Expiry Tracking</p>
+                  <p className="text-xs text-muted-foreground">Enable for perishable items (agro/food)</p>
+                </div>
+                <Switch checked={expiryTracking} onCheckedChange={setExpiryTracking} />
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Checking...' : isEdit ? 'Update' : 'Create Product'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Conflict Confirmation Modal */}
+      <Dialog open={conflictModalOpen} onOpenChange={setConflictModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <ShieldAlert className="h-5 w-5" />
+              SKU Conflicts Detected
+            </DialogTitle>
+            <DialogDescription>
+              The following SKUs conflict with existing records in this business.
+              Go back and fix them, or review the details below.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-48 overflow-auto border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Conflicts With</TableHead>
+                  <TableHead>Type</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingConflicts.map((c, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-mono text-sm">{c.sku}</TableCell>
+                    <TableCell>{c.existingName}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs capitalize">{c.existingType}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConflictModalOpen(false)}>
+              Go Back & Fix
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
