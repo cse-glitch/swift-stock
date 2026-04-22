@@ -18,15 +18,16 @@ import { useState } from "react";
 const Utilities = () => {
   const items = useLiveQuery(() => db.items.toArray()) ?? [];
   const removals = useLiveQuery(() => db.removals.toArray()) ?? [];
+  const { businesses, activeBusinessId } = useBusiness();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Label printing
   const [selectedSku, setSelectedSku] = useState("");
   const selectedItem = items.find(i => i.sku === selectedSku);
 
-  // CSV Import preview
   const [importData, setImportData] = useState<any[] | null>(null);
+  const [csvErrors, setCsvErrors] = useState<{ row: number; sku: string; name: string; error: string }[] | null>(null);
+  const [importBusinessId, setImportBusinessId] = useState<string>(activeBusinessId?.toString() ?? "");
 
   const downloadFile = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
