@@ -228,7 +228,56 @@ const Utilities = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} />
+            <Select value={importBusinessId} onValueChange={setImportBusinessId}>
+              <SelectTrigger><SelectValue placeholder="Business for SKU check" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Skip SKU validation</SelectItem>
+                {businesses.map(b => (
+                  <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {csvErrors && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <p className="text-sm font-medium text-destructive">{csvErrors.length} rows have SKU conflicts</p>
+              </div>
+              <div className="max-h-32 overflow-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Row</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Error</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {csvErrors.slice(0, 10).map((e, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-mono text-xs">{e.row}</TableCell>
+                        <TableCell className="font-mono text-xs">{e.sku}</TableCell>
+                        <TableCell className="text-xs text-destructive">{e.error}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {csvErrors.length > 10 && (
+                <p className="text-xs text-muted-foreground">...and {csvErrors.length - 10} more. Download full report.</p>
+              )}
+              <div className="flex gap-2">
+                <Button variant="destructive" size="sm" onClick={downloadErrorReport}>
+                  <Download className="mr-1 h-3 w-3" /> Download Error Report
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setCsvErrors(null)}>Dismiss</Button>
+              </div>
+            </div>
+          )}
 
           {importData && (
             <div className="space-y-3">
