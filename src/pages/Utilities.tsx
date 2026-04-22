@@ -1,14 +1,17 @@
 import { useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type LegacyItem } from "@/lib/db";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { normalizeSku, validateCsvSkus } from "@/lib/sku-validation";
 import { formatNumber } from "@/lib/units";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Upload, Database, Printer, FileDown, FileUp } from "lucide-react";
+import { Download, Upload, Database, Printer, FileDown, FileUp, AlertTriangle } from "lucide-react";
 import Papa from "papaparse";
 import { useState } from "react";
 
