@@ -1,29 +1,33 @@
 import { useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type LegacyItem } from "@/lib/db";
+import { useBusiness } from "@/contexts/BusinessContext";
+import { normalizeSku, validateCsvSkus } from "@/lib/sku-validation";
 import { formatNumber } from "@/lib/units";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Upload, Database, Printer, FileDown, FileUp } from "lucide-react";
+import { Download, Upload, Database, Printer, FileDown, FileUp, AlertTriangle } from "lucide-react";
 import Papa from "papaparse";
 import { useState } from "react";
 
 const Utilities = () => {
   const items = useLiveQuery(() => db.items.toArray()) ?? [];
   const removals = useLiveQuery(() => db.removals.toArray()) ?? [];
+  const { businesses, activeBusinessId } = useBusiness();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Label printing
   const [selectedSku, setSelectedSku] = useState("");
   const selectedItem = items.find(i => i.sku === selectedSku);
 
-  // CSV Import preview
   const [importData, setImportData] = useState<any[] | null>(null);
+  const [csvErrors, setCsvErrors] = useState<{ row: number; sku: string; name: string; error: string }[] | null>(null);
+  const [importBusinessId, setImportBusinessId] = useState<string>(activeBusinessId?.toString() ?? "");
 
   const downloadFile = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
@@ -68,9 +72,25 @@ const Utilities = () => {
 
   const handleImportConfirm = async () => {
     if (!importData) return;
+
+    // If a business is selected, run SKU validation
+    const bizId = importBusinessId ? Number(importBusinessId) : null;
+    if (bizId) {
+      const rows = importData.map((row: any) => ({
+        sku: String(row.SKU || row.sku || "").trim(),
+        name: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
+      }));
+      const { errorRows } = await validateCsvSkus(rows, bizId);
+      if (errorRows.length > 0) {
+        setCsvErrors(errorRows);
+        toast({ title: "SKU conflicts found", description: `${errorRows.length} rows have issues. Download the error report.`, variant: "destructive" });
+        return;
+      }
+    }
+
     try {
       const toAdd: LegacyItem[] = importData.map((row: any) => ({
-        sku: String(row.SKU || row.sku || "").trim(),
+        sku: normalizeSku(String(row.SKU || row.sku || "").trim()),
         productName: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
         category: String(row.Category || row.category || "").trim() || undefined,
         weight: parseFloat(row.Weight_kg || row.weight || "0") || 0,
@@ -103,9 +123,27 @@ const Utilities = () => {
 
       toast({ title: "Import complete", description: `${added} added, ${updated} updated.` });
       setImportData(null);
+      setCsvErrors(null);
     } catch (err: any) {
       toast({ title: "Import error", description: err.message, variant: "destructive" });
     }
+  };
+
+  const downloadErrorReport = () => {
+    if (!csvErrors) return;
+    const csv = Papa.unparse(csvErrors.map(e => ({
+      Row: e.row,
+      SKU: e.sku,
+      Name: e.name,
+      Error: e.error,
+    })));
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `import-errors-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handlePrintLabel = () => {
@@ -190,7 +228,56 @@ const Utilities = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} />
+            <Select value={importBusinessId} onValueChange={setImportBusinessId}>
+              <SelectTrigger><SelectValue placeholder="Business for SKU check" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Skip SKU validation</SelectItem>
+                {businesses.map(b => (
+                  <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {csvErrors && (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <p className="text-sm font-medium text-destructive">{csvErrors.length} rows have SKU conflicts</p>
+              </div>
+              <div className="max-h-32 overflow-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Row</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Error</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {csvErrors.slice(0, 10).map((e, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-mono text-xs">{e.row}</TableCell>
+                        <TableCell className="font-mono text-xs">{e.sku}</TableCell>
+                        <TableCell className="text-xs text-destructive">{e.error}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {csvErrors.length > 10 && (
+                <p className="text-xs text-muted-foreground">...and {csvErrors.length - 10} more. Download full report.</p>
+              )}
+              <div className="flex gap-2">
+                <Button variant="destructive" size="sm" onClick={downloadErrorReport}>
+                  <Download className="mr-1 h-3 w-3" /> Download Error Report
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setCsvErrors(null)}>Dismiss</Button>
+              </div>
+            </div>
+          )}
 
           {importData && (
             <div className="space-y-3">
