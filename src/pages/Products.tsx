@@ -376,7 +376,7 @@ function ProductDialog({
 
             <div>
               <Label>Status</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={v => setStatus(v as 'active' | 'draft' | 'archived')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>

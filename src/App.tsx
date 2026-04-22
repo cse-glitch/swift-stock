@@ -12,6 +12,10 @@ import History from "./pages/History";
 import Utilities from "./pages/Utilities";
 import Settings from "./pages/Settings";
 import Businesses from "./pages/Businesses";
+import Categories from "./pages/Categories";
+import Products from "./pages/Products";
+import Properties from "./pages/Properties";
+import ServicesPage from "./pages/Services";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
