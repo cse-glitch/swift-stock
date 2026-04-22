@@ -72,9 +72,25 @@ const Utilities = () => {
 
   const handleImportConfirm = async () => {
     if (!importData) return;
+
+    // If a business is selected, run SKU validation
+    const bizId = importBusinessId ? Number(importBusinessId) : null;
+    if (bizId) {
+      const rows = importData.map((row: any) => ({
+        sku: String(row.SKU || row.sku || "").trim(),
+        name: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
+      }));
+      const { errorRows } = await validateCsvSkus(rows, bizId);
+      if (errorRows.length > 0) {
+        setCsvErrors(errorRows);
+        toast({ title: "SKU conflicts found", description: `${errorRows.length} rows have issues. Download the error report.`, variant: "destructive" });
+        return;
+      }
+    }
+
     try {
       const toAdd: LegacyItem[] = importData.map((row: any) => ({
-        sku: String(row.SKU || row.sku || "").trim(),
+        sku: normalizeSku(String(row.SKU || row.sku || "").trim()),
         productName: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
         category: String(row.Category || row.category || "").trim() || undefined,
         weight: parseFloat(row.Weight_kg || row.weight || "0") || 0,
@@ -107,9 +123,27 @@ const Utilities = () => {
 
       toast({ title: "Import complete", description: `${added} added, ${updated} updated.` });
       setImportData(null);
+      setCsvErrors(null);
     } catch (err: any) {
       toast({ title: "Import error", description: err.message, variant: "destructive" });
     }
+  };
+
+  const downloadErrorReport = () => {
+    if (!csvErrors) return;
+    const csv = Papa.unparse(csvErrors.map(e => ({
+      Row: e.row,
+      SKU: e.sku,
+      Name: e.name,
+      Error: e.error,
+    })));
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `import-errors-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handlePrintLabel = () => {
