@@ -2,6 +2,7 @@ import { LayoutDashboard, PackagePlus, PackageMinus, History, Settings, Wrench, 
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { BusinessSwitcher } from "@/components/BusinessSwitcher";
+import { LowStockAlert } from "@/components/LowStockAlert";
 import {
   Sidebar,
   SidebarContent,
@@ -70,16 +71,19 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Package className="h-5 w-5" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-foreground">SAMAN</span>
-              <span className="text-xs text-sidebar-foreground/60">Inventory Hub</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Package className="h-5 w-5" />
             </div>
-          )}
+            {!collapsed && (
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-sidebar-foreground">SAMAN</span>
+                <span className="text-xs text-sidebar-foreground/60">Inventory Hub</span>
+              </div>
+            )}
+          </div>
+          {!collapsed && <LowStockAlert />}
         </div>
         <div className="mt-3">
           <BusinessSwitcher />
