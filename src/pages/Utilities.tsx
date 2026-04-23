@@ -100,7 +100,7 @@ const Utilities = () => {
   const handleJsonRestore = async () => {
     if (!restoreData) return;
     try {
-      await db.transaction("rw", db.businesses, db.categories, db.products, db.variants, db.inventoryLog, db.propertyListings, db.services, async () => {
+      await db.transaction("rw", [db.businesses, db.categories, db.products, db.variants, db.inventoryLog, db.propertyListings, db.services], async () => {
         if (restoreData.businesses) { await db.businesses.clear(); await db.businesses.bulkAdd(restoreData.businesses); }
         if (restoreData.categories) { await db.categories.clear(); await db.categories.bulkAdd(restoreData.categories); }
         if (restoreData.products) { await db.products.clear(); await db.products.bulkAdd(restoreData.products); }

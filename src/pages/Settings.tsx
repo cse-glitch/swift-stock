@@ -38,7 +38,7 @@ const Settings = () => {
 
   const handleResetAll = async () => {
     try {
-      await db.transaction("rw", db.products, db.variants, db.categories, db.inventoryLog, db.propertyListings, db.services, db.items, db.removals, async () => {
+      await db.transaction("rw", [db.products, db.variants, db.categories, db.inventoryLog, db.propertyListings, db.services, db.items, db.removals], async () => {
         await db.products.clear();
         await db.variants.clear();
         await db.categories.clear();
@@ -66,7 +66,7 @@ const Settings = () => {
         services: db.services, items: db.items, removals: db.removals,
       };
       const tables = Array.from(selectedTables).map(k => tableMap[k]).filter(Boolean);
-      await db.transaction("rw", ...tables, async () => {
+      await db.transaction("rw", tables, async () => {
         for (const t of tables) await t.clear();
       });
       toast({ title: "Tables cleared", description: `Cleared ${selectedTables.size} table(s).` });
