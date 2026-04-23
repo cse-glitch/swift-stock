@@ -1,33 +1,57 @@
-import { useRef } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type LegacyItem } from "@/lib/db";
+import { db, type Product, type Variant } from "@/lib/db";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { normalizeSku, validateCsvSkus } from "@/lib/sku-validation";
-import { formatNumber } from "@/lib/units";
+import { normalizeSku, validateSkuFormat } from "@/lib/sku-validation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Upload, Database, Printer, FileDown, FileUp, AlertTriangle } from "lucide-react";
+import { Download, Upload, Database, Printer, FileDown, FileUp, AlertTriangle, FileSpreadsheet } from "lucide-react";
 import Papa from "papaparse";
-import { useState } from "react";
+import * as XLSX from "xlsx";
+
+interface ImportRow {
+  business_slug: string;
+  category: string;
+  product_name: string;
+  product_sku: string;
+  variant_name: string;
+  variant_sku: string;
+  price: string;
+  stock: string;
+  low_stock_threshold: string;
+  [key: string]: string;
+}
+
+interface ImportError {
+  row: number;
+  sku: string;
+  name: string;
+  error: string;
+}
 
 const Utilities = () => {
-  const items = useLiveQuery(() => db.items.toArray()) ?? [];
-  const removals = useLiveQuery(() => db.removals.toArray()) ?? [];
   const { businesses, activeBusinessId } = useBusiness();
+  const products = useLiveQuery(() => db.products.toArray()) ?? [];
+  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const [selectedSku, setSelectedSku] = useState("");
-  const selectedItem = items.find(i => i.sku === selectedSku);
+  // Label printing state
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
+  const selectedVariants = variants.filter(v => v.productId === selectedProduct?.id);
 
-  const [importData, setImportData] = useState<any[] | null>(null);
-  const [csvErrors, setCsvErrors] = useState<{ row: number; sku: string; name: string; error: string }[] | null>(null);
-  const [importBusinessId, setImportBusinessId] = useState<string>(activeBusinessId?.toString() ?? "");
+  // Bulk import state
+  const [importData, setImportData] = useState<ImportRow[] | null>(null);
+  const [importErrors, setImportErrors] = useState<ImportError[]>([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [restoreData, setRestoreData] = useState<any>(null);
 
   const downloadFile = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
@@ -39,133 +63,288 @@ const Utilities = () => {
     URL.revokeObjectURL(url);
   };
 
+  // ── JSON Backup (full schema) ──
   const handleJsonExport = async () => {
-    const data = { items: await db.items.toArray(), removals: await db.removals.toArray(), exportedAt: new Date().toISOString(), version: 1 };
-    downloadFile(JSON.stringify(data, null, 2), `inventory-backup-${new Date().toISOString().slice(0, 10)}.json`, "application/json");
-    toast({ title: "Backup exported", description: "JSON backup downloaded successfully." });
+    const data = {
+      businesses: await db.businesses.toArray(),
+      categories: await db.categories.toArray(),
+      products: await db.products.toArray(),
+      variants: await db.variants.toArray(),
+      inventoryLog: await db.inventoryLog.toArray(),
+      propertyListings: await db.propertyListings.toArray(),
+      services: await db.services.toArray(),
+      exportedAt: new Date().toISOString(),
+      version: 3,
+    };
+    downloadFile(JSON.stringify(data, null, 2), `saman-backup-${new Date().toISOString().slice(0, 10)}.json`, "application/json");
+    toast({ title: "Backup exported", description: "Full database backup downloaded." });
   };
 
-  const handleCsvExport = () => {
-    const csv = Papa.unparse(items.map(i => ({
-      SKU: i.sku, ProductName: i.productName, Category: i.category ?? "",
-      Weight_kg: i.weight != null ? formatNumber(i.weight) : "",
-      Length_cm: i.length != null ? formatNumber(i.length) : "", Width_cm: i.width != null ? formatNumber(i.width) : "", Height_cm: i.height != null ? formatNumber(i.height) : "",
-      Quantity: i.quantity, LastUpdated: new Date(i.lastUpdated).toISOString(),
-    })));
-    downloadFile(csv, `inventory-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv");
-    toast({ title: "CSV exported", description: `${items.length} items exported.` });
-  };
-
-  const handleCsvFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── JSON Restore ──
+  const handleJsonFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        setImportData(results.data);
-      },
-      error: () => toast({ title: "Parse error", description: "Could not parse CSV file.", variant: "destructive" }),
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        setRestoreData(data);
+      } catch {
+        toast({ title: "Invalid file", description: "Could not parse JSON backup.", variant: "destructive" });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleJsonRestore = async () => {
+    if (!restoreData) return;
+    try {
+      await db.transaction("rw", db.businesses, db.categories, db.products, db.variants, db.inventoryLog, db.propertyListings, db.services, async () => {
+        if (restoreData.businesses) { await db.businesses.clear(); await db.businesses.bulkAdd(restoreData.businesses); }
+        if (restoreData.categories) { await db.categories.clear(); await db.categories.bulkAdd(restoreData.categories); }
+        if (restoreData.products) { await db.products.clear(); await db.products.bulkAdd(restoreData.products); }
+        if (restoreData.variants) { await db.variants.clear(); await db.variants.bulkAdd(restoreData.variants); }
+        if (restoreData.inventoryLog) { await db.inventoryLog.clear(); await db.inventoryLog.bulkAdd(restoreData.inventoryLog); }
+        if (restoreData.propertyListings) { await db.propertyListings.clear(); await db.propertyListings.bulkAdd(restoreData.propertyListings); }
+        if (restoreData.services) { await db.services.clear(); await db.services.bulkAdd(restoreData.services); }
+      });
+      toast({ title: "Backup restored", description: "All data has been restored from backup." });
+      setRestoreData(null);
+    } catch (err: any) {
+      toast({ title: "Restore error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // ── CSV Export (products + variants) ──
+  const handleCsvExport = () => {
+    const rows = products.flatMap(p => {
+      const pVariants = variants.filter(v => v.productId === p.id);
+      const biz = businesses.find(b => b.id === p.businessId);
+      if (pVariants.length === 0) {
+        return [{ Business: biz?.slug ?? "", Product: p.name, "Product SKU": p.sku, Variant: "", "Variant SKU": "", Price: p.basePrice ?? "", Stock: 0, Status: p.status }];
+      }
+      return pVariants.map(v => ({
+        Business: biz?.slug ?? "", Product: p.name, "Product SKU": p.sku,
+        Variant: v.name, "Variant SKU": v.sku, Price: v.price ?? p.basePrice ?? "",
+        Stock: v.stock, Status: p.status,
+      }));
     });
+    downloadFile(Papa.unparse(rows), `products-export-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv");
+    toast({ title: "CSV exported", description: `${rows.length} rows exported.` });
+  };
+
+  // ── Template Download ──
+  const handleDownloadTemplate = () => {
+    const template = [
+      { business_slug: "kenakata", category: "Electronics", product_name: "Wireless Mouse", product_sku: "WM-001", variant_name: "Black", variant_sku: "WM-001-BLK", price: "25.99", stock: "100", low_stock_threshold: "10" },
+      { business_slug: "kenakata", category: "Electronics", product_name: "Wireless Mouse", product_sku: "WM-001", variant_name: "White", variant_sku: "WM-001-WHT", price: "25.99", stock: "50", low_stock_threshold: "10" },
+    ];
+    downloadFile(Papa.unparse(template), "import-template.csv", "text/csv");
+    toast({ title: "Template downloaded", description: "Fill in the template and upload it back." });
+  };
+
+  // ── Bulk Import ──
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    setImportErrors([]);
+
+    const isExcel = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const wb = XLSX.read(ev.target?.result, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<ImportRow>(sheet, { defval: "" });
+        validateAndSetImport(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      Papa.parse<ImportRow>(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => validateAndSetImport(results.data),
+        error: () => toast({ title: "Parse error", description: "Could not parse file.", variant: "destructive" }),
+      });
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleImportConfirm = async () => {
-    if (!importData) return;
+  const validateAndSetImport = async (rows: ImportRow[]) => {
+    const errors: ImportError[] = [];
+    const seenSkus = new Set<string>();
+    const bizSlugs = new Set(businesses.map(b => b.slug));
 
-    // If a business is selected, run SKU validation
-    const bizId = importBusinessId ? Number(importBusinessId) : null;
-    if (bizId) {
-      const rows = importData.map((row: any) => ({
-        sku: String(row.SKU || row.sku || "").trim(),
-        name: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
-      }));
-      const { errorRows } = await validateCsvSkus(rows, bizId);
-      if (errorRows.length > 0) {
-        setCsvErrors(errorRows);
-        toast({ title: "SKU conflicts found", description: `${errorRows.length} rows have issues. Download the error report.`, variant: "destructive" });
-        return;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // 1-indexed + header
+
+      if (!row.product_name?.trim()) { errors.push({ row: rowNum, sku: row.product_sku || "", name: "", error: "Missing product name" }); continue; }
+      if (!row.product_sku?.trim()) { errors.push({ row: rowNum, sku: "", name: row.product_name, error: "Missing product SKU" }); continue; }
+      if (!row.variant_sku?.trim()) { errors.push({ row: rowNum, sku: row.product_sku, name: row.product_name, error: "Missing variant SKU" }); continue; }
+      if (!row.business_slug?.trim() || !bizSlugs.has(row.business_slug.trim())) {
+        errors.push({ row: rowNum, sku: row.product_sku, name: row.product_name, error: `Unknown business slug: "${row.business_slug}"` }); continue;
+      }
+
+      const pSku = normalizeSku(row.product_sku);
+      const vSku = normalizeSku(row.variant_sku);
+
+      const pErr = validateSkuFormat(pSku);
+      if (pErr) { errors.push({ row: rowNum, sku: pSku, name: row.product_name, error: `Product SKU: ${pErr}` }); continue; }
+      const vErr = validateSkuFormat(vSku);
+      if (vErr) { errors.push({ row: rowNum, sku: vSku, name: row.product_name, error: `Variant SKU: ${vErr}` }); continue; }
+
+      if (seenSkus.has(vSku)) { errors.push({ row: rowNum, sku: vSku, name: row.product_name, error: "Duplicate variant SKU in file" }); continue; }
+      seenSkus.add(vSku);
+
+      // Check DB for existing variant SKU in same business
+      const biz = businesses.find(b => b.slug === row.business_slug.trim());
+      if (biz) {
+        const existingVariant = await db.variants.where("sku").equals(vSku).first();
+        if (existingVariant) {
+          const existingProduct = await db.products.get(existingVariant.productId);
+          if (existingProduct && existingProduct.businessId === biz.id) {
+            errors.push({ row: rowNum, sku: vSku, name: row.product_name, error: `Variant SKU already exists in ${biz.name}` });
+            continue;
+          }
+        }
       }
     }
 
-    try {
-      const toAdd: LegacyItem[] = importData.map((row: any) => ({
-        sku: normalizeSku(String(row.SKU || row.sku || "").trim()),
-        productName: String(row.ProductName || row.productName || row.Name || row.name || "").trim(),
-        category: String(row.Category || row.category || "").trim() || undefined,
-        weight: parseFloat(row.Weight_kg || row.weight || "0") || 0,
-        weightUnit: "kg" as const,
-        length: parseFloat(row.Length_cm || row.length || "0") || 0,
-        width: parseFloat(row.Width_cm || row.width || "0") || 0,
-        height: parseFloat(row.Height_cm || row.height || "0") || 0,
-        sizeUnit: "cm" as const,
-        quantity: parseInt(row.Quantity || row.quantity || "0") || 0,
-        lastUpdated: new Date(),
-      })).filter(i => i.sku);
+    setImportErrors(errors);
+    setImportData(rows);
 
-      let added = 0, updated = 0;
-      await db.transaction("rw", db.items, async () => {
-        for (const item of toAdd) {
-          const existing = await db.items.where("sku").equals(item.sku).first();
-          if (existing) {
-            await db.items.update(existing.id!, {
-              ...item,
-              quantity: existing.quantity + item.quantity,
-              lastUpdated: new Date(),
+    if (errors.length > 0) {
+      toast({ title: "Validation issues found", description: `${errors.length} rows have problems. Review below.`, variant: "destructive" });
+    }
+  };
+
+  const validRows = useMemo(() => {
+    if (!importData) return [];
+    const errorRowNums = new Set(importErrors.map(e => e.row));
+    return importData.filter((_, i) => !errorRowNums.has(i + 2));
+  }, [importData, importErrors]);
+
+  const handleImportConfirm = async () => {
+    if (validRows.length === 0) {
+      toast({ title: "No valid rows", description: "Fix errors before importing.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Group by product_sku
+      const productGroups = new Map<string, ImportRow[]>();
+      for (const row of validRows) {
+        const key = `${row.business_slug.trim()}::${normalizeSku(row.product_sku)}`;
+        if (!productGroups.has(key)) productGroups.set(key, []);
+        productGroups.get(key)!.push(row);
+      }
+
+      let productsCreated = 0, variantsCreated = 0, totalStock = 0;
+
+      await db.transaction("rw", db.products, db.variants, db.categories, db.inventoryLog, async () => {
+        for (const [, rows] of productGroups) {
+          const first = rows[0];
+          const biz = businesses.find(b => b.slug === first.business_slug.trim())!;
+
+          // Find or create category
+          let categoryId: number | undefined;
+          if (first.category?.trim()) {
+            let cat = await db.categories.where({ businessId: biz.id!, name: first.category.trim() }).first();
+            if (!cat) {
+              categoryId = await db.categories.add({ businessId: biz.id!, name: first.category.trim() });
+            } else {
+              categoryId = cat.id;
+            }
+          }
+
+          // Create product
+          const productId = await db.products.add({
+            businessId: biz.id!,
+            categoryId,
+            name: first.product_name.trim(),
+            sku: normalizeSku(first.product_sku),
+            type: "physical",
+            currency: "USD",
+            tags: [],
+            attributes: {},
+            status: "active",
+            isSeasonal: false,
+            expiryTracking: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+          productsCreated++;
+
+          // Create variants
+          for (const row of rows) {
+            const stock = parseInt(row.stock) || 0;
+            const variantId = await db.variants.add({
+              productId,
+              name: row.variant_name?.trim() || "Default",
+              sku: normalizeSku(row.variant_sku),
+              attributes: {},
+              price: parseFloat(row.price) || undefined,
+              stock,
+              lowStockThreshold: parseInt(row.low_stock_threshold) || 5,
             });
-            updated++;
-          } else {
-            await db.items.add(item);
-            added++;
+            variantsCreated++;
+            totalStock += stock;
+
+            if (stock > 0) {
+              await db.inventoryLog.add({
+                productId,
+                variantId,
+                businessId: biz.id!,
+                type: "add",
+                quantity: stock,
+                reason: "Restock",
+                note: `Bulk import from ${importFileName}`,
+                timestamp: new Date(),
+              });
+            }
           }
         }
       });
 
-      toast({ title: "Import complete", description: `${added} added, ${updated} updated.` });
+      toast({ title: "Import complete", description: `${productsCreated} products, ${variantsCreated} variants, ${totalStock} total stock.` });
       setImportData(null);
-      setCsvErrors(null);
+      setImportErrors([]);
     } catch (err: any) {
       toast({ title: "Import error", description: err.message, variant: "destructive" });
     }
   };
 
   const downloadErrorReport = () => {
-    if (!csvErrors) return;
-    const csv = Papa.unparse(csvErrors.map(e => ({
-      Row: e.row,
-      SKU: e.sku,
-      Name: e.name,
-      Error: e.error,
-    })));
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `import-errors-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (importErrors.length === 0) return;
+    const csv = Papa.unparse(importErrors.map(e => ({ Row: e.row, SKU: e.sku, Name: e.name, Error: e.error })));
+    downloadFile(csv, `import-errors-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv");
   };
 
-  const handlePrintLabel = () => {
-    if (!selectedItem) return;
+  // ── Label Printing ──
+  const handlePrintLabel = (variant?: typeof selectedVariants[0]) => {
+    if (!selectedProduct) return;
+    const v = variant ?? selectedVariants[0];
     const w = window.open("", "_blank", "width=400,height=300");
     if (!w) return;
     w.document.write(`
-      <html><head><title>Label - ${selectedItem.sku}</title>
+      <html><head><title>Label - ${v?.sku ?? selectedProduct.sku}</title>
       <style>
         body { font-family: 'Space Grotesk', sans-serif; padding: 20px; }
         .label { border: 2px solid #000; padding: 16px; max-width: 300px; }
         .sku { font-size: 24px; font-weight: bold; font-family: monospace; }
         .name { font-size: 16px; margin: 8px 0; }
-        .details { font-size: 12px; color: #555; }
+        .variant { font-size: 14px; color: #333; }
+        .details { font-size: 12px; color: #555; margin-top: 4px; }
       </style></head><body>
       <div class="label">
-        <div class="sku">${selectedItem.sku}</div>
-        <div class="name">${selectedItem.productName}</div>
-        <div class="details">
-          ${selectedItem.weight != null ? `Weight: ${formatNumber(selectedItem.weight)} kg<br/>` : ""}
-          ${selectedItem.length != null ? `Dims: ${formatNumber(selectedItem.length)} × ${formatNumber(selectedItem.width ?? 0)} × ${formatNumber(selectedItem.height ?? 0)} cm` : ""}
-        </div>
+        <div class="sku">${v?.sku ?? selectedProduct.sku}</div>
+        <div class="name">${selectedProduct.name}</div>
+        ${v ? `<div class="variant">Variant: ${v.name}</div>` : ""}
+        ${v?.price ? `<div class="details">Price: $${v.price.toFixed(2)}</div>` : ""}
       </div>
       <script>window.print(); window.close();</script>
       </body></html>
@@ -177,87 +356,93 @@ const Utilities = () => {
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Utilities</h1>
-        <p className="text-muted-foreground">Backup, import/export, and print labels</p>
+        <p className="text-muted-foreground">Backup, import/export, bulk upload, and print labels</p>
       </div>
 
       {/* Backup & Export */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Database className="h-4 w-4" />
-              JSON Backup
-            </CardTitle>
-            <CardDescription>Full database backup as JSON</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-base"><Database className="h-4 w-4" />JSON Backup</CardTitle>
+            <CardDescription>Full database backup (all tables)</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Button onClick={handleJsonExport} className="w-full" variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export Backup
+              <Download className="mr-2 h-4 w-4" /> Export Backup
             </Button>
+            <div className="space-y-2">
+              <Input type="file" accept=".json" onChange={handleJsonFileSelect} />
+              {restoreData && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <Upload className="mr-2 h-4 w-4" /> Restore from Backup
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Restore backup?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will replace all existing data with the backup contents:
+                        {restoreData.products && ` ${restoreData.products.length} products,`}
+                        {restoreData.variants && ` ${restoreData.variants.length} variants,`}
+                        {restoreData.inventoryLog && ` ${restoreData.inventoryLog.length} logs.`}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setRestoreData(null)}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleJsonRestore}>Yes, restore</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileDown className="h-4 w-4" />
-              CSV Export
-            </CardTitle>
-            <CardDescription>Download current stock as CSV</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-base"><FileDown className="h-4 w-4" />CSV Export</CardTitle>
+            <CardDescription>Products with variants and stock levels</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={handleCsvExport} className="w-full" variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
+              <Download className="mr-2 h-4 w-4" /> Export CSV
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* CSV Import */}
+      {/* Bulk Import */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <FileUp className="h-4 w-4" />
-            CSV Import
+            <FileSpreadsheet className="h-4 w-4" />
+            Bulk Import (CSV / Excel)
           </CardTitle>
           <CardDescription>
-            Upload a CSV with columns: SKU, ProductName, Weight_kg, Length_cm, Width_cm, Height_cm, Quantity.
-            Existing SKUs will have their quantities merged.
+            Upload a CSV or .xlsx file to create products, variants, and set initial stock in one step.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input ref={fileInputRef} type="file" accept=".csv" onChange={handleCsvFile} />
-            <Select value={importBusinessId} onValueChange={setImportBusinessId}>
-              <SelectTrigger><SelectValue placeholder="Business for SKU check" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Skip SKU validation</SelectItem>
-                {businesses.map(b => (
-                  <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex gap-3 flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+              <Download className="mr-1 h-3 w-3" /> Download Template
+            </Button>
+            <Input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleImportFile} className="flex-1 min-w-[200px]" />
           </div>
 
-          {csvErrors && (
+          {importErrors.length > 0 && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
-                <p className="text-sm font-medium text-destructive">{csvErrors.length} rows have SKU conflicts</p>
+                <p className="text-sm font-medium text-destructive">{importErrors.length} rows have errors</p>
               </div>
               <div className="max-h-32 overflow-auto border rounded-md">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Row</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead>Error</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader><TableRow><TableHead>Row</TableHead><TableHead>SKU</TableHead><TableHead>Error</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {csvErrors.slice(0, 10).map((e, i) => (
+                    {importErrors.slice(0, 10).map((e, i) => (
                       <TableRow key={i}>
                         <TableCell className="font-mono text-xs">{e.row}</TableCell>
                         <TableCell className="font-mono text-xs">{e.sku}</TableCell>
@@ -267,49 +452,52 @@ const Utilities = () => {
                   </TableBody>
                 </Table>
               </div>
-              {csvErrors.length > 10 && (
-                <p className="text-xs text-muted-foreground">...and {csvErrors.length - 10} more. Download full report.</p>
-              )}
-              <div className="flex gap-2">
-                <Button variant="destructive" size="sm" onClick={downloadErrorReport}>
-                  <Download className="mr-1 h-3 w-3" /> Download Error Report
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setCsvErrors(null)}>Dismiss</Button>
-              </div>
+              {importErrors.length > 10 && <p className="text-xs text-muted-foreground">...and {importErrors.length - 10} more</p>}
+              <Button variant="destructive" size="sm" onClick={downloadErrorReport}>
+                <Download className="mr-1 h-3 w-3" /> Download Error Report
+              </Button>
             </div>
           )}
 
           {importData && (
             <div className="space-y-3">
-              <p className="text-sm font-medium">{importData.length} rows found — preview:</p>
+              <div className="flex items-center gap-3">
+                <Badge variant="outline">{importData.length} total rows</Badge>
+                <Badge variant="default">{validRows.length} valid</Badge>
+                {importErrors.length > 0 && <Badge variant="destructive">{importErrors.length} errors</Badge>}
+              </div>
               <div className="max-h-48 overflow-auto border rounded-md">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Business</TableHead>
+                      <TableHead>Product</TableHead>
                       <TableHead>SKU</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Weight</TableHead>
+                      <TableHead>Variant</TableHead>
+                      <TableHead>Stock</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {importData.slice(0, 10).map((row: any, i: number) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-mono text-xs">{row.SKU || row.sku}</TableCell>
-                        <TableCell>{row.ProductName || row.productName || row.Name}</TableCell>
-                        <TableCell>{row.Quantity || row.quantity}</TableCell>
-                        <TableCell>{row.Weight_kg || row.weight}</TableCell>
-                      </TableRow>
-                    ))}
+                    {importData.slice(0, 20).map((row, i) => {
+                      const hasError = importErrors.some(e => e.row === i + 2);
+                      return (
+                        <TableRow key={i} className={hasError ? "bg-destructive/5" : ""}>
+                          <TableCell className="text-xs">{row.business_slug}</TableCell>
+                          <TableCell className="text-sm">{row.product_name}</TableCell>
+                          <TableCell className="font-mono text-xs">{row.product_sku}</TableCell>
+                          <TableCell className="text-xs">{row.variant_name} ({row.variant_sku})</TableCell>
+                          <TableCell className="text-sm">{row.stock}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
               <div className="flex gap-2">
-                <Button onClick={handleImportConfirm}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Import {importData.length} Items
+                <Button onClick={handleImportConfirm} disabled={validRows.length === 0}>
+                  <Upload className="mr-2 h-4 w-4" /> Import {validRows.length} Valid Row(s)
                 </Button>
-                <Button variant="outline" onClick={() => setImportData(null)}>Cancel</Button>
+                <Button variant="outline" onClick={() => { setImportData(null); setImportErrors([]); }}>Cancel</Button>
               </div>
             </div>
           )}
@@ -319,43 +507,44 @@ const Utilities = () => {
       {/* Label Printing */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Printer className="h-4 w-4" />
-            Label Printing
-          </CardTitle>
-          <CardDescription>Select a product and print a label with SKU, name, weight, and dimensions</CardDescription>
+          <CardTitle className="flex items-center gap-2 text-base"><Printer className="h-4 w-4" />Label Printing</CardTitle>
+          <CardDescription>Select a product and print labels for its variants</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Select value={selectedSku} onValueChange={setSelectedSku}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select an item..." />
-            </SelectTrigger>
+          <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+            <SelectTrigger><SelectValue placeholder="Select a product..." /></SelectTrigger>
             <SelectContent>
-              {items.map(item => (
-                <SelectItem key={item.id} value={item.sku}>
-                  {item.sku} — {item.productName}
+              {products.map(p => (
+                <SelectItem key={p.id} value={p.id!.toString()}>
+                  {p.sku} — {p.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          {selectedItem && (
-            <div className="border-2 border-dashed rounded-lg p-4 space-y-1">
-              <div className="font-mono text-xl font-bold">{selectedItem.sku}</div>
-              <div className="text-lg">{selectedItem.productName}</div>
-              <div className="text-sm text-muted-foreground">
-                Weight: {formatNumber(selectedItem.weight)} kg
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Dims: {formatNumber(selectedItem.length)} × {formatNumber(selectedItem.width)} × {formatNumber(selectedItem.height)} cm
-              </div>
+          {selectedProduct && (
+            <div className="space-y-3">
+              {selectedVariants.length === 0 ? (
+                <div className="border-2 border-dashed rounded-lg p-4 space-y-1">
+                  <div className="font-mono text-xl font-bold">{selectedProduct.sku}</div>
+                  <div className="text-lg">{selectedProduct.name}</div>
+                </div>
+              ) : (
+                selectedVariants.map(v => (
+                  <div key={v.id} className="border-2 border-dashed rounded-lg p-4 flex items-center justify-between">
+                    <div>
+                      <div className="font-mono text-lg font-bold">{v.sku}</div>
+                      <div className="text-sm">{selectedProduct.name} — {v.name}</div>
+                      {v.price != null && <div className="text-xs text-muted-foreground">Price: ${v.price.toFixed(2)}</div>}
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => handlePrintLabel(v)}>
+                      <Printer className="mr-1 h-3 w-3" /> Print
+                    </Button>
+                  </div>
+                ))
+              )}
             </div>
           )}
-
-          <Button onClick={handlePrintLabel} disabled={!selectedItem} variant="outline" className="w-full">
-            <Printer className="mr-2 h-4 w-4" />
-            Print Label
-          </Button>
         </CardContent>
       </Card>
     </div>
