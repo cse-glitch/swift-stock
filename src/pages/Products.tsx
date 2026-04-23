@@ -21,7 +21,7 @@ import { Plus, Search, BoxesIcon, AlertTriangle, Pencil, ShieldAlert } from 'luc
 import { toast } from '@/hooks/use-toast';
 
 export default function Products() {
-  const { businesses, activeBusiness, activeBusinessId } = useBusiness();
+  const { businesses, activeBusiness, activeBusinessId, setActiveBusinessId } = useBusiness();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -75,20 +75,36 @@ export default function Products() {
         </Button>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..." className="pl-9" />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-3">
+          <Select
+            value={activeBusinessId?.toString() ?? "all"}
+            onValueChange={v => setActiveBusinessId(v === "all" ? null : Number(v))}
+          >
+            <SelectTrigger className="w-[200px] bg-card">
+              <SelectValue placeholder="All Businesses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Businesses</SelectItem>
+              {businesses.map(b => (
+                <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Card>

@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { PackagePlus, Search } from "lucide-react";
+import { PackagePlus, Search, Upload } from "lucide-react";
+import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 const AddStock = () => {
   const { businesses, activeBusinessId } = useBusiness();
@@ -102,6 +104,89 @@ const AddStock = () => {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!bizId) {
+      toast({ title: "Select a business", description: "Please select a specific business before uploading.", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      let data: any[] = [];
+      if (file.name.endsWith('.csv')) {
+        data = await new Promise<any[]>((resolve, reject) => {
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => resolve(results.data),
+            error: (error) => reject(error),
+          });
+        });
+      } else if (file.name.match(/\.xlsx?$/)) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        data = XLSX.utils.sheet_to_json(worksheet);
+      } else {
+        throw new Error("Unsupported file format.");
+      }
+
+      let matchCount = 0;
+      let skipCount = 0;
+      const nextQuantities = new Map(quantities);
+
+      for (const row of data) {
+        const skuKey = Object.keys(row).find(k => k.toLowerCase() === 'sku' || k.toLowerCase() === 'item number' || k.toLowerCase() === 'item_number');
+        const qtyKey = Object.keys(row).find(k => k.toLowerCase() === 'quantity' || k.toLowerCase() === 'qty');
+
+        if (!skuKey || !qtyKey) {
+          continue;
+        }
+
+        const sku = String(row[skuKey]).trim();
+        const qty = parseInt(String(row[qtyKey]), 10);
+
+        if (!sku || isNaN(qty) || qty <= 0) continue;
+
+        const variant = variants.find(v => v.sku.toLowerCase() === sku.toLowerCase());
+        if (variant) {
+          const product = products.find(p => p.id === variant.productId);
+          if (product) {
+            nextQuantities.set(variant.id!, qty);
+            matchCount++;
+          } else {
+            skipCount++;
+          }
+        } else {
+          skipCount++;
+        }
+      }
+
+      setQuantities(nextQuantities);
+
+      if (matchCount > 0) {
+        toast({ 
+          title: "Upload successful", 
+          description: `Matched ${matchCount} items. Skipped ${skipCount} unmatched or out-of-business items.`,
+        });
+      } else {
+        toast({ 
+          title: "No items matched", 
+          description: "Please ensure your file has 'SKU' and 'Quantity' columns.", 
+          variant: "destructive" 
+        });
+      }
+    } catch (error: any) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
@@ -126,6 +211,25 @@ const AddStock = () => {
               ))}
             </SelectContent>
           </Select>
+          {!bizId && (
+            <p className="text-xs text-muted-foreground mt-2">Select a business to enable file upload.</p>
+          )}
+        </div>
+        <div>
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            className="hidden"
+            id="stock-upload"
+            onChange={handleFileUpload}
+            disabled={!bizId}
+          />
+          <Label htmlFor="stock-upload" className={!bizId ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
+            <div className={`flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md h-10 ${!bizId ? "" : "hover:bg-primary/90"}`}>
+              <Upload className="w-4 h-4" />
+              Upload File
+            </div>
+          </Label>
         </div>
       </div>
 

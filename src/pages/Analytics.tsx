@@ -28,7 +28,7 @@ const COLORS = [
 type TimeRange = "7d" | "30d" | "90d" | "all";
 
 const Analytics = () => {
-  const { businesses, activeBusinessId } = useBusiness();
+  const { businesses, activeBusinessId, setActiveBusinessId } = useBusiness();
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
 
   const products = useLiveQuery(() => db.products.toArray()) ?? [];
@@ -121,10 +121,36 @@ const Analytics = () => {
   }, [activeBusinesses, products, variants]);
 
   // ── Summary stats ──
-  const totalRevenue = revenueByBusiness.reduce((s, b) => s + b.revenue, 0);
-  const totalSold = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold").reduce((s, l) => s + l.quantity, 0);
-  const totalStock = variants.reduce((s, v) => s + v.stock, 0);
-  const totalMovements = filteredLogs.length;
+  const totalRevenue = useMemo(() => {
+    if (activeBusinessId) {
+      return revenueByBusiness.find(b => businesses.find(biz => biz.id === activeBusinessId)?.name.includes(b.name))?.revenue ?? 0;
+    }
+    return revenueByBusiness.reduce((s, b) => s + b.revenue, 0);
+  }, [revenueByBusiness, activeBusinessId, businesses]);
+
+  const totalSold = useMemo(() => {
+    const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
+    if (activeBusinessId) {
+      return soldLogs.filter(l => l.businessId === activeBusinessId).reduce((s, l) => s + l.quantity, 0);
+    }
+    return soldLogs.reduce((s, l) => s + l.quantity, 0);
+  }, [filteredLogs, activeBusinessId]);
+
+  const totalStock = useMemo(() => {
+    if (activeBusinessId) {
+      const bProducts = products.filter(p => p.businessId === activeBusinessId);
+      const bVariants = variants.filter(v => bProducts.some(p => p.id === v.productId));
+      return bVariants.reduce((s, v) => s + v.stock, 0);
+    }
+    return variants.reduce((s, v) => s + v.stock, 0);
+  }, [variants, products, activeBusinessId]);
+
+  const totalMovements = useMemo(() => {
+    if (activeBusinessId) {
+      return filteredLogs.filter(l => l.businessId === activeBusinessId).length;
+    }
+    return filteredLogs.length;
+  }, [filteredLogs, activeBusinessId]);
 
   return (
     <div className="space-y-6">
@@ -133,17 +159,33 @@ const Analytics = () => {
           <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
           <p className="text-muted-foreground">Business performance across all pages</p>
         </div>
-        <Select value={timeRange} onValueChange={v => setTimeRange(v as TimeRange)}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
-            <SelectItem value="90d">Last 90 days</SelectItem>
-            <SelectItem value="all">All time</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <Select
+            value={activeBusinessId?.toString() ?? "all"}
+            onValueChange={v => setActiveBusinessId(v === "all" ? null : Number(v))}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Businesses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Businesses</SelectItem>
+              {activeBusinesses.map(b => (
+                <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={timeRange} onValueChange={v => setTimeRange(v as TimeRange)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Summary Cards */}
