@@ -1,272 +1,238 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
-import { toStorageWeight, toStorageDim, calcVolumeCm3, cm3ToM3, formatNumber } from "@/lib/units";
-import { getSettings } from "@/lib/settings";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { PackagePlus, Box } from "lucide-react";
-
-const UNITS_KEY = "inv_lastEntry";
-
-interface FormData {
-  productName: string;
-  sku: string;
-  category: string;
-  weight: string;
-  weightUnit: 'kg' | 'lb';
-  length: string;
-  width: string;
-  height: string;
-  sizeUnit: 'cm' | 'in';
-  quantity: string;
-}
-
-const getDefaultForm = (): FormData => {
-  const s = getSettings();
-  return {
-    productName: "", sku: "", category: "", weight: "", weightUnit: s.defaultWeightUnit,
-    length: "", width: "", height: "", sizeUnit: s.defaultSizeUnit, quantity: "1",
-  };
-};
+import { PackagePlus, Search } from "lucide-react";
 
 const AddStock = () => {
-  const defaultForm = getDefaultForm();
-  const saved = localStorage.getItem(UNITS_KEY);
-  const initial = saved ? { ...defaultForm, ...JSON.parse(saved) } : defaultForm;
+  const { businesses, activeBusinessId } = useBusiness();
+  const activeBusinesses = businesses.filter(b => b.isActive);
 
-  const [form, setForm] = useState<FormData>(initial);
-  const [memoryFill, setMemoryFill] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(activeBusinessId);
+  const bizId = selectedBusinessId ?? activeBusinessId;
+
+  const products = useLiveQuery(() =>
+    bizId ? db.products.where('businessId').equals(bizId).toArray() : db.products.toArray()
+  , [bizId]) ?? [];
+
+  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
+  const [search, setSearch] = useState("");
+  const [quantities, setQuantities] = useState<Map<number, number>>(new Map());
+  const [note, setNote] = useState("");
   const { toast } = useToast();
 
-  const set = (key: keyof FormData, val: string) =>
-    setForm(f => ({ ...f, [key]: val }));
+  // Build a flat list of variant+product combos for display
+  const stockItems = useMemo(() => {
+    const q = search.toLowerCase();
+    return products.flatMap(p => {
+      const pVariants = variants.filter(v => v.productId === p.id);
+      if (pVariants.length === 0) return [];
+      return pVariants.map(v => ({
+        product: p,
+        variant: v,
+        label: pVariants.length === 1 ? p.name : `${p.name} — ${v.name}`,
+      }));
+    }).filter(item =>
+      item.label.toLowerCase().includes(q) ||
+      item.variant.sku.toLowerCase().includes(q) ||
+      item.product.sku.toLowerCase().includes(q)
+    );
+  }, [products, variants, search]);
 
-  const validate = (): boolean => {
-    const e: typeof errors = {};
-    if (!form.productName.trim()) e.productName = "Required";
-    if (!form.sku.trim()) e.sku = "Required";
-    const w = parseFloat(form.weight);
-    if (form.weight && (isNaN(w) || w <= 0)) e.weight = "Must be positive";
-    const l = parseFloat(form.length);
-    if (form.length && (isNaN(l) || l <= 0)) e.length = "Must be positive";
-    const wd = parseFloat(form.width);
-    if (form.width && (isNaN(wd) || wd <= 0)) e.width = "Must be positive";
-    const h = parseFloat(form.height);
-    if (form.height && (isNaN(h) || h <= 0)) e.height = "Must be positive";
-    const q = parseInt(form.quantity);
-    if (isNaN(q) || q < 1) e.quantity = "Must be ≥ 1";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  const setQty = (variantId: number, qty: number) => {
+    setQuantities(prev => {
+      const next = new Map(prev);
+      if (qty <= 0) next.delete(variantId);
+      else next.set(variantId, qty);
+      return next;
+    });
   };
 
-  const volumePreview = () => {
-    const l = parseFloat(form.length) || 0;
-    const w = parseFloat(form.width) || 0;
-    const h = parseFloat(form.height) || 0;
-    const lCm = toStorageDim(l, form.sizeUnit);
-    const wCm = toStorageDim(w, form.sizeUnit);
-    const hCm = toStorageDim(h, form.sizeUnit);
-    return cm3ToM3(calcVolumeCm3(lCm, wCm, hCm));
-  };
+  const pendingItems = useMemo(() =>
+    Array.from(quantities.entries())
+      .map(([vid, qty]) => {
+        const item = stockItems.find(s => s.variant.id === vid);
+        if (!item) return null;
+        return { ...item, addQty: qty };
+      })
+      .filter(Boolean) as (typeof stockItems[number] & { addQty: number })[]
+  , [quantities, stockItems]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    const weightKg = form.weight ? toStorageWeight(parseFloat(form.weight), form.weightUnit) : undefined;
-    const lengthCm = form.length ? toStorageDim(parseFloat(form.length), form.sizeUnit) : undefined;
-    const widthCm = form.width ? toStorageDim(parseFloat(form.width), form.sizeUnit) : undefined;
-    const heightCm = form.height ? toStorageDim(parseFloat(form.height), form.sizeUnit) : undefined;
-    const qty = parseInt(form.quantity);
+  const handleConfirm = async () => {
+    if (pendingItems.length === 0) {
+      toast({ title: "Nothing to add", description: "Set a quantity for at least one item.", variant: "destructive" });
+      return;
+    }
 
     try {
-      const existing = await db.items.where("sku").equals(form.sku.trim()).first();
-      if (existing) {
-        await db.items.update(existing.id!, {
-          quantity: existing.quantity + qty,
-          weight: weightKg,
-          length: lengthCm,
-          width: widthCm,
-          height: heightCm,
-          weightUnit: form.weightUnit,
-          sizeUnit: form.sizeUnit,
-          category: form.category.trim() || undefined,
-          lastUpdated: new Date(),
-        });
-        toast({
-          title: "Stock updated",
-          description: `Added ${qty} units to ${form.productName} (${form.sku}). Total: ${existing.quantity + qty}`,
-        });
-      } else {
-        await db.items.add({
-          sku: form.sku.trim(),
-          productName: form.productName.trim(),
-          category: form.category.trim() || undefined,
-          weight: weightKg,
-          weightUnit: form.weightUnit,
-          length: lengthCm,
-          width: widthCm,
-          height: heightCm,
-          sizeUnit: form.sizeUnit,
-          quantity: qty,
-          lastUpdated: new Date(),
-        });
-        toast({
-          title: "Item added",
-          description: `Created ${form.productName} (${form.sku}) with ${qty} units.`,
-        });
-      }
+      await db.transaction("rw", db.variants, db.inventoryLog, async () => {
+        for (const item of pendingItems) {
+          const v = await db.variants.get(item.variant.id!);
+          if (!v) continue;
+          await db.variants.update(item.variant.id!, { stock: v.stock + item.addQty });
+          await db.inventoryLog.add({
+            productId: item.product.id!,
+            variantId: item.variant.id!,
+            businessId: item.product.businessId,
+            type: 'add',
+            quantity: item.addQty,
+            reason: 'Restock',
+            note: note.trim() || undefined,
+            timestamp: new Date(),
+          });
+        }
+      });
 
-      // Save for memory fill
-      localStorage.setItem(UNITS_KEY, JSON.stringify({
-        weight: form.weight, weightUnit: form.weightUnit,
-        length: form.length, width: form.width, height: form.height,
-        sizeUnit: form.sizeUnit,
-      }));
-
-      // Reset form
-      if (memoryFill) {
-        setForm(f => ({ ...f, productName: "", sku: "", quantity: "1", category: "" }));
-      } else {
-        setForm(getDefaultForm());
-      }
-      setErrors({});
+      const totalAdded = pendingItems.reduce((s, i) => s + i.addQty, 0);
+      toast({
+        title: "Stock added",
+        description: `Added ${totalAdded} units across ${pendingItems.length} variant(s).`,
+      });
+      setQuantities(new Map());
+      setNote("");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
-  const UnitToggle = ({ value, options, onChange }: {
-    value: string; options: [string, string]; onChange: (v: any) => void
-  }) => (
-    <div className="flex rounded-md border overflow-hidden">
-      {options.map(opt => (
-        <button
-          key={opt}
-          type="button"
-          onClick={() => onChange(opt)}
-          className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-            value === opt
-              ? "bg-primary text-primary-foreground"
-              : "bg-card text-muted-foreground hover:bg-muted"
-          }`}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-
-  const FieldError = ({ field }: { field: keyof FormData }) =>
-    errors[field] ? <p className="text-xs text-destructive mt-1">{errors[field]}</p> : null;
-
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Add Stock</h1>
-        <p className="text-muted-foreground">Enter product details to add to inventory</p>
+        <p className="text-muted-foreground">Search for products and add quantities to their variants</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PackagePlus className="h-5 w-5" />
-            New Entry
-          </CardTitle>
-          <CardDescription>
-            Fill in the product information below. Toggle units as needed.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Product Info */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="productName">Product Name</Label>
-                <Input id="productName" value={form.productName} onChange={e => set("productName", e.target.value)} placeholder="Widget A" />
-                <FieldError field="productName" />
-              </div>
-              <div>
-                <Label htmlFor="sku">SKU / ID</Label>
-                <Input id="sku" value={form.sku} onChange={e => set("sku", e.target.value)} placeholder="WDG-001" className="font-mono" />
-                <FieldError field="sku" />
-              </div>
-            </div>
+      {/* Business filter */}
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <Select
+            value={bizId?.toString() ?? "all"}
+            onValueChange={v => setSelectedBusinessId(v === "all" ? null : Number(v))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="All Businesses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Businesses</SelectItem>
+              {activeBusinesses.map(b => (
+                <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-            {/* Category */}
-            <div>
-              <Label htmlFor="category">Category</Label>
-              <Input id="category" value={form.category} onChange={e => set("category", e.target.value)} placeholder="e.g. Electronics, Furniture, Apparel" />
-            </div>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search by product name or SKU..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
 
-            {/* Weight */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="weight">Weight</Label>
-                <UnitToggle value={form.weightUnit} options={["kg", "lb"]} onChange={(v: 'kg'|'lb') => set("weightUnit", v)} />
-              </div>
-              <Input id="weight" type="number" step="any" min="0" value={form.weight} onChange={e => set("weight", e.target.value)} placeholder={`e.g. 5.0 ${form.weightUnit}`} />
-              <FieldError field="weight" />
-            </div>
+      {/* Items list */}
+      <div className="space-y-3">
+        {stockItems.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              <PackagePlus className="h-12 w-12 mx-auto mb-4 opacity-40" />
+              <p className="font-medium">{search ? "No matching products" : "No products found"}</p>
+              <p className="text-sm mt-1">Create products first in the Products page</p>
+            </CardContent>
+          </Card>
+        ) : (
+          stockItems.map(item => {
+            const qty = quantities.get(item.variant.id!) ?? 0;
+            return (
+              <Card key={item.variant.id} className={qty > 0 ? "ring-2 ring-primary/30" : ""}>
+                <CardContent className="flex items-center gap-4 py-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium truncate">{item.label}</span>
+                      <span className="font-mono text-xs text-muted-foreground shrink-0">{item.variant.sku}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Current stock: <span className="font-semibold text-foreground">{item.variant.stock}</span>
+                      {item.variant.stock <= item.variant.lowStockThreshold && item.variant.stock > 0 && (
+                        <span className="text-warning ml-2">⚠ Low</span>
+                      )}
+                      {item.variant.stock === 0 && (
+                        <span className="text-destructive ml-2">Out of stock</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="outline" size="icon" className="h-8 w-8"
+                      onClick={() => setQty(item.variant.id!, Math.max(0, qty - 1))}
+                      disabled={qty === 0}
+                    >
+                      <span className="text-sm font-bold">−</span>
+                    </Button>
+                    <Input
+                      type="number" min={0}
+                      value={qty || ""}
+                      onChange={e => setQty(item.variant.id!, Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-16 text-center h-8"
+                    />
+                    <Button
+                      variant="outline" size="icon" className="h-8 w-8"
+                      onClick={() => setQty(item.variant.id!, qty + 1)}
+                    >
+                      <span className="text-sm font-bold">+</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
 
-            {/* Dimensions */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label>Dimensions (L × W × H)</Label>
-                <UnitToggle value={form.sizeUnit} options={["cm", "in"]} onChange={(v: 'cm'|'in') => set("sizeUnit", v)} />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Input type="number" step="any" min="0" value={form.length} onChange={e => set("length", e.target.value)} placeholder="Length" />
-                  <FieldError field="length" />
+      {/* Confirm panel */}
+      {pendingItems.length > 0 && (
+        <Card className="border-primary/30">
+          <CardHeader>
+            <CardTitle className="text-lg">Confirm Addition</CardTitle>
+            <CardDescription>{pendingItems.length} variant(s) selected</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 text-sm">
+              {pendingItems.map(item => (
+                <div key={item.variant.id} className="flex justify-between">
+                  <span>{item.label} <span className="text-muted-foreground">({item.variant.sku})</span></span>
+                  <span className="font-medium text-primary">+{item.addQty}</span>
                 </div>
-                <div>
-                  <Input type="number" step="any" min="0" value={form.width} onChange={e => set("width", e.target.value)} placeholder="Width" />
-                  <FieldError field="width" />
-                </div>
-                <div>
-                  <Input type="number" step="any" min="0" value={form.height} onChange={e => set("height", e.target.value)} placeholder="Height" />
-                  <FieldError field="height" />
-                </div>
-              </div>
-              {/* Volume preview */}
-              <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-                <Box className="h-4 w-4" />
-                Volume: {formatNumber(volumePreview(), 4)} m³
-              </div>
+              ))}
             </div>
 
-            {/* Quantity */}
             <div>
-              <Label htmlFor="quantity">Quantity</Label>
-              <Input id="quantity" type="number" min="1" value={form.quantity} onChange={e => set("quantity", e.target.value)} />
-              <FieldError field="quantity" />
-            </div>
-
-            {/* Memory Fill */}
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="memoryFill"
-                checked={memoryFill}
-                onCheckedChange={(v) => setMemoryFill(!!v)}
+              <Label>Note (optional)</Label>
+              <Textarea
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="e.g. Shipment #1234"
+                className="mt-1"
               />
-              <Label htmlFor="memoryFill" className="text-sm cursor-pointer">
-                Keep dimensions & weight for next entry
-              </Label>
             </div>
 
-            <Button type="submit" className="w-full">
+            <Button className="w-full" onClick={handleConfirm}>
               <PackagePlus className="mr-2 h-4 w-4" />
-              Add to Inventory
+              Add {pendingItems.reduce((s, i) => s + i.addQty, 0)} Unit(s)
             </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
