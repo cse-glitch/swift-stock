@@ -1,4 +1,4 @@
-import { LayoutDashboard, PackagePlus, PackageMinus, History, Settings, Wrench, Package, Store, Layers, BoxesIcon, Building2, Briefcase } from "lucide-react";
+import { LayoutDashboard, PackagePlus, PackageMinus, History, Settings, Wrench, Package, Store, Layers, BoxesIcon, Building2, Briefcase, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { BusinessSwitcher } from "@/components/BusinessSwitcher";
@@ -22,6 +22,7 @@ const mainNav = [
   { title: "Add Stock", url: "/add", icon: PackagePlus },
   { title: "Remove Stock", url: "/remove", icon: PackageMinus },
   { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
 const manageNav = [
