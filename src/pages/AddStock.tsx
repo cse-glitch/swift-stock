@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { PackagePlus, Search, Upload } from "lucide-react";
+import { PackagePlus, Search, Upload, ExternalLink, AlertCircle } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 const AddStock = () => {
   const { businesses, activeBusinessId } = useBusiness();
@@ -28,6 +30,8 @@ const AddStock = () => {
   const [search, setSearch] = useState("");
   const [quantities, setQuantities] = useState<Map<number, number>>(new Map());
   const [note, setNote] = useState("");
+  const [pendingUpload, setPendingUpload] = useState<any[] | null>(null);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const { toast } = useToast();
 
   // Build a flat list of variant+product combos for display
@@ -135,56 +139,64 @@ const AddStock = () => {
         throw new Error("Unsupported file format.");
       }
 
-      let matchCount = 0;
-      let skipCount = 0;
-      const nextQuantities = new Map(quantities);
-
-      for (const row of data) {
-        const skuKey = Object.keys(row).find(k => k.toLowerCase() === 'sku' || k.toLowerCase() === 'item number' || k.toLowerCase() === 'item_number');
-        const qtyKey = Object.keys(row).find(k => k.toLowerCase() === 'quantity' || k.toLowerCase() === 'qty');
-
-        if (!skuKey || !qtyKey) {
-          continue;
-        }
-
-        const sku = String(row[skuKey]).trim();
-        const qty = parseInt(String(row[qtyKey]), 10);
-
-        if (!sku || isNaN(qty) || qty <= 0) continue;
-
-        const variant = variants.find(v => v.sku.toLowerCase() === sku.toLowerCase());
-        if (variant) {
-          const product = products.find(p => p.id === variant.productId);
-          if (product) {
-            nextQuantities.set(variant.id!, qty);
-            matchCount++;
-          } else {
-            skipCount++;
-          }
-        } else {
-          skipCount++;
-        }
-      }
-
-      setQuantities(nextQuantities);
-
-      if (matchCount > 0) {
-        toast({ 
-          title: "Upload successful", 
-          description: `Matched ${matchCount} items. Skipped ${skipCount} unmatched or out-of-business items.`,
-        });
-      } else {
-        toast({ 
-          title: "No items matched", 
-          description: "Please ensure your file has 'SKU' and 'Quantity' columns.", 
-          variant: "destructive" 
-        });
-      }
+      setPendingUpload(data);
+      setIsUploadDialogOpen(true);
     } catch (error: any) {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });
     } finally {
       e.target.value = '';
     }
+  };
+
+  const applyUpload = (mode: 'add' | 'replace') => {
+    if (!pendingUpload) return;
+
+    const nextQuantities = new Map(quantities);
+    let matchCount = 0;
+    let skipCount = 0;
+
+    for (const row of pendingUpload) {
+      const skuKey = Object.keys(row).find(k => k.toLowerCase() === 'sku' || k.toLowerCase() === 'item number' || k.toLowerCase() === 'item_number');
+      const qtyKey = Object.keys(row).find(k => k.toLowerCase() === 'quantity' || k.toLowerCase() === 'qty');
+
+      if (!skuKey || !qtyKey) continue;
+
+      const sku = String(row[skuKey]).trim();
+      const qty = parseInt(String(row[qtyKey]), 10);
+
+      if (!sku || isNaN(qty)) continue;
+
+      const variant = variants.find(v => v.sku.toLowerCase() === sku.toLowerCase());
+      if (variant) {
+        const product = products.find(p => p.id === variant.productId);
+        if (product) {
+          if (mode === 'add') {
+            const currentVal = nextQuantities.get(variant.id!) ?? 0;
+            nextQuantities.set(variant.id!, currentVal + qty);
+          } else {
+            // Replace mode: delta = target - current_db_stock
+            // Note: AddStock handleConfirm will do variant.stock + addQty
+            // So addQty = target - variant.stock
+            const delta = qty - variant.stock;
+            nextQuantities.set(variant.id!, delta);
+          }
+          matchCount++;
+        } else {
+          skipCount++;
+        }
+      } else {
+        skipCount++;
+      }
+    }
+
+    setQuantities(nextQuantities);
+    setIsUploadDialogOpen(false);
+    setPendingUpload(null);
+
+    toast({ 
+      title: "Upload processed", 
+      description: `Matched ${matchCount} items in ${mode} mode. Skipped ${skipCount} items.`,
+    });
   };
 
   return (
@@ -247,11 +259,19 @@ const AddStock = () => {
       {/* Items list */}
       <div className="space-y-3">
         {stockItems.length === 0 ? (
-          <Card>
+          <Card className="border-dashed">
             <CardContent className="py-12 text-center text-muted-foreground">
               <PackagePlus className="h-12 w-12 mx-auto mb-4 opacity-40" />
               <p className="font-medium">{search ? "No matching products" : "No products found"}</p>
-              <p className="text-sm mt-1">Create products first in the Products page</p>
+              <div className="flex flex-col items-center gap-2 mt-2">
+                <p className="text-sm">Create products first in the Products page</p>
+                <Button variant="outline" size="sm" asChild className="mt-2">
+                  <Link to="/products" className="gap-2">
+                    <ExternalLink className="h-3 w-3" />
+                    Go to Products
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -315,10 +335,18 @@ const AddStock = () => {
               {pendingItems.map(item => (
                 <div key={item.variant.id} className="flex justify-between">
                   <span>{item.label} <span className="text-muted-foreground">({item.variant.sku})</span></span>
-                  <span className="font-medium text-primary">+{item.addQty}</span>
+                  <span className={`font-medium ${item.addQty < 0 ? 'text-destructive' : 'text-primary'}`}>
+                    {item.addQty > 0 ? '+' : ''}{item.addQty}
+                  </span>
                 </div>
               ))}
             </div>
+            {pendingItems.some(i => i.addQty < 0) && (
+              <div className="flex gap-2 p-3 bg-destructive/10 rounded-lg text-destructive text-xs border border-destructive/20">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>Some items will have their stock reduced to match the replacement target.</span>
+              </div>
+            )}
 
             <div>
               <Label>Note (optional)</Label>
@@ -332,11 +360,36 @@ const AddStock = () => {
 
             <Button className="w-full" onClick={handleConfirm}>
               <PackagePlus className="mr-2 h-4 w-4" />
-              Add {pendingItems.reduce((s, i) => s + i.addQty, 0)} Unit(s)
+              Add/Adjust {pendingItems.reduce((s, i) => s + i.addQty, 0)} Unit(s)
             </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* Upload Choice Dialog */}
+      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Process Uploaded Stock</DialogTitle>
+            <DialogDescription>
+              We found {pendingUpload?.length} items in your file. How should we apply these quantities?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 py-4">
+            <Button variant="outline" className="flex flex-col items-start h-auto p-4 gap-1 text-left" onClick={() => applyUpload('add')}>
+              <span className="font-bold">Add to current stock</span>
+              <span className="text-xs text-muted-foreground font-normal">Incremental: Stock will be increased by the numbers in the file.</span>
+            </Button>
+            <Button variant="outline" className="flex flex-col items-start h-auto p-4 gap-1 text-left" onClick={() => applyUpload('replace')}>
+              <span className="font-bold">Replace current stock</span>
+              <span className="text-xs text-muted-foreground font-normal">Absolute: Stock will be adjusted so the final count matches the file exactly.</span>
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsUploadDialogOpen(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

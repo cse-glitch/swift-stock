@@ -4,14 +4,16 @@ import { db } from "@/lib/db";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Papa from "papaparse";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
   TrendingUp, TrendingDown, DollarSign, Package, BoxesIcon, Store,
-  ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase,
+  ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase, Download,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -109,6 +111,31 @@ const Analytics = () => {
       .sort((a, b) => b.volume - a.volume)
       .slice(0, 10);
   }, [products, variants, categories, activeBusinessId]);
+  
+  // ── Top Products by Revenue ──
+  const topProducts = useMemo(() => {
+    const soldLogs = activeBusinessId 
+      ? filteredLogs.filter(l => l.businessId === activeBusinessId && l.type === "remove" && l.reason === "Sold")
+      : filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
+      
+    const productRevenue = new Map<number, number>();
+
+    for (const log of soldLogs) {
+      const variant = variants.find(v => v.id === log.variantId);
+      const product = products.find(p => p.id === log.productId);
+      const price = variant?.price ?? product?.basePrice ?? 0;
+      const revenue = price * log.quantity;
+      productRevenue.set(log.productId, (productRevenue.get(log.productId) ?? 0) + revenue);
+    }
+
+    return Array.from(productRevenue.entries())
+      .map(([id, revenue]) => {
+        const p = products.find(p => p.id === id);
+        return { name: p?.name ?? "Unknown", revenue };
+      })
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+  }, [filteredLogs, variants, products, activeBusinessId]);
 
   // ── Stock distribution per business ──
   const stockByBusiness = useMemo(() => {
@@ -123,7 +150,9 @@ const Analytics = () => {
   // ── Summary stats ──
   const totalRevenue = useMemo(() => {
     if (activeBusinessId) {
-      return revenueByBusiness.find(b => businesses.find(biz => biz.id === activeBusinessId)?.name.includes(b.name))?.revenue ?? 0;
+      const activeBiz = businesses.find(biz => biz.id === activeBusinessId);
+      if (!activeBiz) return 0;
+      return revenueByBusiness.find(b => activeBiz.name.includes(b.name))?.revenue ?? 0;
     }
     return revenueByBusiness.reduce((s, b) => s + b.revenue, 0);
   }, [revenueByBusiness, activeBusinessId, businesses]);
@@ -151,6 +180,37 @@ const Analytics = () => {
     }
     return filteredLogs.length;
   }, [filteredLogs, activeBusinessId]);
+
+  const exportData = () => {
+    const summary = [
+      { Category: "Summary", Metric: "Total Revenue", Value: totalRevenue },
+      { Category: "Summary", Metric: "Units Sold", Value: totalSold },
+      { Category: "Summary", Metric: "Current Stock", Value: totalStock },
+      { Category: "Summary", Metric: "Movements", Value: totalMovements },
+    ];
+
+    const bizData = revenueByBusiness.map(b => ({
+      Category: "Revenue By Business",
+      Metric: b.name,
+      Value: b.revenue
+    }));
+
+    const prodData = topProducts.map(p => ({
+      Category: "Top Products By Revenue",
+      Metric: p.name,
+      Value: p.revenue
+    }));
+
+    const rows = [...summary, ...bizData, ...prodData];
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `analytics-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-6">
@@ -185,6 +245,10 @@ const Analytics = () => {
               <SelectItem value="all">All time</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={exportData} className="gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
       </div>
 
@@ -297,8 +361,36 @@ const Analytics = () => {
         </Card>
       </div>
 
-      {/* Charts Row 2 */}
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Top Products by Revenue */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Top Products by Revenue</CardTitle>
+            <CardDescription>Highest grossing products in selected period</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {topProducts.length === 0 ? (
+              <div className="flex items-center justify-center h-[250px] text-muted-foreground text-sm">
+                No sales data yet
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={topProducts} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} className="fill-muted-foreground" />
+                  <Tooltip
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Category Volumes */}
         <Card>
           <CardHeader>
@@ -330,7 +422,9 @@ const Analytics = () => {
             )}
           </CardContent>
         </Card>
+      </div>
 
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Stock Distribution Pie */}
         <Card>
           <CardHeader>

@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Search, PackageMinus, Minus } from "lucide-react";
+import { Search, PackageMinus, Minus, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const REASONS = ["Sold", "Damaged", "Expired", "Returned", "Adjustment", "Other"] as const;
 
@@ -141,10 +142,19 @@ const RemoveStock = () => {
 
       <div className="space-y-3">
         {stockItems.length === 0 ? (
-          <Card>
+          <Card className="border-dashed">
             <CardContent className="py-12 text-center text-muted-foreground">
               <PackageMinus className="h-12 w-12 mx-auto mb-4 opacity-40" />
               <p className="font-medium">{search ? "No matching items" : "No items in stock"}</p>
+              <div className="flex flex-col items-center gap-2 mt-2">
+                <p className="text-sm">Create products first and add stock before removing.</p>
+                <Button variant="outline" size="sm" asChild className="mt-2">
+                  <Link to="/products" className="gap-2">
+                    <ExternalLink className="h-3 w-3" />
+                    Go to Products
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
