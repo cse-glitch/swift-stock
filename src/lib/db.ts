@@ -6,6 +6,7 @@ export type ProductType = 'physical' | 'service' | 'listing';
 export type ProductStatus = 'active' | 'draft' | 'archived';
 export type ListingAvailability = 'available' | 'sold' | 'rented' | 'pending';
 export type InventoryAction = 'add' | 'remove' | 'adjust';
+export type UserRole = 'admin' | 'manager' | 'staff';
 
 export interface Business {
   id?: number;
@@ -105,6 +106,27 @@ export interface Order {
   note?: string;
 }
 
+export interface User {
+  id?: number;
+  username: string;
+  passwordHash: string;
+  displayName: string;
+  role: UserRole;
+  createdAt: Date;
+  lastLoginAt?: Date;
+}
+
+export interface AuditLog {
+  id?: number;
+  userId?: number;
+  username: string;
+  action: string;
+  entityType?: string;
+  entityId?: number;
+  details?: string;
+  timestamp: Date;
+}
+
 // ── Legacy tables (kept for migration) ──
 export interface LegacyItem {
   id?: number;
@@ -140,6 +162,8 @@ class InventoryDB extends Dexie {
   propertyListings!: Table<PropertyListing>;
   services!: Table<Service>;
   orders!: Table<Order>;
+  users!: Table<User>;
+  auditLogs!: Table<AuditLog>;
   // Legacy
   items!: Table<LegacyItem>;
   removals!: Table<LegacyRemoval>;
@@ -191,13 +215,27 @@ class InventoryDB extends Dexie {
       businesses: '++id, &slug, type, isActive',
       categories: '++id, businessId, name, parentId',
       products: '++id, businessId, categoryId, sku, type, status, *tags',
-      // Compound index: look up variants by product in O(log n)
       variants: '++id, productId, sku, [productId+id]',
-      // Compound index: analytics queries by (businessId, type) and time range
       inventoryLog: '++id, productId, variantId, businessId, type, timestamp, [businessId+type], [businessId+type+timestamp]',
       propertyListings: '++id, productId, listingType, availability',
       services: '++id, productId',
       orders: '++id, businessId, productId, customerName, customerNumber, status, timestamp, [businessId+status]',
+    });
+
+    // v6: Authentication + Audit logs
+    this.version(6).stores({
+      items: '++id, &sku, productName, category, weight, lastUpdated',
+      removals: '++id, sku, reason, timestamp',
+      businesses: '++id, &slug, type, isActive',
+      categories: '++id, businessId, name, parentId',
+      products: '++id, businessId, categoryId, sku, type, status, *tags',
+      variants: '++id, productId, sku, [productId+id]',
+      inventoryLog: '++id, productId, variantId, businessId, type, timestamp, [businessId+type], [businessId+type+timestamp]',
+      propertyListings: '++id, productId, listingType, availability',
+      services: '++id, productId',
+      orders: '++id, businessId, productId, customerName, customerNumber, status, timestamp, [businessId+status]',
+      users: '++id, &username, role',
+      auditLogs: '++id, userId, action, entityType, timestamp',
     });
   }
 }

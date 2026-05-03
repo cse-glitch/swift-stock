@@ -1,46 +1,50 @@
-import { LayoutDashboard, PackagePlus, History, Settings, Wrench, Package, Store, Layers, BoxesIcon, Building2, Briefcase, BarChart3, ShoppingCart } from "lucide-react";
+import {
+  LayoutDashboard, PackagePlus, History, Settings, Wrench,
+  Package, Store, Layers, BoxesIcon, Building2, Briefcase,
+  BarChart3, ShoppingCart, Users, HardDrive, ScrollText, ShieldCheck,
+} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { BusinessSwitcher } from "@/components/BusinessSwitcher";
+import { useAuth } from "@/contexts/AuthContext";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarSeparator,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  SidebarHeader, SidebarSeparator, useSidebar,
 } from "@/components/ui/sidebar";
 
 const mainNav = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Products", url: "/products", icon: BoxesIcon },
-  { title: "Orders", url: "/orders", icon: ShoppingCart },
-  { title: "Add Stock", url: "/add", icon: PackagePlus },
-  { title: "Inventory", url: "/inventory", icon: Package },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Dashboard",  url: "/",         icon: LayoutDashboard },
+  { title: "Products",   url: "/products",  icon: BoxesIcon },
+  { title: "Orders",     url: "/orders",    icon: ShoppingCart },
+  { title: "Add Stock",  url: "/add",       icon: PackagePlus },
+  { title: "Inventory",  url: "/inventory", icon: Package },
+  { title: "Analytics",  url: "/analytics", icon: BarChart3 },
 ];
 
 const manageNav = [
   { title: "Businesses", url: "/businesses", icon: Store },
   { title: "Categories", url: "/categories", icon: Layers },
   { title: "Properties", url: "/properties", icon: Building2 },
-  { title: "Services", url: "/services", icon: Briefcase },
+  { title: "Services",   url: "/services",   icon: Briefcase },
 ];
 
 const systemNav = [
-  { title: "History", url: "/history", icon: History },
-  { title: "Utilities", url: "/utilities", icon: Wrench },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "History",    url: "/history",    icon: History },
+  { title: "Utilities",  url: "/utilities",  icon: Wrench },
+  { title: "Settings",   url: "/settings",   icon: Settings },
+];
+
+// Admin-only nav items
+const adminNav = [
+  { title: "Users",      url: "/users",      icon: Users },
+  { title: "Audit Logs", url: "/audit-logs", icon: ScrollText },
+  { title: "Backup",     url: "/backup",     icon: HardDrive },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  const { user } = useAuth();
   const collapsed = state === "collapsed";
 
   const NavGroup = ({ label, items }: { label: string; items: typeof mainNav }) => (
@@ -98,6 +102,37 @@ export function AppSidebar() {
         <NavGroup label="Manage" items={manageNav} />
         <SidebarSeparator />
         <NavGroup label="System" items={systemNav} />
+
+        {/* Admin-only section */}
+        {user?.role === "admin" && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel className="flex items-center gap-1.5">
+                {!collapsed && <ShieldCheck className="h-3 w-3 text-primary" />}
+                {!collapsed && "Admin"}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminNav.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          className={cn("hover:bg-sidebar-accent/50 flex w-full h-full items-center", collapsed && "justify-center")}
+                          activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                        >
+                          <item.icon className={cn("h-4 w-4 text-primary/70", !collapsed && "mr-2")} />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
     </Sidebar>
   );
