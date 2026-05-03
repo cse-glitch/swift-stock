@@ -109,93 +109,169 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Products Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[160px]">Product</TableHead>
-                  <TableHead className="hidden sm:table-cell">SKU</TableHead>
-                  {!activeBusinessId && <TableHead className="hidden md:table-cell">Business</TableHead>}
-                  <TableHead className="hidden md:table-cell">Category</TableHead>
-                  <TableHead className="hidden sm:table-cell">Type</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-14">Edit</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
-                      No products found. Add your first product to get started.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map(product => {
-                    const biz = getBizForProduct(product);
-                    const config = biz ? getBusinessConfig(biz.type) : null;
-                    const totalStock = getTotalStock(product.id!);
-                    const cat = categories.find(c => c.id === product.categoryId);
-                    const pvariants = getProductVariants(product.id!);
-                    const lowStock = pvariants.some(v => v.stock <= v.lowStockThreshold);
+      {/* Products List - Desktop Table & Mobile Cards */}
+      <div className="space-y-4">
+        {/* Mobile Card View */}
+        <div className="grid gap-3 md:hidden">
+          {filtered.length === 0 ? (
+            <Card className="border-dashed py-12 text-center text-muted-foreground">
+              <BoxesIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p className="text-lg font-medium">No products found</p>
+            </Card>
+          ) : (
+            filtered.map((product) => {
+              const biz = getBizForProduct(product);
+              const config = biz ? getBusinessConfig(biz.type) : null;
+              const totalStock = getTotalStock(product.id!);
+              const cat = categories.find(c => c.id === product.categoryId);
+              const pvariants = getProductVariants(product.id!);
+              const lowStock = pvariants.some(v => v.stock <= v.lowStockThreshold);
 
-                    return (
-                      <TableRow key={product.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="font-medium text-foreground text-sm truncate max-w-[120px] sm:max-w-[200px]">{product.name}</span>
-                            {lowStock && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />}
-                          </div>
-                          <div className="sm:hidden font-mono text-xs text-muted-foreground mt-0.5">{product.sku}</div>
-                          {product.tags.length > 0 && (
-                            <div className="hidden sm:flex gap-1 mt-1">
-                              {product.tags.slice(0, 2).map(t => (
-                                <Badge key={t} variant="outline" className="text-[10px] px-1">{t}</Badge>
-                              ))}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">{product.sku}</TableCell>
-                        {!activeBusinessId && (
-                          <TableCell className="hidden md:table-cell">
-                            <div className="flex items-center gap-1.5">
-                              <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: biz ? `hsl(${biz.color})` : undefined }} />
-                              <span className="text-xs truncate max-w-[100px]">{biz?.name}</span>
-                            </div>
-                          </TableCell>
-                        )}
-                        <TableCell className="hidden md:table-cell text-sm">{cat?.name ?? '—'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge variant="secondary" className="text-xs capitalize">{product.type}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {config?.hasStock ? totalStock : '—'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={product.status === 'active' ? 'default' : product.status === 'draft' ? 'secondary' : 'outline'}
-                            className="text-xs capitalize"
+              return (
+                <Card key={product.id} className="overflow-hidden border-none shadow-md bg-card/50">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-foreground truncate">{product.name}</p>
+                          {lowStock && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate font-mono">{product.sku}</p>
+                      </div>
+                      <Badge
+                        variant={product.status === 'active' ? 'default' : product.status === 'draft' ? 'secondary' : 'outline'}
+                        className="text-[10px] capitalize h-5"
+                      >
+                        {product.status}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-col gap-2 py-2 border-y border-border/50">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Business & Category</span>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <Badge 
+                            variant="outline" 
+                            className="whitespace-nowrap text-[10px] h-5 px-2"
+                            style={{ borderColor: biz ? `hsl(${biz.color})` : undefined }}
                           >
-                            {product.status}
+                            {biz?.name}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingProduct(product); setDialogOpen(true); }}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                          <span className="text-xs text-muted-foreground truncate">{cat?.name ?? '—'}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Type</span>
+                        <Badge variant="secondary" className="w-fit text-[10px] capitalize mt-1 h-5 px-2">{product.type}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Stock</span>
+                        <span className="text-lg font-mono font-bold text-foreground mt-0.5">
+                          {config?.hasStock ? totalStock.toLocaleString() : '—'}
+                        </span>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingProduct(product); setDialogOpen(true); }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <Card className="hidden md:block">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[160px]">Product</TableHead>
+                    <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                    {!activeBusinessId && <TableHead className="hidden md:table-cell">Business</TableHead>}
+                    <TableHead className="hidden md:table-cell">Category</TableHead>
+                    <TableHead className="hidden sm:table-cell">Type</TableHead>
+                    <TableHead className="text-right">Stock</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-14">Edit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                        No products found. Add your first product to get started.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filtered.map(product => {
+                      const biz = getBizForProduct(product);
+                      const config = biz ? getBusinessConfig(biz.type) : null;
+                      const totalStock = getTotalStock(product.id!);
+                      const cat = categories.find(c => c.id === product.categoryId);
+                      const pvariants = getProductVariants(product.id!);
+                      const lowStock = pvariants.some(v => v.stock <= v.lowStockThreshold);
+
+                      return (
+                        <TableRow key={product.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-medium text-foreground text-sm truncate max-w-[120px] sm:max-w-[200px]">{product.name}</span>
+                              {lowStock && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />}
+                            </div>
+                            <div className="sm:hidden font-mono text-xs text-muted-foreground mt-0.5">{product.sku}</div>
+                            {product.tags.length > 0 && (
+                              <div className="hidden sm:flex gap-1 mt-1">
+                                {product.tags.slice(0, 2).map(t => (
+                                  <Badge key={t} variant="outline" className="text-[10px] px-1">{t}</Badge>
+                                ))}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">{product.sku}</TableCell>
+                          {!activeBusinessId && (
+                            <TableCell className="hidden md:table-cell">
+                              <div className="flex items-center gap-1.5">
+                                <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: biz ? `hsl(${biz.color})` : undefined }} />
+                                <span className="text-xs truncate max-w-[100px]">{biz?.name}</span>
+                              </div>
+                            </TableCell>
+                          )}
+                          <TableCell className="hidden md:table-cell text-sm">{cat?.name ?? '—'}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge variant="secondary" className="text-xs capitalize">{product.type}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {config?.hasStock ? totalStock : '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={product.status === 'active' ? 'default' : product.status === 'draft' ? 'secondary' : 'outline'}
+                              className="text-xs capitalize"
+                            >
+                              {product.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingProduct(product); setDialogOpen(true); }}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <ProductDialog
         open={dialogOpen}

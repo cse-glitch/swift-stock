@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Search, PackageMinus, Minus, ExternalLink } from "lucide-react";
+import { Search, PackageMinus, Minus, ExternalLink, PackagePlus } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const REASONS = ["Sold", "Damaged", "Expired", "Returned", "Adjustment", "Other"] as const;
@@ -114,9 +114,17 @@ const RemoveStock = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Remove Stock</h1>
-        <p className="text-muted-foreground">Search for items and deduct quantities with a reason code</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Remove Stock</h1>
+          <p className="text-muted-foreground">Search for items and deduct quantities with a reason code</p>
+        </div>
+        <Button variant="outline" size="sm" asChild className="gap-2">
+          <Link to="/add">
+            <PackagePlus className="h-4 w-4" />
+            Add Stock
+          </Link>
+        </Button>
       </div>
 
       {/* Business filter */}

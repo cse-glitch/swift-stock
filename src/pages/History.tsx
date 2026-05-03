@@ -187,70 +187,139 @@ const History = () => {
         <span>{totalMoved} total units moved</span>
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="pt-6">
+      {/* List - Desktop Table & Mobile Cards */}
+      <div className="space-y-4">
+        {/* Mobile View */}
+        <div className="grid gap-3 md:hidden">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <HistoryIcon className="h-12 w-12 mb-4 opacity-40" />
+            <Card className="border-dashed py-12 text-center text-muted-foreground">
+              <HistoryIcon className="h-12 w-12 mx-auto mb-4 opacity-40" />
               <p className="text-lg font-medium">No records found</p>
-              <p className="text-sm">{hasFilters ? "Try adjusting your filters" : "Stock movements will appear here"}</p>
-            </div>
+            </Card>
           ) : (
-            <div className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date & Time</TableHead>
-                    <TableHead>Business</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Variant</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Note</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map(log => {
-                    const product = productMap.get(log.productId);
-                    const variant = log.variantId ? variantMap.get(log.variantId) : undefined;
-                    const business = businessMap.get(log.businessId);
-                    return (
-                      <TableRow key={log.id}>
-                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                          {format(new Date(log.timestamp), "MMM d, yyyy HH:mm")}
-                        </TableCell>
-                        <TableCell className="text-sm">{business?.name ?? "—"}</TableCell>
-                        <TableCell>
-                          <Badge variant={log.type === "add" ? "default" : log.type === "remove" ? "destructive" : "secondary"}>
-                            {log.type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{product?.name ?? "—"}</div>
-                          <div className="font-mono text-xs text-muted-foreground">{product?.sku}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">{variant?.name ?? "—"}</div>
-                          <div className="font-mono text-xs text-muted-foreground">{variant?.sku}</div>
-                        </TableCell>
-                        <TableCell className={cn("text-right font-semibold font-mono", log.type === "add" ? "text-primary" : log.type === "remove" ? "text-destructive" : "")}>
-                          {log.type === "remove" ? "-" : "+"}{log.quantity}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">{log.reason}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{log.note || "—"}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            filtered.map((log) => {
+              const product = productMap.get(log.productId);
+              const variant = log.variantId ? variantMap.get(log.variantId) : undefined;
+              const business = businessMap.get(log.businessId);
+              return (
+                <Card key={log.id} className="overflow-hidden border-none shadow-md bg-card/50">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                            {format(new Date(log.timestamp), "MMM d, h:mm a")}
+                          </span>
+                        </div>
+                        <p className="font-bold text-foreground truncate mt-0.5">{product?.name ?? "—"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{variant?.name ?? "—"}</p>
+                      </div>
+                      <Badge 
+                        variant={log.type === "add" ? "default" : log.type === "remove" ? "destructive" : "secondary"}
+                        className="text-[10px] capitalize h-5 shrink-0"
+                      >
+                        {log.type}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-col py-2 border-y border-border/50 gap-2">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Business</span>
+                        <span className="text-xs font-medium mt-1">{business?.name ?? "—"}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Reason</span>
+                        <Badge variant="outline" className="w-fit text-[10px] mt-1 h-5 px-2 whitespace-nowrap">{log.reason}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex flex-col flex-1 min-w-0 mr-4">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Note</span>
+                        <p className="text-xs italic text-muted-foreground truncate mt-1">{log.note || "No note added"}</p>
+                      </div>
+                      <div className="flex flex-col items-end shrink-0">
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Quantity</span>
+                        <div className={cn(
+                          "text-xl font-mono font-bold mt-0.5 flex items-center gap-1",
+                          log.type === "add" ? "text-primary" : log.type === "remove" ? "text-destructive" : ""
+                        )}>
+                          {log.type === "add" ? "+" : log.type === "remove" ? "-" : ""}{log.quantity}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Desktop Table View */}
+        <Card className="hidden md:block">
+          <CardContent className="p-0">
+            {filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <HistoryIcon className="h-12 w-12 mb-4 opacity-40" />
+                <p className="text-lg font-medium">No records found</p>
+                <p className="text-sm">{hasFilters ? "Try adjusting your filters" : "Stock movements will appear here"}</p>
+              </div>
+            ) : (
+              <div className="overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date & Time</TableHead>
+                      <TableHead>Business</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Variant</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Note</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map(log => {
+                      const product = productMap.get(log.productId);
+                      const variant = log.variantId ? variantMap.get(log.variantId) : undefined;
+                      const business = businessMap.get(log.businessId);
+                      return (
+                        <TableRow key={log.id}>
+                          <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                            {format(new Date(log.timestamp), "MMM d, yyyy HH:mm")}
+                          </TableCell>
+                          <TableCell className="text-sm">{business?.name ?? "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant={log.type === "add" ? "default" : log.type === "remove" ? "destructive" : "secondary"}>
+                              {log.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{product?.name ?? "—"}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{product?.sku}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{variant?.name ?? "—"}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{variant?.sku}</div>
+                          </TableCell>
+                          <TableCell className={cn("text-right font-semibold font-mono", log.type === "add" ? "text-primary" : log.type === "remove" ? "text-destructive" : "")}>
+                            {log.type === "remove" ? "-" : "+"}{log.quantity}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">{log.reason}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{log.note || "—"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

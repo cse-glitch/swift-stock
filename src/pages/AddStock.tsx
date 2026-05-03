@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { PackagePlus, Search, Upload, ExternalLink, AlertCircle } from "lucide-react";
+import { PackagePlus, Search, Upload, ExternalLink, AlertCircle, PackageMinus } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Link } from "react-router-dom";
@@ -201,9 +201,17 @@ const AddStock = () => {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Add Stock</h1>
-        <p className="text-muted-foreground">Search for products and add quantities to their variants</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Add Stock</h1>
+          <p className="text-muted-foreground">Search for products and add quantities to their variants</p>
+        </div>
+        <Button variant="outline" size="sm" asChild className="gap-2">
+          <Link to="/remove">
+            <PackageMinus className="h-4 w-4" />
+            Remove Stock
+          </Link>
+        </Button>
       </div>
 
       {/* Business filter */}

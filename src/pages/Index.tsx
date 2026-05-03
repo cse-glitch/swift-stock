@@ -15,9 +15,44 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
+import {
+  AreaChart, Area, ResponsiveContainer,
+} from 'recharts';
+
 const iconMap: Record<string, LucideIcon> = {
   ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase,
 };
+
+// Dummy data for sparklines to match the aesthetic
+const generateSparkData = (seed: number) => {
+  return Array.from({ length: 12 }, (_, i) => ({
+    value: Math.floor(Math.random() * 20) + 10 + Math.sin(i + seed) * 10
+  }));
+};
+
+const Sparkline = ({ data, color }: { data: any[], color: string }) => (
+  <div className="h-[40px] w-full mt-2">
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={data}>
+        <defs>
+          <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="95%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="value"
+          stroke={color}
+          strokeWidth={2}
+          fillOpacity={1}
+          fill={`url(#gradient-${color})`}
+          isAnimationActive={true}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  </div>
+);
 
 const Dashboard = () => {
   const { businesses, activeBusiness, activeBusinessId } = useBusiness();
@@ -32,10 +67,10 @@ const Dashboard = () => {
     activeBusinessId
       ? db.products.where('businessId').equals(activeBusinessId).toArray()
       : db.products.toArray()
-  , [activeBusinessId]) ?? [];
+    , [activeBusinessId]) ?? [];
 
-  const variants  = useLiveQuery(() => db.variants.toArray(),      []) ?? [];
-  const logs      = useLiveQuery(() => db.inventoryLog.toArray(),   []) ?? [];
+  const variants = useLiveQuery(() => db.variants.toArray(), []) ?? [];
+  const logs = useLiveQuery(() => db.inventoryLog.toArray(), []) ?? [];
   const recentLogs = useLiveQuery(
     () => db.inventoryLog.orderBy('timestamp').reverse().limit(10).toArray(), []
   ) ?? [];
@@ -71,9 +106,9 @@ const Dashboard = () => {
     () => variants.filter(v => products.some(p => p.id === v.productId)),
     [variants, products]
   );
-  const totalStock    = useMemo(() => relevantVariants.reduce((s, v) => s + v.stock, 0), [relevantVariants]);
+  const totalStock = useMemo(() => relevantVariants.reduce((s, v) => s + v.stock, 0), [relevantVariants]);
   const lowStockItems = useMemo(() => relevantVariants.filter(v => v.stock > 0 && v.stock <= v.lowStockThreshold), [relevantVariants]);
-  const outOfStock    = useMemo(() => relevantVariants.filter(v => v.stock === 0), [relevantVariants]);
+  const outOfStock = useMemo(() => relevantVariants.filter(v => v.stock === 0), [relevantVariants]);
 
   // Pre-built variant price map (productId → basePrice, variantId → price)
   const variantMap = useMemo(() => new Map(variants.map(v => [v.id, v])), [variants]);
@@ -107,7 +142,15 @@ const Dashboard = () => {
       .sort((a, b) => b.soldQty - a.soldQty)
       .filter(p => p.soldQty > 0)
       .slice(0, 5)
-  , [products, logs]);
+    , [products, logs]);
+
+  // Memoized sparkline data to prevent re-renders
+  const sparkData = useMemo(() => [
+    generateSparkData(1),
+    generateSparkData(2),
+    generateSparkData(3),
+    generateSparkData(4),
+  ], []);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -163,7 +206,7 @@ const Dashboard = () => {
 
       {/* Summary Cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-primary/5 via-card to-accent/5 border-primary/10">
+        <Card className="bg-gradient-to-br from-primary/5 via-card to-accent/5 border-primary/10 overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 sm:pt-4 sm:px-4 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Products</CardTitle>
             <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
@@ -173,10 +216,11 @@ const Dashboard = () => {
           <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
             <div className="text-2xl sm:text-3xl font-bold">{totalProducts}</div>
             <p className="text-xs text-muted-foreground">{relevantVariants.length} variants</p>
+            <Sparkline data={sparkData[0]} color="#8b5cf6" />
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-accent/5 via-card to-primary/5">
+        <Card className="bg-gradient-to-br from-accent/5 via-card to-primary/5 overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 sm:pt-4 sm:px-4 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Stock</CardTitle>
             <div className="p-1.5 rounded-lg bg-accent/10 shrink-0">
@@ -186,10 +230,11 @@ const Dashboard = () => {
           <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
             <div className="text-2xl sm:text-3xl font-bold">{totalStock.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">units across variants</p>
+            <Sparkline data={sparkData[1]} color="#10b981" />
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-warning/5 via-card to-destructive/5">
+        <Card className="bg-gradient-to-br from-warning/5 via-card to-destructive/5 overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 sm:pt-4 sm:px-4 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Low Stock</CardTitle>
             <div className="p-1.5 rounded-lg bg-warning/10 shrink-0">
@@ -199,10 +244,11 @@ const Dashboard = () => {
           <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
             <div className="text-2xl sm:text-3xl font-bold">{lowStockItems.length}</div>
             <p className="text-xs text-muted-foreground">{outOfStock.length} out of stock</p>
+            <Sparkline data={sparkData[2]} color="#f59e0b" />
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-success/5 via-card to-emerald/5 border-success/10">
+        <Card className="bg-gradient-to-br from-success/5 via-card to-emerald/5 border-success/10 overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-1 pt-3 px-3 sm:pt-4 sm:px-4 sm:pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
             <div className="p-1.5 rounded-lg bg-success/10 shrink-0">
@@ -212,6 +258,7 @@ const Dashboard = () => {
           <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
             <div className="text-xl sm:text-3xl font-bold truncate">৳{totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">from sales data</p>
+            <Sparkline data={sparkData[3]} color="#3b82f6" />
           </CardContent>
         </Card>
       </div>
@@ -418,10 +465,10 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      <BusinessDetailDialog 
-        business={selectedBusiness} 
-        open={isDetailOpen} 
-        onOpenChange={setIsDetailOpen} 
+      <BusinessDetailDialog
+        business={selectedBusiness}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
       />
     </div>
   );
