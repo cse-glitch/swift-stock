@@ -27,8 +27,7 @@
       "public/**/*"
     ],
     "win": {
-      "target": "nsis",
-      "icon": "public/logo.svg"
+      "target": "nsis"
     }
   },
   "dependencies": {
