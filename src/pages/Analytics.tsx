@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Package, BoxesIcon, Store,
-  ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase, Download,
+  ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase, Download, Layers,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
