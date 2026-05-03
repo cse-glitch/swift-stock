@@ -5,8 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Briefcase, Mail, Phone, Camera, Save, User as UserIcon } from "lucide-react";
+import { Calendar, MapPin, Briefcase, Mail, Phone, Camera, Save, User as UserIcon, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { db, seedBusinesses } from "@/lib/db";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
@@ -24,6 +36,23 @@ const Profile = () => {
   const handleSave = () => {
     setIsEditing(false);
     toast.success("Profile updated successfully!");
+  };
+
+  const handleReset = async () => {
+    try {
+      // Delete the database
+      await db.delete();
+      // Re-seed the default data
+      await seedBusinesses();
+      toast.success("Application reset successfully!");
+      // Reload the page to clear any in-memory state
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000);
+    } catch (error) {
+      console.error("Failed to reset application:", error);
+      toast.error("Failed to reset application.");
+    }
   };
 
   return (
@@ -203,16 +232,37 @@ const Profile = () => {
 
         <Card className="border-none shadow-lg bg-card/50 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-base font-bold">System Permissions</CardTitle>
+            <CardTitle className="text-base font-bold text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Danger Zone
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">Admin Access</Badge>
-              <Badge variant="secondary">Financial Reports</Badge>
-              <Badge variant="secondary">Inventory Control</Badge>
-              <Badge variant="secondary">User Management</Badge>
-              <Badge variant="secondary">Export CSV</Badge>
-            </div>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Resetting the application will delete all your inventory, businesses, and settings. This action cannot be undone.
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full gap-2 shadow-lg shadow-destructive/20">
+                  <Trash2 className="h-4 w-4" />
+                  Reset Application
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all data from your local database and restore the application to its original state.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Yes, Reset Everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>
