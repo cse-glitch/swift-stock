@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Business } from '@/lib/db';
 import { useBusiness } from '@/contexts/BusinessContext';
@@ -55,6 +56,7 @@ const Sparkline = ({ data, color }: { data: any[], color: string }) => (
 );
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { businesses, activeBusiness, activeBusinessId } = useBusiness();
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
