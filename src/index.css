@@ -50,6 +50,14 @@
     --sidebar-accent-foreground: 220 15% 90%;
     --sidebar-border: 225 20% 20%;
     --sidebar-ring: 230 65% 52%;
+
+    /* Animation timing tokens */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-fast: 120ms;
+    --duration-normal: 200ms;
+    --duration-slow: 350ms;
   }
 
   .dark {
@@ -99,16 +107,183 @@
 }
 
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     @apply border-border;
+    /* Use GPU-composited box-sizing */
+    box-sizing: border-box;
+  }
+
+  html {
+    /* Smooth scrolling that doesn't block the main thread */
+    scroll-behavior: smooth;
+    /* Improve text rendering performance */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     @apply bg-background text-foreground;
     font-family: 'Space Grotesk', system-ui, sans-serif;
+    /* Prevent layout shifts during font load */
+    font-display: swap;
+    /* Isolate paint to reduce repaint scope */
+    isolation: isolate;
   }
 
   code, pre, .font-mono {
     font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── GPU-accelerated scrollable areas ── */
+  main,
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-y-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  [data-sidebar="content"] {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* ── Page entry animation ── */
+@layer utilities {
+  .page-enter {
+    animation: pageEnter var(--duration-slow) var(--ease-out-expo) both;
+  }
+
+  /* Staggered card reveal */
+  .stagger-children > * {
+    animation: slideUp var(--duration-slow) var(--ease-out-expo) both;
+  }
+  .stagger-children > *:nth-child(1)  { animation-delay: 0ms; }
+  .stagger-children > *:nth-child(2)  { animation-delay: 40ms; }
+  .stagger-children > *:nth-child(3)  { animation-delay: 80ms; }
+  .stagger-children > *:nth-child(4)  { animation-delay: 120ms; }
+  .stagger-children > *:nth-child(5)  { animation-delay: 160ms; }
+  .stagger-children > *:nth-child(6)  { animation-delay: 200ms; }
+  .stagger-children > *:nth-child(7)  { animation-delay: 240ms; }
+  .stagger-children > *:nth-child(8)  { animation-delay: 280ms; }
+
+  /* GPU-accelerated micro-interaction for interactive elements */
+  .interactive {
+    transition: transform var(--duration-fast) var(--ease-spring),
+                box-shadow var(--duration-fast) var(--ease-in-out-smooth);
+    transform: translateZ(0); /* Force GPU layer */
+  }
+  .interactive:hover {
+    transform: translateY(-1px) translateZ(0);
+  }
+  .interactive:active {
+    transform: scale(0.98) translateZ(0);
+  }
+
+  /* Optimized card hover — only composited properties */
+  .card-hover {
+    transition: transform var(--duration-normal) var(--ease-out-expo),
+                box-shadow var(--duration-normal) var(--ease-out-expo);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px) translateZ(0);
+    box-shadow: 0 8px 25px -8px hsl(var(--primary) / 0.15),
+                0 4px 12px -4px hsl(var(--foreground) / 0.08);
+  }
+
+  /* Hardware-composited fade for overlays/modals */
+  .fade-layer {
+    will-change: opacity;
+    backface-visibility: hidden;
+  }
+
+  /* Custom scrollbar — slim and theme-aware */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+    transition: background-color var(--duration-fast) ease;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+
+  /* Table row highlight — only opacity/background, no layout props */
+  .table-row-hover {
+    transition: background-color var(--duration-fast) ease;
+  }
+
+  /* Badge pulse (replaces heavy animate-pulse on dot indicators) */
+  .status-dot {
+    animation: statusPulse 2.4s var(--ease-in-out-smooth) infinite;
+    will-change: opacity;
+  }
+}
+
+/* ── Keyframe definitions — only transform & opacity (GPU-composited) ── */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ── Respect user motion preferences ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .page-enter,
+  .stagger-children > *,
+  .status-dot {
+    animation: none !important;
   }
 }

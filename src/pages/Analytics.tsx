@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { useBusiness } from "@/contexts/BusinessContext";
@@ -12,7 +12,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  TrendingUp, TrendingDown, DollarSign, Package, BoxesIcon, Store,
+  TrendingUp, TrendingDown, Package, BoxesIcon, Store,
   ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase, Download,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -33,42 +33,76 @@ const Analytics = () => {
   const { businesses, activeBusinessId, setActiveBusinessId } = useBusiness();
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
 
-  const products = useLiveQuery(() => db.products.toArray()) ?? [];
-  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
-  const categories = useLiveQuery(() => db.categories.toArray()) ?? [];
-  const logs = useLiveQuery(() => db.inventoryLog.orderBy('timestamp').toArray()) ?? [];
+  const products  = useLiveQuery(() => db.products.toArray(),  []) ?? [];
+  const variants  = useLiveQuery(() => db.variants.toArray(),   []) ?? [];
+  const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
+  const logs = useLiveQuery(
+    () => db.inventoryLog.orderBy('timestamp').toArray(), []
+  ) ?? [];
 
-  const activeBusinesses = businesses.filter(b => b.isActive);
+  const activeBusinesses = useMemo(
+    () => businesses.filter(b => b.isActive),
+    [businesses]
+  );
+
+  // ── Pre-built O(1) lookup Maps (rebuilt only when source data changes) ──
+  const variantMap  = useMemo(() => new Map(variants.map(v  => [v.id,  v])),  [variants]);
+  const productMap  = useMemo(() => new Map(products.map(p  => [p.id,  p])),  [products]);
+  const categoryMap = useMemo(() => new Map(categories.map(c => [c.id, c])), [categories]);
+  const businessMap = useMemo(() => new Map(businesses.map(b => [b.id, b])), [businesses]);
+
+  // Variants grouped by productId for O(1) per-product variant retrieval
+  const variantsByProduct = useMemo(() => {
+    const m = new Map<number, typeof variants>();
+    for (const v of variants) {
+      const arr = m.get(v.productId) ?? [];
+      arr.push(v);
+      m.set(v.productId, arr);
+    }
+    return m;
+  }, [variants]);
+
+  // Products grouped by businessId
+  const productsByBusiness = useMemo(() => {
+    const m = new Map<number, typeof products>();
+    for (const p of products) {
+      const arr = m.get(p.businessId) ?? [];
+      arr.push(p);
+      m.set(p.businessId, arr);
+    }
+    return m;
+  }, [products]);
 
   // Filter logs by time range
   const filteredLogs = useMemo(() => {
-    if (timeRange === "all") return logs;
-    const now = Date.now();
-    const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
-    const cutoff = now - days * 86400000;
-    return logs.filter(l => new Date(l.timestamp).getTime() >= cutoff);
-  }, [logs, timeRange]);
+    let base = logs;
+    if (activeBusinessId) base = base.filter(l => l.businessId === activeBusinessId);
+    if (timeRange === "all") return base;
+    const cutoff = Date.now() - (timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90) * 86_400_000;
+    return base.filter(l => new Date(l.timestamp).getTime() >= cutoff);
+  }, [logs, timeRange, activeBusinessId]);
 
-  // ── Revenue per business (sum of removed × price) ──
+  // ── Revenue per business (O(n) with Map lookups) ──
   const revenueByBusiness = useMemo(() => {
-    return activeBusinesses.map((b, i) => {
-      const bProducts = products.filter(p => p.businessId === b.id);
-      const bVariants = variants.filter(v => bProducts.some(p => p.id === v.productId));
-      const soldLogs = filteredLogs.filter(l => l.businessId === b.id && l.type === "remove" && l.reason === "Sold");
+    const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
+    const revenueMap = new Map<number, number>();
 
-      let revenue = 0;
-      for (const log of soldLogs) {
-        const variant = bVariants.find(v => v.id === log.variantId);
-        const product = bProducts.find(p => p.id === log.productId);
-        const price = variant?.price ?? product?.basePrice ?? 0;
-        revenue += price * log.quantity;
-      }
+    for (const log of soldLogs) {
+      const v = variantMap.get(log.variantId!);
+      const p = productMap.get(log.productId);
+      const price = v?.price ?? p?.basePrice ?? 0;
+      revenueMap.set(log.businessId, (revenueMap.get(log.businessId) ?? 0) + price * log.quantity);
+    }
 
-      return { name: b.name.replace("SAMAN ", ""), revenue, fill: COLORS[i % COLORS.length] };
-    });
-  }, [activeBusinesses, products, variants, filteredLogs]);
+    return activeBusinesses.map((b, i) => ({
+      name: b.name.replace("SAMAN ", ""),
+      revenue: revenueMap.get(b.id!) ?? 0,
+      fill: COLORS[i % COLORS.length],
+      businessId: b.id,
+    }));
+  }, [activeBusinesses, filteredLogs, variantMap, productMap]);
 
-  // ── Sales trend (daily aggregation) ──
+  // ── Sales trend (daily aggregation — O(n)) ──
   const salesTrend = useMemo(() => {
     const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
     const dayMap = new Map<string, { sold: number; revenue: number }>();
@@ -76,32 +110,28 @@ const Analytics = () => {
     for (const log of soldLogs) {
       const day = new Date(log.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
       const existing = dayMap.get(day) ?? { sold: 0, revenue: 0 };
-      const variant = variants.find(v => v.id === log.variantId);
-      const product = products.find(p => p.id === log.productId);
-      const price = variant?.price ?? product?.basePrice ?? 0;
+      // O(1) Map lookup instead of O(n) .find()
+      const v = variantMap.get(log.variantId!);
+      const p = productMap.get(log.productId);
+      const price = v?.price ?? p?.basePrice ?? 0;
       existing.sold += log.quantity;
       existing.revenue += price * log.quantity;
       dayMap.set(day, existing);
     }
 
-    return Array.from(dayMap.entries()).map(([date, data]) => ({
-      date,
-      sold: data.sold,
-      revenue: data.revenue,
-    }));
-  }, [filteredLogs, variants, products]);
+    return Array.from(dayMap.entries()).map(([date, data]) => ({ date, ...data }));
+  }, [filteredLogs, variantMap, productMap]);
 
-  // ── Category volumes ──
+  // ── Category volumes (O(n) with Map lookups) ──
   const categoryVolumes = useMemo(() => {
-    const bizFilter = activeBusinessId
-      ? products.filter(p => p.businessId === activeBusinessId)
+    const bizProds = activeBusinessId
+      ? (productsByBusiness.get(activeBusinessId) ?? [])
       : products;
 
     const catMap = new Map<string, number>();
-    for (const p of bizFilter) {
-      const cat = categories.find(c => c.id === p.categoryId);
-      const catName = cat?.name ?? "Uncategorized";
-      const pVariants = variants.filter(v => v.productId === p.id);
+    for (const p of bizProds) {
+      const catName = categoryMap.get(p.categoryId!)?.name ?? "Uncategorized";
+      const pVariants = variantsByProduct.get(p.id!) ?? [];
       const stock = pVariants.reduce((s, v) => s + v.stock, 0);
       catMap.set(catName, (catMap.get(catName) ?? 0) + stock);
     }
@@ -110,78 +140,62 @@ const Analytics = () => {
       .map(([name, volume], i) => ({ name, volume, fill: COLORS[i % COLORS.length] }))
       .sort((a, b) => b.volume - a.volume)
       .slice(0, 10);
-  }, [products, variants, categories, activeBusinessId]);
+  }, [products, productsByBusiness, variantsByProduct, categoryMap, activeBusinessId]);
   
-  // ── Top Products by Revenue ──
+  // ── Top Products by Revenue (O(n) with Map lookups) ──
   const topProducts = useMemo(() => {
-    const soldLogs = activeBusinessId 
-      ? filteredLogs.filter(l => l.businessId === activeBusinessId && l.type === "remove" && l.reason === "Sold")
-      : filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
-      
+    const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
     const productRevenue = new Map<number, number>();
 
     for (const log of soldLogs) {
-      const variant = variants.find(v => v.id === log.variantId);
-      const product = products.find(p => p.id === log.productId);
-      const price = variant?.price ?? product?.basePrice ?? 0;
-      const revenue = price * log.quantity;
-      productRevenue.set(log.productId, (productRevenue.get(log.productId) ?? 0) + revenue);
+      const v = variantMap.get(log.variantId!);
+      const p = productMap.get(log.productId);
+      const price = v?.price ?? p?.basePrice ?? 0;
+      productRevenue.set(log.productId, (productRevenue.get(log.productId) ?? 0) + price * log.quantity);
     }
 
     return Array.from(productRevenue.entries())
-      .map(([id, revenue]) => {
-        const p = products.find(p => p.id === id);
-        return { name: p?.name ?? "Unknown", revenue };
-      })
+      .map(([id, revenue]) => ({ name: productMap.get(id)?.name ?? "Unknown", revenue }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
-  }, [filteredLogs, variants, products, activeBusinessId]);
+  }, [filteredLogs, variantMap, productMap]);
 
-  // ── Stock distribution per business ──
+  // ── Stock distribution per business (O(n) with grouped Maps) ──
   const stockByBusiness = useMemo(() => {
     return activeBusinesses.map((b, i) => {
-      const bProducts = products.filter(p => p.businessId === b.id);
-      const bVariants = variants.filter(v => bProducts.some(p => p.id === v.productId));
-      const stock = bVariants.reduce((s, v) => s + v.stock, 0);
+      const bProds = productsByBusiness.get(b.id!) ?? [];
+      const stock = bProds.reduce((s, p) => {
+        return s + (variantsByProduct.get(p.id!) ?? []).reduce((sv, v) => sv + v.stock, 0);
+      }, 0);
       return { name: b.name.replace("SAMAN ", ""), stock, fill: COLORS[i % COLORS.length] };
     });
-  }, [activeBusinesses, products, variants]);
+  }, [activeBusinesses, productsByBusiness, variantsByProduct]);
 
-  // ── Summary stats ──
+  // ── Summary stats (derived from already-computed values) ──
   const totalRevenue = useMemo(() => {
     if (activeBusinessId) {
-      const activeBiz = businesses.find(biz => biz.id === activeBusinessId);
-      if (!activeBiz) return 0;
-      return revenueByBusiness.find(b => activeBiz.name.includes(b.name))?.revenue ?? 0;
+      return revenueByBusiness.find(b => b.businessId === activeBusinessId)?.revenue ?? 0;
     }
     return revenueByBusiness.reduce((s, b) => s + b.revenue, 0);
-  }, [revenueByBusiness, activeBusinessId, businesses]);
+  }, [revenueByBusiness, activeBusinessId]);
 
   const totalSold = useMemo(() => {
-    const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
-    if (activeBusinessId) {
-      return soldLogs.filter(l => l.businessId === activeBusinessId).reduce((s, l) => s + l.quantity, 0);
-    }
-    return soldLogs.reduce((s, l) => s + l.quantity, 0);
-  }, [filteredLogs, activeBusinessId]);
+    return filteredLogs
+      .filter(l => l.type === "remove" && l.reason === "Sold")
+      .reduce((s, l) => s + l.quantity, 0);
+  }, [filteredLogs]); // activeBusinessId already baked into filteredLogs
 
   const totalStock = useMemo(() => {
     if (activeBusinessId) {
-      const bProducts = products.filter(p => p.businessId === activeBusinessId);
-      const bVariants = variants.filter(v => bProducts.some(p => p.id === v.productId));
-      return bVariants.reduce((s, v) => s + v.stock, 0);
+      const bProds = productsByBusiness.get(activeBusinessId) ?? [];
+      return bProds.reduce((s, p) => s + (variantsByProduct.get(p.id!) ?? []).reduce((sv, v) => sv + v.stock, 0), 0);
     }
     return variants.reduce((s, v) => s + v.stock, 0);
-  }, [variants, products, activeBusinessId]);
+  }, [variants, productsByBusiness, variantsByProduct, activeBusinessId]);
 
-  const totalMovements = useMemo(() => {
-    if (activeBusinessId) {
-      return filteredLogs.filter(l => l.businessId === activeBusinessId).length;
-    }
-    return filteredLogs.length;
-  }, [filteredLogs, activeBusinessId]);
+  const totalMovements = useMemo(() => filteredLogs.length, [filteredLogs]);
 
-  const exportData = () => {
+  const exportData = useCallback(() => {
     const summary = [
       { Category: "Summary", Metric: "Total Revenue", Value: totalRevenue },
       { Category: "Summary", Metric: "Units Sold", Value: totalSold },
@@ -210,7 +224,7 @@ const Analytics = () => {
     a.download = `analytics-export-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  };
+  }, [totalRevenue, totalSold, totalStock, totalMovements, revenueByBusiness, topProducts]);
 
   return (
     <div className="space-y-6">
@@ -257,10 +271,10 @@ const Analytics = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">৳{totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">from sold items</p>
           </CardContent>
         </Card>
@@ -316,7 +330,7 @@ const Analytics = () => {
                   <XAxis dataKey="name" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
                   <YAxis tick={{ fontSize: 12 }} className="fill-muted-foreground" />
                   <Tooltip
-                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+                    formatter={(value: number) => [`৳${value.toLocaleString()}`, "Revenue"]}
                     contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                     labelStyle={{ color: "hsl(var(--foreground))" }}
                   />
@@ -353,7 +367,7 @@ const Analytics = () => {
                     labelStyle={{ color: "hsl(var(--foreground))" }}
                   />
                   <Line type="monotone" dataKey="sold" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="Units Sold" />
-                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 3 }} name="Revenue ($)" />
+                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 3 }} name="Revenue (৳)" />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -380,7 +394,7 @@ const Analytics = () => {
                   <XAxis type="number" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} className="fill-muted-foreground" />
                   <Tooltip
-                    formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]}
+                    formatter={(value: number) => [`৳${value.toLocaleString()}`, "Revenue"]}
                     contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                     labelStyle={{ color: "hsl(var(--foreground))" }}
                   />
@@ -486,8 +500,8 @@ const Analytics = () => {
               </thead>
               <tbody>
                 {activeBusinesses.map((b, i) => {
-                  const bProducts = products.filter(p => p.businessId === b.id);
-                  const bVariants = variants.filter(v => bProducts.some(p => p.id === v.productId));
+                  const bProds = productsByBusiness.get(b.id!) ?? [];
+                  const bVariants = bProds.flatMap(p => variantsByProduct.get(p.id!) ?? []);
                   const bStock = bVariants.reduce((s, v) => s + v.stock, 0);
                   const bSoldLogs = filteredLogs.filter(l => l.businessId === b.id && l.type === "remove" && l.reason === "Sold");
                   const bSold = bSoldLogs.reduce((s, l) => s + l.quantity, 0);
@@ -510,7 +524,7 @@ const Analytics = () => {
                       <td className="text-right py-2 px-3">{bProducts.length}</td>
                       <td className="text-right py-2 px-3">{bVariants.length}</td>
                       <td className="text-right py-2 px-3 font-mono">{bStock.toLocaleString()}</td>
-                      <td className="text-right py-2 px-3 font-mono">${bRevenue.toLocaleString()}</td>
+                      <td className="text-right py-2 px-3 font-mono">৳{bRevenue.toLocaleString()}</td>
                       <td className="text-right py-2 px-3 font-mono">{bSold.toLocaleString()}</td>
                     </tr>
                   );

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Search, Package, AlertTriangle, ArrowUpDown, TrendingDown, DollarSign, Boxes } from 'lucide-react';
+import { Search, Package, AlertTriangle, ArrowUpDown, TrendingDown, TrendingUp, Boxes } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Inventory() {
@@ -141,7 +141,7 @@ export default function Inventory() {
         <Card className="bg-card/50 backdrop-blur-sm border-success/20 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-emerald-500" />
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-500">

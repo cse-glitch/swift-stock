@@ -18,6 +18,7 @@ import Properties from "./pages/Properties";
 import ServicesPage from "./pages/Services";
 import Analytics from "./pages/Analytics";
 import Inventory from "./pages/Inventory";
+import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/remove" element={<RemoveStock />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/inventory" element={<Inventory />} />
+              <Route path="/orders" element={<Orders />} />
               <Route path="/history" element={<History />} />
               <Route path="/utilities" element={<Utilities />} />
               <Route path="/settings" element={<Settings />} />

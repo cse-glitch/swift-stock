@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Product, type Variant, type Business } from '@/lib/db';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { getBusinessConfig } from '@/lib/business-config';
 import { normalizeSku, validateSkuFormat, checkSkuConflicts, type SkuConflict } from '@/lib/sku-validation';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ import { VariantManager } from '@/components/VariantManager';
 import { DynamicAttributeEditor } from '@/components/DynamicAttributeEditor';
 import { Plus, Search, BoxesIcon, AlertTriangle, Pencil, ShieldAlert } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 export default function Products() {
   const { businesses, activeBusiness, activeBusinessId, setActiveBusinessId } = useBusiness();
@@ -62,30 +63,31 @@ export default function Products() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Products</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">Products</h1>
+          <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">
             {activeBusiness ? `Managing ${activeBusiness.name}` : 'All business products'}
           </p>
         </div>
-        <Button onClick={() => { setEditingProduct(null); setDialogOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" /> Add Product
+        <Button onClick={() => { setEditingProduct(null); setDialogOpen(true); }} className="shrink-0" size="sm">
+          <Plus className="mr-1.5 h-4 w-4" /> <span className="hidden sm:inline">Add Product</span><span className="sm:hidden">Add</span>
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <div className="relative flex-1 max-w-sm">
+      {/* Filters */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1 min-w-0 max-w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products..." className="pl-9" />
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 flex-wrap">
           <Select
             value={activeBusinessId?.toString() ?? "all"}
             onValueChange={v => setActiveBusinessId(v === "all" ? null : Number(v))}
           >
-            <SelectTrigger className="w-[200px] bg-card">
+            <SelectTrigger className="w-full sm:w-[180px] bg-card text-sm">
               <SelectValue placeholder="All Businesses" />
             </SelectTrigger>
             <SelectContent>
@@ -96,7 +98,7 @@ export default function Products() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-32 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
@@ -107,87 +109,91 @@ export default function Products() {
         </div>
       </div>
 
+      {/* Products Table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>SKU</TableHead>
-                {!activeBusinessId && <TableHead>Business</TableHead>}
-                <TableHead>Category</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    No products found. Add your first product to get started.
-                  </TableCell>
+                  <TableHead className="min-w-[160px]">Product</TableHead>
+                  <TableHead className="hidden sm:table-cell">SKU</TableHead>
+                  {!activeBusinessId && <TableHead className="hidden md:table-cell">Business</TableHead>}
+                  <TableHead className="hidden md:table-cell">Category</TableHead>
+                  <TableHead className="hidden sm:table-cell">Type</TableHead>
+                  <TableHead className="text-right">Stock</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-14">Edit</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map(product => {
-                  const biz = getBizForProduct(product);
-                  const config = biz ? getBusinessConfig(biz.type) : null;
-                  const totalStock = getTotalStock(product.id!);
-                  const cat = categories.find(c => c.id === product.categoryId);
-                  const pvariants = getProductVariants(product.id!);
-                  const lowStock = pvariants.some(v => v.stock <= v.lowStockThreshold);
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      No products found. Add your first product to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map(product => {
+                    const biz = getBizForProduct(product);
+                    const config = biz ? getBusinessConfig(biz.type) : null;
+                    const totalStock = getTotalStock(product.id!);
+                    const cat = categories.find(c => c.id === product.categoryId);
+                    const pvariants = getProductVariants(product.id!);
+                    const lowStock = pvariants.some(v => v.stock <= v.lowStockThreshold);
 
-                  return (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">{product.name}</span>
-                          {lowStock && <AlertTriangle className="h-3.5 w-3.5 text-warning" />}
-                        </div>
-                        {product.tags.length > 0 && (
-                          <div className="flex gap-1 mt-1">
-                            {product.tags.slice(0, 3).map(t => (
-                              <Badge key={t} variant="outline" className="text-[10px] px-1">{t}</Badge>
-                            ))}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{product.sku}</TableCell>
-                      {!activeBusinessId && (
+                    return (
+                      <TableRow key={product.id}>
                         <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <div className="h-2.5 w-2.5 rounded-full" style={{ background: biz ? `hsl(${biz.color})` : undefined }} />
-                            <span className="text-xs">{biz?.name}</span>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-medium text-foreground text-sm truncate max-w-[120px] sm:max-w-[200px]">{product.name}</span>
+                            {lowStock && <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />}
                           </div>
+                          <div className="sm:hidden font-mono text-xs text-muted-foreground mt-0.5">{product.sku}</div>
+                          {product.tags.length > 0 && (
+                            <div className="hidden sm:flex gap-1 mt-1">
+                              {product.tags.slice(0, 2).map(t => (
+                                <Badge key={t} variant="outline" className="text-[10px] px-1">{t}</Badge>
+                              ))}
+                            </div>
+                          )}
                         </TableCell>
-                      )}
-                      <TableCell className="text-sm">{cat?.name ?? '—'}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs capitalize">{product.type}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {config?.hasStock ? totalStock : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={product.status === 'active' ? 'default' : product.status === 'draft' ? 'secondary' : 'outline'}
-                          className="text-xs capitalize"
-                        >
-                          {product.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingProduct(product); setDialogOpen(true); }}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                        <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">{product.sku}</TableCell>
+                        {!activeBusinessId && (
+                          <TableCell className="hidden md:table-cell">
+                            <div className="flex items-center gap-1.5">
+                              <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: biz ? `hsl(${biz.color})` : undefined }} />
+                              <span className="text-xs truncate max-w-[100px]">{biz?.name}</span>
+                            </div>
+                          </TableCell>
+                        )}
+                        <TableCell className="hidden md:table-cell text-sm">{cat?.name ?? '—'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="secondary" className="text-xs capitalize">{product.type}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {config?.hasStock ? totalStock : '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={product.status === 'active' ? 'default' : product.status === 'draft' ? 'secondary' : 'outline'}
+                            className="text-xs capitalize"
+                          >
+                            {product.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingProduct(product); setDialogOpen(true); }}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -225,31 +231,46 @@ function ProductDialog({
 }) {
   const isEdit = !!product;
 
-  const [businessId, setBusinessId] = useState<string>(product?.businessId?.toString() ?? activeBusiness?.id?.toString() ?? '');
-  const [name, setName] = useState(product?.name ?? '');
-  const [sku, setSku] = useState(product?.sku ?? '');
-  const [categoryId, setCategoryId] = useState<string>(product?.categoryId?.toString() ?? 'none');
-  const [description, setDescription] = useState(product?.description ?? '');
-  const [basePrice, setBasePrice] = useState(product?.basePrice?.toString() ?? '');
-  const [status, setStatus] = useState(product?.status ?? 'active');
-  const [tags, setTags] = useState(product?.tags?.join(', ') ?? '');
-  const [attributes, setAttributes] = useState<Record<string, string | number | boolean>>(product?.attributes ?? {});
-  const [isSeasonal, setIsSeasonal] = useState(product?.isSeasonal ?? false);
-  const [seasonStart, setSeasonStart] = useState(product?.seasonStart ?? '');
-  const [seasonEnd, setSeasonEnd] = useState(product?.seasonEnd ?? '');
-  const [expiryTracking, setExpiryTracking] = useState(product?.expiryTracking ?? false);
-  const [variantsList, setVariantsList] = useState<Omit<Variant, 'id' | 'productId'>[]>(
-    existingVariants.map(({ id, productId, ...rest }) => rest)
-  );
-
-  // Inline error states
+  const [businessId, setBusinessId] = useState<string>('');
+  const [name, setName] = useState('');
+  const [sku, setSku] = useState('');
+  const [categoryId, setCategoryId] = useState<string>('none');
+  const [description, setDescription] = useState('');
+  const [basePrice, setBasePrice] = useState('');
+  const [status, setStatus] = useState<Product['status']>('active');
+  const [tags, setTags] = useState('');
+  const [attributes, setAttributes] = useState<Record<string, string | number | boolean>>({});
+  const [isSeasonal, setIsSeasonal] = useState(false);
+  const [seasonStart, setSeasonStart] = useState('');
+  const [seasonEnd, setSeasonEnd] = useState('');
+  const [expiryTracking, setExpiryTracking] = useState(false);
+  const [variantsList, setVariantsList] = useState<Omit<Variant, 'id' | 'productId'>[]>([]);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [variantSkuErrors, setVariantSkuErrors] = useState<Record<number, string>>({});
-
-  // Conflict confirmation modal
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [pendingConflicts, setPendingConflicts] = useState<SkuConflict[]>([]);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setBusinessId(product?.businessId?.toString() ?? activeBusiness?.id?.toString() ?? '');
+      setName(product?.name ?? '');
+      setSku(product?.sku ?? '');
+      setCategoryId(product?.categoryId?.toString() ?? 'none');
+      setDescription(product?.description ?? '');
+      setBasePrice(product?.basePrice?.toString() ?? '');
+      setStatus(product?.status ?? 'active');
+      setTags(product?.tags?.join(', ') ?? '');
+      setAttributes(product?.attributes ?? {});
+      setIsSeasonal(product?.isSeasonal ?? false);
+      setSeasonStart(product?.seasonStart ?? '');
+      setSeasonEnd(product?.seasonEnd ?? '');
+      setExpiryTracking(product?.expiryTracking ?? false);
+      setVariantsList(existingVariants.map(({ id, productId, ...rest }) => rest));
+      setSkuError(null);
+      setVariantSkuErrors({});
+    }
+  }, [open, product, existingVariants, activeBusiness]);
 
   const selectedBiz = businesses.find(b => b.id === Number(businessId));
   const config = selectedBiz ? getBusinessConfig(selectedBiz.type) : null;
@@ -258,22 +279,17 @@ function ProductDialog({
     ? (config.type === 'properties' ? 'listing' : 'physical')
     : config?.type === 'services' ? 'service' : 'physical';
 
-  // Normalize SKU on change
   function handleSkuChange(raw: string) {
     const normalized = normalizeSku(raw);
     setSku(normalized);
-    const fmtErr = validateSkuFormat(normalized);
-    setSkuError(fmtErr);
+    setSkuError(validateSkuFormat(normalized));
   }
 
   async function handleSave() {
-    // 1. Basic required fields
     if (!name.trim() || !sku.trim() || !businessId) {
       toast({ title: 'Missing fields', description: 'Name, SKU, and business are required.', variant: 'destructive' });
       return;
     }
-
-    // 2. Format validation
     const normalizedSku = normalizeSku(sku);
     const fmtErr = validateSkuFormat(normalizedSku);
     if (fmtErr) {
@@ -281,8 +297,6 @@ function ProductDialog({
       toast({ title: 'Invalid SKU format', description: fmtErr, variant: 'destructive' });
       return;
     }
-
-    // Validate variant SKU formats
     const varFmtErrors: Record<number, string> = {};
     variantsList.forEach((v, i) => {
       if (v.sku) {
@@ -295,32 +309,25 @@ function ProductDialog({
       toast({ title: 'Invalid variant SKU format', description: 'Fix the highlighted variant SKUs.', variant: 'destructive' });
       return;
     }
-
-    // 3. Uniqueness checks
     setSaving(true);
     const bizId = Number(businessId);
     const normalizedVariantSkus = variantsList.map(v => normalizeSku(v.sku));
     const { productError, variantErrors, conflicts } = await checkSkuConflicts(
       bizId, normalizedSku, normalizedVariantSkus, product?.id
     );
-
     if (productError || Object.keys(variantErrors).length > 0) {
       setSkuError(productError);
       setVariantSkuErrors(variantErrors);
-
       if (conflicts.length > 0) {
-        // Show confirmation modal with conflict details
         setPendingConflicts(conflicts);
         setConflictModalOpen(true);
         setSaving(false);
         return;
       }
-
       toast({ title: 'SKU conflicts found', description: 'Fix the highlighted fields.', variant: 'destructive' });
       setSaving(false);
       return;
     }
-
     await commitSave(normalizedSku, normalizedVariantSkus);
   }
 
@@ -328,7 +335,6 @@ function ProductDialog({
     setSaving(true);
     const normalizedSku = finalSku ?? normalizeSku(sku);
     const normalizedVarSkus = finalVariantSkus ?? variantsList.map(v => normalizeSku(v.sku));
-
     const productData: Omit<Product, 'id'> = {
       businessId: Number(businessId),
       categoryId: categoryId !== 'none' ? Number(categoryId) : undefined,
@@ -348,7 +354,6 @@ function ProductDialog({
       createdAt: product?.createdAt ?? new Date(),
       updatedAt: new Date(),
     };
-
     try {
       let productId: number;
       if (isEdit && product?.id) {
@@ -358,7 +363,6 @@ function ProductDialog({
       } else {
         productId = await db.products.add(productData as Product);
       }
-
       if (variantsList.length > 0) {
         await db.variants.bulkAdd(
           variantsList.map((v, i) => ({
@@ -368,7 +372,6 @@ function ProductDialog({
           }) as Variant)
         );
       }
-
       toast({ title: isEdit ? 'Product updated' : 'Product added' });
       setSkuError(null);
       setVariantSkuErrors({});
@@ -383,31 +386,31 @@ function ProductDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <BoxesIcon className="h-5 w-5 text-primary" />
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <BoxesIcon className="h-5 w-5 text-primary shrink-0" />
               {isEdit ? 'Edit Product' : 'New Product'}
               {config && (
-                <Badge variant="secondary" className="ml-2 capitalize">{config.productLabel}</Badge>
+                <Badge variant="secondary" className="ml-1 capitalize text-xs">{config.productLabel}</Badge>
               )}
             </DialogTitle>
           </DialogHeader>
 
           <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="w-full">
-              <TabsTrigger value="basic" className="flex-1">Basic Info</TabsTrigger>
-              <TabsTrigger value="attributes" className="flex-1">Attributes</TabsTrigger>
-              {config?.hasVariants && <TabsTrigger value="variants" className="flex-1">Variants</TabsTrigger>}
-              <TabsTrigger value="advanced" className="flex-1">Advanced</TabsTrigger>
+            <TabsList className="w-full grid grid-cols-4">
+              <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic</TabsTrigger>
+              <TabsTrigger value="attributes" className="text-xs sm:text-sm">Attrs</TabsTrigger>
+              {config?.hasVariants && <TabsTrigger value="variants" className="text-xs sm:text-sm">Variants</TabsTrigger>}
+              <TabsTrigger value="advanced" className="text-xs sm:text-sm">Advanced</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="basic" className="space-y-4 mt-4">
+            <TabsContent value="basic" className="space-y-3 mt-4">
               {!activeBusiness && (
                 <div>
-                  <Label>Business</Label>
+                  <Label className="text-sm">Business</Label>
                   <Select value={businessId} onValueChange={setBusinessId}>
-                    <SelectTrigger><SelectValue placeholder="Select business" /></SelectTrigger>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="Select business" /></SelectTrigger>
                     <SelectContent>
                       {businesses.map(b => (
                         <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
@@ -417,32 +420,30 @@ function ProductDialog({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label>Product Name</Label>
-                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="Product name" />
+                  <Label className="text-sm">Product Name</Label>
+                  <Input className="mt-1" value={name} onChange={e => setName(e.target.value)} placeholder="Product name" />
                 </div>
                 <div>
-                  <Label>SKU</Label>
+                  <Label className="text-sm">SKU</Label>
                   <Input
+                    className={`mt-1 font-mono uppercase ${skuError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                     value={sku}
                     onChange={e => handleSkuChange(e.target.value)}
                     placeholder="PRD-001"
-                    className={`font-mono uppercase ${skuError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                     maxLength={30}
                   />
-                  {skuError && (
-                    <p className="text-xs text-destructive mt-1">{skuError}</p>
-                  )}
-                  <p className="text-[10px] text-muted-foreground mt-0.5">A-Z, 0-9, hyphens. 2–30 chars. Auto-uppercased.</p>
+                  {skuError && <p className="text-xs text-destructive mt-1">{skuError}</p>}
+                  <p className="text-[10px] text-muted-foreground mt-0.5">A-Z, 0-9, hyphens. 2–30 chars.</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label>Category</Label>
+                  <Label className="text-sm">Category</Label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
                       {bizCategories.map(c => (
@@ -452,25 +453,25 @@ function ProductDialog({
                   </Select>
                 </div>
                 <div>
-                  <Label>Base Price</Label>
-                  <Input type="number" value={basePrice} onChange={e => setBasePrice(e.target.value)} placeholder="0.00" />
+                  <Label className="text-sm">Base Price (৳)</Label>
+                  <Input className="mt-1" type="number" value={basePrice} onChange={e => setBasePrice(e.target.value)} placeholder="0.00" />
                 </div>
               </div>
 
               <div>
-                <Label>Description</Label>
-                <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description..." rows={3} />
+                <Label className="text-sm">Description</Label>
+                <Textarea className="mt-1" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description..." rows={2} />
               </div>
 
               <div>
-                <Label>Tags (comma-separated)</Label>
-                <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="summer, new arrival, trending" />
+                <Label className="text-sm">Tags (comma-separated)</Label>
+                <Input className="mt-1" value={tags} onChange={e => setTags(e.target.value)} placeholder="summer, new arrival" />
               </div>
 
               <div>
-                <Label>Status</Label>
+                <Label className="text-sm">Status</Label>
                 <Select value={status} onValueChange={v => setStatus(v as 'active' | 'draft' | 'archived')}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="draft">Draft</SelectItem>
@@ -499,7 +500,7 @@ function ProductDialog({
               </TabsContent>
             )}
 
-            <TabsContent value="advanced" className="space-y-4 mt-4">
+            <TabsContent value="advanced" className="space-y-3 mt-4">
               <div className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">Seasonal Product</p>
@@ -509,14 +510,14 @@ function ProductDialog({
               </div>
 
               {isSeasonal && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Season Start</Label>
-                    <Input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} />
+                    <Label className="text-sm">Season Start</Label>
+                    <Input className="mt-1" type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} />
                   </div>
                   <div>
-                    <Label>Season End</Label>
-                    <Input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} />
+                    <Label className="text-sm">Season End</Label>
+                    <Input className="mt-1" type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} />
                   </div>
                 </div>
               )}
@@ -524,36 +525,33 @@ function ProductDialog({
               <div className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
                   <p className="text-sm font-medium text-foreground">Expiry Tracking</p>
-                  <p className="text-xs text-muted-foreground">Enable for perishable items (agro/food)</p>
+                  <p className="text-xs text-muted-foreground">Enable for perishable items</p>
                 </div>
                 <Switch checked={expiryTracking} onCheckedChange={setExpiryTracking} />
               </div>
             </TabsContent>
           </Tabs>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Checking...' : isEdit ? 'Update' : 'Create Product'}
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto">
+              {saving ? 'Checking...' : isEdit ? 'Update Product' : 'Create Product'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Conflict Confirmation Modal */}
       <Dialog open={conflictModalOpen} onOpenChange={setConflictModalOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <ShieldAlert className="h-5 w-5" />
               SKU Conflicts Detected
             </DialogTitle>
             <DialogDescription>
-              The following SKUs conflict with existing records in this business.
-              Go back and fix them, or review the details below.
+              The following SKUs conflict with existing records. Go back and fix them.
             </DialogDescription>
           </DialogHeader>
-
           <div className="max-h-48 overflow-auto border rounded-md">
             <Table>
               <TableHeader>
@@ -567,7 +565,7 @@ function ProductDialog({
                 {pendingConflicts.map((c, i) => (
                   <TableRow key={i}>
                     <TableCell className="font-mono text-sm">{c.sku}</TableCell>
-                    <TableCell>{c.existingName}</TableCell>
+                    <TableCell className="text-sm">{c.existingName}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs capitalize">{c.existingType}</Badge>
                     </TableCell>
@@ -576,7 +574,6 @@ function ProductDialog({
               </TableBody>
             </Table>
           </div>
-
           <DialogFooter>
             <Button variant="outline" onClick={() => setConflictModalOpen(false)}>
               Go Back & Fix
