@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { db, ProductType } from "@/lib/db";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,27 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { PackagePlus, Search, Upload, ExternalLink, AlertCircle, PackageMinus } from "lucide-react";
+import { PackagePlus, Search, Upload, ExternalLink, AlertCircle, PackageMinus, Download, FileWarning, CheckCircle2 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+
+const getTemplateColumns = (businessType: string) => {
+  const base = ['Product SKU', 'Product Name', 'Category', 'Base Price'];
+  const physicalBase = [...base, 'Variant SKU', 'Variant Name', 'Stock', 'Low Stock Threshold'];
+  const propertiesBase = [...base, 'Listing Type', 'Location', 'Area', 'Bedrooms', 'Bathrooms', 'Availability'];
+  const servicesBase = [...base, 'Duration', 'Capacity', 'Available Days'];
+
+  switch (businessType) {
+    case 'fashion': return [...physicalBase, 'Material', 'Color', 'Size'];
+    case 'lubricants': return [...physicalBase, 'Grade', 'Volume'];
+    case 'agro': return [...physicalBase, 'Origin', 'Weight'];
+    case 'properties': return propertiesBase;
+    case 'services': return servicesBase;
+    default: return [...physicalBase, 'Brand', 'Material', 'Color']; // general
+  }
+};
 
 const AddStock = () => {
   const { businesses, activeBusinessId } = useBusiness();
@@ -21,6 +37,7 @@ const AddStock = () => {
 
   const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(activeBusinessId);
   const bizId = selectedBusinessId ?? activeBusinessId;
+  const selectedBusiness = businesses.find(b => b.id === bizId);
 
   const products = useLiveQuery(() =>
     bizId ? db.products.where('businessId').equals(bizId).toArray() : db.products.toArray()
@@ -30,11 +47,14 @@ const AddStock = () => {
   const [search, setSearch] = useState("");
   const [quantities, setQuantities] = useState<Map<number, number>>(new Map());
   const [note, setNote] = useState("");
-  const [pendingUpload, setPendingUpload] = useState<any[] | null>(null);
+  
+  // File Upload State
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{row: number, message: string}[]>([]);
+  const [validatedData, setValidatedData] = useState<any[] | null>(null);
+
   const { toast } = useToast();
 
-  // Build a flat list of variant+product combos for display
   const stockItems = useMemo(() => {
     const q = search.toLowerCase();
     return products.flatMap(p => {
@@ -108,20 +128,40 @@ const AddStock = () => {
     }
   };
 
+  const downloadTemplate = () => {
+    if (!selectedBusiness) return;
+    const cols = getTemplateColumns(selectedBusiness.type);
+    const csvStr = Papa.unparse([cols]);
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedBusiness.slug}_stock_template.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!bizId) {
+    if (!selectedBusiness) {
       toast({ title: "Select a business", description: "Please select a specific business before uploading.", variant: "destructive" });
       e.target.value = '';
       return;
     }
 
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    if (fileExt !== 'csv' && fileExt !== 'xlsx' && fileExt !== 'xls') {
+      toast({ title: "Invalid file", description: "Only .csv and .xlsx files are allowed.", variant: "destructive" });
+      e.target.value = '';
+      return;
+    }
+
     try {
-      let data: any[] = [];
-      if (file.name.endsWith('.csv')) {
-        data = await new Promise<any[]>((resolve, reject) => {
+      let rawData: any[] = [];
+      if (fileExt === 'csv') {
+        rawData = await new Promise<any[]>((resolve, reject) => {
           Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
@@ -129,74 +169,232 @@ const AddStock = () => {
             error: (error) => reject(error),
           });
         });
-      } else if (file.name.match(/\.xlsx?$/)) {
+      } else {
         const buffer = await file.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        data = XLSX.utils.sheet_to_json(worksheet);
-      } else {
-        throw new Error("Unsupported file format.");
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        rawData = XLSX.utils.sheet_to_json(worksheet);
       }
 
-      setPendingUpload(data);
+      // Validation
+      const expectedCols = getTemplateColumns(selectedBusiness.type);
+      const errors: {row: number, message: string}[] = [];
+      const parsedData: any[] = [];
+      
+      if (rawData.length === 0) {
+        errors.push({ row: 0, message: "File is empty or could not be read." });
+      } else {
+        const actualCols = Object.keys(rawData[0]);
+        const missingCols = expectedCols.filter(c => !actualCols.find(a => a.toLowerCase().trim() === c.toLowerCase().trim()));
+        if (missingCols.length > 0) {
+          errors.push({ row: 0, message: `Missing required columns: ${missingCols.join(', ')}` });
+        }
+      }
+
+      const seenVariantSkus = new Set<string>();
+
+      if (errors.length === 0) {
+        rawData.forEach((row, idx) => {
+          const rowNum = idx + 2; // +1 for 0-index, +1 for header
+          const getVal = (col: string) => {
+            const key = Object.keys(row).find(k => k.toLowerCase().trim() === col.toLowerCase().trim());
+            return key ? row[key] : undefined;
+          };
+
+          const productSku = getVal('Product SKU');
+          const productName = getVal('Product Name');
+          const category = getVal('Category');
+          const basePrice = getVal('Base Price');
+
+          if (!productSku) errors.push({ row: rowNum, message: "Missing Product SKU" });
+          if (!productName) errors.push({ row: rowNum, message: "Missing Product Name" });
+          if (!category) errors.push({ row: rowNum, message: "Missing Category" });
+          
+          const priceVal = parseFloat(String(basePrice));
+          if (isNaN(priceVal) || priceVal < 0) errors.push({ row: rowNum, message: "Invalid Base Price (must be a positive number)" });
+
+          if (selectedBusiness.type !== 'properties' && selectedBusiness.type !== 'services') {
+            const variantSku = getVal('Variant SKU');
+            const stock = parseInt(String(getVal('Stock')), 10);
+            const lowStock = parseInt(String(getVal('Low Stock Threshold')), 10);
+
+            if (!variantSku) errors.push({ row: rowNum, message: "Missing Variant SKU" });
+            else {
+              const vSkuStr = String(variantSku).trim().toLowerCase();
+              if (seenVariantSkus.has(vSkuStr)) {
+                errors.push({ row: rowNum, message: `Duplicate Variant SKU in file: ${variantSku}` });
+              }
+              seenVariantSkus.add(vSkuStr);
+            }
+
+            if (isNaN(stock) || stock < 0) errors.push({ row: rowNum, message: "Invalid Stock (must be a positive number)" });
+            if (isNaN(lowStock) || lowStock < 0) errors.push({ row: rowNum, message: "Invalid Low Stock Threshold" });
+          }
+          
+          parsedData.push(row);
+        });
+      }
+
+      if (errors.length > 0) {
+        setValidationErrors(errors);
+        setValidatedData(null);
+      } else {
+        setValidationErrors([]);
+        setValidatedData(parsedData);
+      }
       setIsUploadDialogOpen(true);
+
     } catch (error: any) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      toast({ title: "Parsing failed", description: error.message, variant: "destructive" });
     } finally {
       e.target.value = '';
     }
   };
 
-  const applyUpload = (mode: 'add' | 'replace') => {
-    if (!pendingUpload) return;
-
-    const nextQuantities = new Map(quantities);
-    let matchCount = 0;
-    let skipCount = 0;
-
-    for (const row of pendingUpload) {
-      const skuKey = Object.keys(row).find(k => k.toLowerCase() === 'sku' || k.toLowerCase() === 'item number' || k.toLowerCase() === 'item_number');
-      const qtyKey = Object.keys(row).find(k => k.toLowerCase() === 'quantity' || k.toLowerCase() === 'qty');
-
-      if (!skuKey || !qtyKey) continue;
-
-      const sku = String(row[skuKey]).trim();
-      const qty = parseInt(String(row[qtyKey]), 10);
-
-      if (!sku || isNaN(qty)) continue;
-
-      const variant = variants.find(v => v.sku.toLowerCase() === sku.toLowerCase());
-      if (variant) {
-        const product = products.find(p => p.id === variant.productId);
-        if (product) {
-          if (mode === 'add') {
-            const currentVal = nextQuantities.get(variant.id!) ?? 0;
-            nextQuantities.set(variant.id!, currentVal + qty);
-          } else {
-            // Replace mode: delta = target - current_db_stock
-            // Note: AddStock handleConfirm will do variant.stock + addQty
-            // So addQty = target - variant.stock
-            const delta = qty - variant.stock;
-            nextQuantities.set(variant.id!, delta);
+  const confirmUpload = async () => {
+    if (!validatedData || !selectedBusiness) return;
+    try {
+      await db.transaction('rw', db.categories, db.products, db.variants, db.propertyListings, db.services, db.inventoryLog, async () => {
+        for (const row of validatedData) {
+          const getVal = (col: string) => {
+            const key = Object.keys(row).find(k => k.toLowerCase().trim() === col.toLowerCase().trim());
+            return key ? row[key] : undefined;
+          };
+          
+          const categoryName = String(getVal('Category')).trim();
+          let category = await db.categories.where({ businessId: selectedBusiness.id!, name: categoryName }).first();
+          if (!category) {
+            const catId = await db.categories.add({ businessId: selectedBusiness.id!, name: categoryName });
+            category = { id: catId as number, businessId: selectedBusiness.id!, name: categoryName };
           }
-          matchCount++;
-        } else {
-          skipCount++;
+
+          const productSku = String(getVal('Product SKU')).trim();
+          let product = await db.products.where('sku').equals(productSku).first();
+          
+          let productType: ProductType = 'physical';
+          if (selectedBusiness.type === 'properties') productType = 'listing';
+          if (selectedBusiness.type === 'services') productType = 'service';
+
+          const basePrice = parseFloat(String(getVal('Base Price')));
+          const attributes: Record<string, any> = {};
+          
+          const standardCols = getTemplateColumns(selectedBusiness.type).map(c => c.toLowerCase().trim());
+          Object.keys(row).forEach(k => {
+             if (!standardCols.includes(k.toLowerCase().trim())) {
+                attributes[k] = row[k];
+             }
+          });
+
+          if (!product) {
+            const pid = await db.products.add({
+              businessId: selectedBusiness.id!,
+              categoryId: category.id!,
+              name: String(getVal('Product Name')).trim(),
+              sku: productSku,
+              type: productType,
+              basePrice: basePrice,
+              currency: 'BDT',
+              tags: [],
+              attributes: productType === 'physical' ? {} : attributes,
+              status: 'active',
+              isSeasonal: false,
+              expiryTracking: false,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+            product = await db.products.get(pid as number);
+          }
+
+          if (productType === 'physical') {
+             const variantSku = String(getVal('Variant SKU')).trim();
+             let variant = await db.variants.where('sku').equals(variantSku).first();
+             const stockQty = parseInt(String(getVal('Stock')), 10) || 0;
+             const lowStock = parseInt(String(getVal('Low Stock Threshold')), 10) || 5;
+             
+             const vAttr: Record<string, any> = {};
+             if (selectedBusiness.type === 'fashion') {
+               if(getVal('Material')) vAttr.material = getVal('Material');
+               if(getVal('Color')) vAttr.color = getVal('Color');
+               if(getVal('Size')) vAttr.size = getVal('Size');
+             } else if (selectedBusiness.type === 'lubricants') {
+               if(getVal('Grade')) vAttr.grade = getVal('Grade');
+               if(getVal('Volume')) vAttr.volume = getVal('Volume');
+             } else if (selectedBusiness.type === 'agro') {
+               if(getVal('Origin')) vAttr.origin = getVal('Origin');
+               if(getVal('Weight')) vAttr.weight = getVal('Weight');
+             } else {
+               if(getVal('Brand')) vAttr.brand = getVal('Brand');
+               if(getVal('Material')) vAttr.material = getVal('Material');
+               if(getVal('Color')) vAttr.color = getVal('Color');
+             }
+             Object.keys(attributes).forEach(k => vAttr[k] = attributes[k]);
+
+             let diff = 0;
+             if (!variant) {
+               await db.variants.add({
+                 productId: product!.id!,
+                 name: String(getVal('Variant Name')).trim(),
+                 sku: variantSku,
+                 attributes: vAttr,
+                 stock: stockQty,
+                 lowStockThreshold: lowStock
+               });
+               diff = stockQty;
+             } else {
+               diff = stockQty - variant.stock;
+               await db.variants.update(variant.id!, {
+                 stock: stockQty,
+                 lowStockThreshold: lowStock,
+                 attributes: { ...variant.attributes, ...vAttr }
+               });
+             }
+
+             if (diff !== 0) {
+                const addedVariant = await db.variants.where('sku').equals(variantSku).first();
+                await db.inventoryLog.add({
+                  productId: product!.id!,
+                  variantId: addedVariant!.id!,
+                  businessId: selectedBusiness.id!,
+                  type: diff > 0 ? 'add' : 'remove',
+                  quantity: Math.abs(diff),
+                  reason: 'Bulk Upload/Update',
+                  timestamp: new Date()
+                });
+             }
+          } else if (productType === 'listing') {
+             let listing = await db.propertyListings.where('productId').equals(product!.id!).first();
+             if (!listing) {
+               await db.propertyListings.add({
+                 productId: product!.id!,
+                 listingType: String(getVal('Listing Type')).toLowerCase() as any || 'sale',
+                 location: String(getVal('Location')),
+                 area: parseFloat(String(getVal('Area'))),
+                 bedrooms: parseInt(String(getVal('Bedrooms'))),
+                 bathrooms: parseInt(String(getVal('Bathrooms'))),
+                 availability: String(getVal('Availability')).toLowerCase() as any || 'available'
+               });
+             }
+          } else if (productType === 'service') {
+             let service = await db.services.where('productId').equals(product!.id!).first();
+             if (!service) {
+               const days = String(getVal('Available Days')).split(',').map(d => d.trim());
+               await db.services.add({
+                 productId: product!.id!,
+                 duration: String(getVal('Duration')),
+                 capacity: parseInt(String(getVal('Capacity'))),
+                 currentBookings: 0,
+                 availableDays: days
+               });
+             }
+          }
         }
-      } else {
-        skipCount++;
-      }
+      });
+      toast({ title: "Success", description: "Products and stock updated successfully from file." });
+      setIsUploadDialogOpen(false);
+      setValidatedData(null);
+    } catch (err: any) {
+      toast({ title: "Database Error", description: err.message, variant: "destructive" });
     }
-
-    setQuantities(nextQuantities);
-    setIsUploadDialogOpen(false);
-    setPendingUpload(null);
-
-    toast({ 
-      title: "Upload processed", 
-      description: `Matched ${matchCount} items in ${mode} mode. Skipped ${skipCount} items.`,
-    });
   };
 
   return (
@@ -215,7 +413,7 @@ const AddStock = () => {
       </div>
 
       {/* Business filter */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-start">
         <div className="flex-1">
           <Select
             value={bizId?.toString() ?? "all"}
@@ -232,9 +430,17 @@ const AddStock = () => {
             </SelectContent>
           </Select>
           {!bizId && (
-            <p className="text-xs text-muted-foreground mt-2">Select a business to enable file upload.</p>
+            <p className="text-xs text-muted-foreground mt-2">Select a business to download template and enable file upload.</p>
           )}
         </div>
+        
+        {bizId && (
+          <Button variant="outline" onClick={downloadTemplate} className="gap-2 shrink-0">
+            <Download className="w-4 h-4" />
+            Template
+          </Button>
+        )}
+
         <div>
           <input
             type="file"
@@ -247,7 +453,7 @@ const AddStock = () => {
           <Label htmlFor="stock-upload" className={!bizId ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
             <div className={`flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md h-10 ${!bizId ? "" : "hover:bg-primary/90"}`}>
               <Upload className="w-4 h-4" />
-              Upload File
+              Upload
             </div>
           </Label>
         </div>
@@ -374,27 +580,47 @@ const AddStock = () => {
         </Card>
       )}
 
-      {/* Upload Choice Dialog */}
+      {/* Upload Validation Dialog */}
       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Process Uploaded Stock</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {validationErrors.length > 0 ? (
+                <><FileWarning className="w-5 h-5 text-destructive" /> Upload Errors</>
+              ) : (
+                <><CheckCircle2 className="w-5 h-5 text-success" /> Upload Validated</>
+              )}
+            </DialogTitle>
             <DialogDescription>
-              We found {pendingUpload?.length} items in your file. How should we apply these quantities?
+              {validationErrors.length > 0
+                ? "Your file has validation errors. Please fix them and upload again."
+                : `We successfully validated ${validatedData?.length} items. They will be added or updated.`}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 py-4">
-            <Button variant="outline" className="flex flex-col items-start h-auto p-4 gap-1 text-left" onClick={() => applyUpload('add')}>
-              <span className="font-bold">Add to current stock</span>
-              <span className="text-xs text-muted-foreground font-normal">Incremental: Stock will be increased by the numbers in the file.</span>
-            </Button>
-            <Button variant="outline" className="flex flex-col items-start h-auto p-4 gap-1 text-left" onClick={() => applyUpload('replace')}>
-              <span className="font-bold">Replace current stock</span>
-              <span className="text-xs text-muted-foreground font-normal">Absolute: Stock will be adjusted so the final count matches the file exactly.</span>
-            </Button>
-          </div>
+
+          {validationErrors.length > 0 ? (
+            <div className="max-h-64 overflow-y-auto border border-destructive/20 rounded-md p-3 bg-destructive/5 text-destructive text-sm space-y-2">
+              {validationErrors.map((err, i) => (
+                <div key={i} className="flex gap-3">
+                  <span className="font-semibold shrink-0">Row {err.row}:</span>
+                  <span>{err.message}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 bg-muted/50 rounded-lg text-sm border">
+              The file format matches the <strong>{selectedBusiness?.name}</strong> schema. <br/><br/>
+              Clicking <strong>Confirm Upload</strong> will create new products/variants if they don't exist, and update stock quantities for existing ones.
+            </div>
+          )}
+
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsUploadDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>
+              {validationErrors.length > 0 ? "Close" : "Cancel"}
+            </Button>
+            {validationErrors.length === 0 && (
+              <Button onClick={confirmUpload}>Confirm Upload</Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
