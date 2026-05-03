@@ -64,29 +64,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session on mount
+  // Restore session and seed admin on mount
   useEffect(() => {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as AuthUser;
-        setUser(parsed);
-      } catch {
-        sessionStorage.removeItem(SESSION_KEY);
+    const init = async () => {
+      console.log('AuthProvider: Initializing...');
+      
+      // Seed admin if needed
+      await seedAdminIfEmpty();
+
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as AuthUser;
+          setUser(parsed);
+          console.log('AuthProvider: Restored session for', parsed.username);
+        } catch (err) {
+          console.error('AuthProvider: Failed to restore session', err);
+          sessionStorage.removeItem(SESSION_KEY);
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+      console.log('AuthProvider: Initialization complete.');
+    };
+    
+    init();
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     try {
+      console.log('Attempting login for:', username);
       const dbUser = await db.users.where('username').equals(username.trim().toLowerCase()).first();
+      
       if (!dbUser) {
+        console.warn('User not found in database:', username);
         return { success: false, error: 'Invalid username or password' };
       }
 
-      const match = await bcrypt.compare(password, dbUser.passwordHash);
+      console.log('User found, comparing password hash (sync)...');
+      const match = bcrypt.compareSync(password, dbUser.passwordHash);
+      
       if (!match) {
+        console.warn('Password mismatch for user:', username);
         return { success: false, error: 'Invalid username or password' };
       }
 
@@ -175,15 +193,42 @@ export async function writeAuditLog(
 
 // ── Seed the first admin user if no users exist ───────────
 export async function seedAdminIfEmpty() {
-  const count = await db.users.count();
-  if (count === 0) {
-    const hash = await bcrypt.hash('admin123', 10);
-    await db.users.add({
-      username: 'admin',
-      passwordHash: hash,
-      displayName: 'Administrator',
-      role: 'admin',
-      createdAt: new Date(),
-    });
+  try {
+    const count = await db.users.count();
+    console.log('Auth: Current user count:', count);
+    
+    if (count === 0) {
+      console.log('Auth: Seeding initial admin user...');
+      const hash = bcrypt.hashSync('admin123', 10);
+      await db.users.add({
+        username: 'admin',
+        passwordHash: hash,
+        displayName: 'Administrator',
+        role: 'admin',
+        createdAt: new Date(),
+      });
+      console.log('Auth: Admin user seeded successfully.');
+    } else {
+      // Check if admin user exists
+      const admin = await db.users.where('username').equals('admin').first();
+      if (!admin) {
+        console.log('Auth: Admin missing, adding...');
+        const hash = bcrypt.hashSync('admin123', 10);
+        await db.users.add({
+          username: 'admin',
+          passwordHash: hash,
+          displayName: 'Administrator',
+          role: 'admin',
+          createdAt: new Date(),
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Auth: Failed to seed admin user:', err);
   }
+}
+
+// Expose DB for debugging
+if (typeof window !== 'undefined') {
+  (window as any).db = db;
 }

@@ -31,13 +31,6 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function AppBootstrap() {
-  useEffect(() => {
-    seedAdminIfEmpty();
-  }, []);
-  return null;
-}
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -45,7 +38,6 @@ const App = () => (
       <Sonner />
       <HashRouter>
         <AuthProvider>
-          <AppBootstrap />
           <BusinessProvider>
             <Routes>
               {/* Public */}
