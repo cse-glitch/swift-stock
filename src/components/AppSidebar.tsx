@@ -3,7 +3,6 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { BusinessSwitcher } from "@/components/BusinessSwitcher";
-import { LowStockAlert } from "@/components/LowStockAlert";
 import {
   Sidebar,
   SidebarContent,
@@ -85,7 +84,6 @@ export function AppSidebar() {
               <span className="text-[10px] text-sidebar-foreground/60 leading-none">Inventory Hub</span>
             </div>
           )}
-          {!collapsed && <div className="ml-auto"><LowStockAlert /></div>}
         </div>
         {!collapsed && (
           <div className="mt-3">

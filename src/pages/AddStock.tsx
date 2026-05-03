@@ -254,7 +254,7 @@ const AddStock = () => {
   const confirmUpload = async () => {
     if (!validatedData || !selectedBusiness) return;
     try {
-      await db.transaction('rw', db.categories, db.products, db.variants, db.propertyListings, db.services, db.inventoryLog, async () => {
+      await db.transaction('rw', [db.categories, db.products, db.variants, db.propertyListings, db.services, db.inventoryLog], async () => {
         for (const row of validatedData) {
           const getVal = (col: string) => {
             const key = Object.keys(row).find(k => k.toLowerCase().trim() === col.toLowerCase().trim());

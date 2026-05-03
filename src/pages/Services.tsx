@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Briefcase, Clock, Users, Plus, Calendar } from 'lucide-react';
+import { Briefcase, Clock, Users, Plus, Calendar, Pencil, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -19,6 +19,7 @@ export default function ServicesPage() {
   const { businesses } = useBusiness();
   const svcBiz = businesses.find(b => b.type === 'services');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
 
   const services = useLiveQuery(() => db.services.toArray()) ?? [];
   const products = useLiveQuery(
@@ -42,16 +43,42 @@ export default function ServicesPage() {
     setAvailableDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   }
 
+  function handleEdit(svc: Service) {
+    const product = getProduct(svc);
+    setEditingService(svc);
+    setName(product?.name ?? '');
+    setSku(product?.sku ?? '');
+    setDuration(svc.duration ?? '');
+    setCapacity(svc.capacity?.toString() ?? '');
+    setPrice(product?.basePrice?.toString() ?? '');
+    setAvailableDays(svc.availableDays);
+    setDialogOpen(true);
+  }
+
+  async function handleDelete(svc: Service) {
+    if (!confirm('Are you sure you want to delete this service?')) return;
+    
+    try {
+      await db.transaction('rw', [db.services, db.products], async () => {
+        await db.services.delete(svc.id!);
+        await db.products.delete(svc.productId);
+      });
+      toast({ title: 'Service deleted' });
+    } catch (err) {
+      toast({ title: 'Error deleting service', variant: 'destructive' });
+    }
+  }
+
   async function handleSave() {
     if (!name.trim() || !svcBiz?.id) {
       toast({ title: 'Missing fields', variant: 'destructive' });
       return;
     }
 
-    const productId = await db.products.add({
+    const productData: Omit<Product, 'id'> = {
       businessId: svcBiz.id,
       name: name.trim(),
-      sku: sku.trim() || `SVC-${Date.now()}`,
+      sku: sku.trim() || (editingService ? getProduct(editingService)?.sku || '' : `SVC-${Date.now()}`),
       type: 'service',
       currency: 'BDT',
       tags: ['service'],
@@ -60,22 +87,38 @@ export default function ServicesPage() {
       isSeasonal: false,
       expiryTracking: false,
       basePrice: price ? Number(price) : undefined,
-      createdAt: new Date(),
+      createdAt: editingService ? getProduct(editingService)?.createdAt || new Date() : new Date(),
       updatedAt: new Date(),
-    } as Product);
+    };
 
-    await db.services.add({
-      productId,
+    const serviceData: Omit<Service, 'id' | 'productId'> = {
       duration: duration.trim() || undefined,
       capacity: capacity ? Number(capacity) : undefined,
-      currentBookings: 0,
+      currentBookings: editingService?.currentBookings ?? 0,
       availableDays,
-    });
+    };
 
-    toast({ title: 'Service added' });
-    setDialogOpen(false);
-    setName(''); setSku(''); setDuration(''); setCapacity(''); setPrice('');
-    setAvailableDays(DAYS.slice(0, 5));
+    try {
+      await db.transaction('rw', [db.products, db.services], async () => {
+        let productId: number;
+        if (editingService) {
+          productId = editingService.productId;
+          await db.products.update(productId, productData);
+          await db.services.update(editingService.id!, serviceData);
+        } else {
+          productId = await db.products.add({ ...productData, createdAt: new Date() } as Product);
+          await db.services.add({ ...serviceData, productId });
+        }
+      });
+
+      toast({ title: editingService ? 'Service updated' : 'Service added' });
+      setDialogOpen(false);
+      setEditingService(null);
+      setName(''); setSku(''); setDuration(''); setCapacity(''); setPrice('');
+      setAvailableDays(DAYS.slice(0, 5));
+    } catch (err) {
+      toast({ title: 'Error saving service', variant: 'destructive' });
+    }
   }
 
   return (
@@ -144,9 +187,19 @@ export default function ServicesPage() {
                     ))}
                   </div>
 
-                  {product?.basePrice && (
-                    <p className="font-mono font-semibold text-foreground">৳{product.basePrice.toLocaleString()}</p>
-                  )}
+                  <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(svc)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(svc)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {product?.basePrice && (
+                      <p className="font-mono font-semibold text-foreground">৳{product.basePrice.toLocaleString()}</p>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -154,10 +207,10 @@ export default function ServicesPage() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setEditingService(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Service</DialogTitle>
+            <DialogTitle>{editingService ? 'Edit Service' : 'New Service'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -189,7 +242,7 @@ export default function ServicesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Create Service</Button>
+            <Button onClick={handleSave}>{editingService ? 'Update Service' : 'Create Service'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

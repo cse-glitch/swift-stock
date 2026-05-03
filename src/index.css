@@ -149,6 +149,13 @@
   [data-sidebar="content"] {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
+    /* Hide scrollbar while keeping scroll functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  [data-sidebar="content"]::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, and Opera */
   }
 }
 

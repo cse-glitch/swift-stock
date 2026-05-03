@@ -1,6 +1,7 @@
 import { useLocation, Link } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { LowStockAlert } from "@/components/LowStockAlert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -25,9 +26,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <SidebarTrigger className="mr-3 shrink-0" />
             <div className="flex-1 min-w-0" />
             <div className="flex items-center gap-2 sm:gap-4">
-              <Button variant="ghost" size="icon" className="text-muted-foreground hidden sm:flex">
-                <Bell className="h-5 w-5" />
-              </Button>
+              <LowStockAlert />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0 overflow-hidden ring-offset-background transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">

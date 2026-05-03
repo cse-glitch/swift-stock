@@ -9,13 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Building2, MapPin, Plus, BedDouble, Bath, Maximize } from 'lucide-react';
+import { Building2, MapPin, Plus, BedDouble, Bath, Maximize, Pencil, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export default function Properties() {
   const { businesses } = useBusiness();
   const propBiz = businesses.find(b => b.type === 'properties');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingListing, setEditingListing] = useState<PropertyListing | null>(null);
 
   const listings = useLiveQuery(
     () => db.propertyListings.toArray(),
@@ -44,16 +45,45 @@ export default function Properties() {
     return products.find(p => p.id === listing.productId);
   }
 
+  function handleEdit(listing: PropertyListing) {
+    const product = getProduct(listing);
+    setEditingListing(listing);
+    setName(product?.name ?? '');
+    setSku(product?.sku ?? '');
+    setListingType(listing.listingType);
+    setLocation(listing.location);
+    setArea(listing.area?.toString() ?? '');
+    setBedrooms(listing.bedrooms?.toString() ?? '');
+    setBathrooms(listing.bathrooms?.toString() ?? '');
+    setPrice(product?.basePrice?.toString() ?? '');
+    setAvailability(listing.availability);
+    setDialogOpen(true);
+  }
+
+  async function handleDelete(listing: PropertyListing) {
+    if (!confirm('Are you sure you want to delete this listing?')) return;
+    
+    try {
+      await db.transaction('rw', [db.propertyListings, db.products], async () => {
+        await db.propertyListings.delete(listing.id!);
+        await db.products.delete(listing.productId);
+      });
+      toast({ title: 'Listing deleted' });
+    } catch (err) {
+      toast({ title: 'Error deleting listing', variant: 'destructive' });
+    }
+  }
+
   async function handleSave() {
     if (!name.trim() || !propBiz?.id) {
       toast({ title: 'Missing fields', variant: 'destructive' });
       return;
     }
 
-    const productId = await db.products.add({
+    const productData: Omit<Product, 'id'> = {
       businessId: propBiz.id,
       name: name.trim(),
-      sku: sku.trim() || `PROP-${Date.now()}`,
+      sku: sku.trim() || (editingListing ? getProduct(editingListing)?.sku || '' : `PROP-${Date.now()}`),
       type: 'listing',
       currency: 'BDT',
       tags: [listingType],
@@ -62,23 +92,39 @@ export default function Properties() {
       isSeasonal: false,
       expiryTracking: false,
       basePrice: price ? Number(price) : undefined,
-      createdAt: new Date(),
+      createdAt: editingListing ? getProduct(editingListing)?.createdAt || new Date() : new Date(),
       updatedAt: new Date(),
-    } as Product);
+    };
 
-    await db.propertyListings.add({
-      productId,
+    const listingData: Omit<PropertyListing, 'id' | 'productId'> = {
       listingType,
       location: location.trim(),
       area: area ? Number(area) : undefined,
       bedrooms: bedrooms ? Number(bedrooms) : undefined,
       bathrooms: bathrooms ? Number(bathrooms) : undefined,
       availability,
-    });
+    };
 
-    toast({ title: 'Property listing added' });
-    setDialogOpen(false);
-    setName(''); setSku(''); setLocation(''); setArea(''); setBedrooms(''); setBathrooms(''); setPrice('');
+    try {
+      await db.transaction('rw', [db.products, db.propertyListings], async () => {
+        let productId: number;
+        if (editingListing) {
+          productId = editingListing.productId;
+          await db.products.update(productId, productData);
+          await db.propertyListings.update(editingListing.id!, listingData);
+        } else {
+          productId = await db.products.add({ ...productData, createdAt: new Date() } as Product);
+          await db.propertyListings.add({ ...listingData, productId });
+        }
+      });
+
+      toast({ title: editingListing ? 'Property updated' : 'Property listing added' });
+      setDialogOpen(false);
+      setEditingListing(null);
+      setName(''); setSku(''); setLocation(''); setArea(''); setBedrooms(''); setBathrooms(''); setPrice('');
+    } catch (err) {
+      toast({ title: 'Error saving property', variant: 'destructive' });
+    }
   }
 
   const availabilityColors: Record<string, string> = {
@@ -138,8 +184,15 @@ export default function Properties() {
                       <span className="flex items-center gap-1"><Maximize className="h-3.5 w-3.5" />{listing.area} sqft</span>
                     )}
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <Badge variant="outline" className="capitalize">{listing.listingType}</Badge>
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-border/50">
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(listing)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(listing)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                     {product?.basePrice && (
                       <span className="font-mono font-semibold text-foreground">৳{product.basePrice.toLocaleString()}</span>
                     )}
@@ -195,7 +248,7 @@ export default function Properties() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Create Listing</Button>
+            <Button onClick={handleSave}>{editingListing ? 'Update Listing' : 'Create Listing'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
