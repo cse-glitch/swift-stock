@@ -516,39 +516,60 @@ const Analytics = () => {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Top Products by Revenue */}
-        <Card className="border-none shadow-lg">
+        <Card className="border-none shadow-lg bg-card/30 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-base font-bold">Top Products by Revenue</CardTitle>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Top Products by Revenue
+            </CardTitle>
             <CardDescription>Highest grossing items in catalog</CardDescription>
           </CardHeader>
           <CardContent>
             {topProducts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground text-sm opacity-40">
+              <div className="flex flex-col items-center justify-center h-[320px] text-muted-foreground text-sm opacity-40">
                 <Package className="h-10 w-10 mb-2" />
                 <p>No product sales recorded</p>
               </div>
             ) : (
-              <div className="h-[300px] w-full">
+              <div className="h-[320px] w-full mt-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topProducts} layout="vertical" margin={{ left: 40, right: 30, top: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.4} />
+                  <BarChart 
+                    data={topProducts} 
+                    layout="vertical" 
+                    margin={{ left: 10, right: 40, top: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.3} />
                     <XAxis 
                       type="number" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                      tickFormatter={formatCurrency}
+                      hide
                     />
                     <YAxis 
                       type="category" 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: 500 }} 
-                      width={100}
+                      tick={({ x, y, payload }) => (
+                        <g transform={`translate(${x},${y})`}>
+                          <text x={0} y={-10} dy={4} textAnchor="start" fill="hsl(var(--foreground))" className="text-[11px] font-bold">
+                            {payload.value}
+                          </text>
+                        </g>
+                      )}
+                      width={1}
                     />
                     <Tooltip content={<CustomTooltip prefix="৳" />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.1 }} />
-                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} barSize={18} />
+                    {/* Background "Ghost" Bars */}
+                    <Bar dataKey="revenue" fill="hsl(var(--muted))" opacity={0.1} radius={[0, 4, 4, 0]} barSize={12} isAnimationActive={false} />
+                    <Bar 
+                      dataKey="revenue" 
+                      radius={[0, 4, 4, 0]} 
+                      barSize={12}
+                      className="fill-primary"
+                    >
+                      {topProducts.map((_, i) => (
+                        <Cell key={i} fill={`hsl(220, 70%, ${50 + (i * 3)}%)`} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -557,39 +578,47 @@ const Analytics = () => {
         </Card>
 
         {/* Category Volumes */}
-        <Card className="border-none shadow-lg">
+        <Card className="border-none shadow-lg bg-card/30 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-base font-bold">Top Categories by Volume</CardTitle>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Layers className="h-4 w-4 text-amber-500" />
+              Top Categories by Volume
+            </CardTitle>
             <CardDescription>Stock distribution by classification</CardDescription>
           </CardHeader>
           <CardContent>
             {categoryVolumes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground text-sm opacity-40">
+              <div className="flex flex-col items-center justify-center h-[320px] text-muted-foreground text-sm opacity-40">
                 <Layers className="h-10 w-10 mb-2" />
                 <p>No category data available</p>
               </div>
             ) : (
-              <div className="h-[300px] w-full">
+              <div className="h-[320px] w-full mt-2">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryVolumes} layout="vertical" margin={{ left: 40, right: 30, top: 10, bottom: 10 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.4} />
-                    <XAxis 
-                      type="number" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                      tickFormatter={formatNumber}
-                    />
+                  <BarChart 
+                    data={categoryVolumes} 
+                    layout="vertical" 
+                    margin={{ left: 10, right: 40, top: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis type="number" hide />
                     <YAxis 
                       type="category" 
                       dataKey="name" 
                       axisLine={false} 
                       tickLine={false} 
-                      tick={{ fontSize: 10, fill: "hsl(var(--foreground))", fontWeight: 500 }} 
-                      width={80}
+                      tick={({ x, y, payload }) => (
+                        <g transform={`translate(${x},${y})`}>
+                          <text x={0} y={-10} dy={4} textAnchor="start" fill="hsl(var(--foreground))" className="text-[11px] font-bold">
+                            {payload.value}
+                          </text>
+                        </g>
+                      )}
+                      width={1}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted))", opacity: 0.1 }} />
-                    <Bar dataKey="volume" radius={[0, 6, 6, 0]} barSize={18}>
+                    <Bar dataKey="volume" fill="hsl(var(--muted))" opacity={0.1} radius={[0, 4, 4, 0]} barSize={12} isAnimationActive={false} />
+                    <Bar dataKey="volume" radius={[0, 4, 4, 0]} barSize={12}>
                       {categoryVolumes.map((entry, i) => (
                         <Cell key={i} fill={entry.fill} />
                       ))}
@@ -604,40 +633,71 @@ const Analytics = () => {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Stock Distribution Pie */}
-        <Card className="border-none shadow-lg">
+        <Card className="border-none shadow-lg bg-card/30 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="text-base font-bold">Stock Distribution</CardTitle>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <BoxesIcon className="h-4 w-4 text-violet-500" />
+              Stock Distribution
+            </CardTitle>
             <CardDescription>Inventory weightage per business</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
             {stockByBusiness.every(s => s.stock === 0) ? (
-              <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground text-sm opacity-40">
+              <div className="flex flex-col items-center justify-center h-[350px] text-muted-foreground text-sm opacity-40">
                 <Package className="h-10 w-10 mb-2" />
                 <p>Stock levels are empty</p>
               </div>
             ) : (
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stockByBusiness.filter(s => s.stock > 0)}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={100}
-                      paddingAngle={4}
-                      dataKey="stock"
-                      label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                      labelLine={false}
-                    >
-                      {stockByBusiness.filter(s => s.stock > 0).map((entry, i) => (
-                        <Cell key={i} fill={entry.fill} stroke="transparent" />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: 11, fontWeight: 500 }} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="flex flex-col md:flex-row items-center gap-6 h-full min-h-[350px]">
+                <div className="h-[300px] w-full md:w-1/2 relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stockByBusiness.filter(s => s.stock > 0)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={80}
+                        outerRadius={110}
+                        paddingAngle={6}
+                        dataKey="stock"
+                        stroke="none"
+                      >
+                        {stockByBusiness.filter(s => s.stock > 0).map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} className="hover:opacity-80 transition-opacity outline-none" />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Center Text */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Total Stock</span>
+                    <span className="text-2xl font-black text-foreground">{totalStock.toLocaleString()}</span>
+                  </div>
+                </div>
+                
+                {/* Custom Legend */}
+                <div className="flex-1 w-full space-y-3">
+                  {stockByBusiness.filter(s => s.stock > 0).sort((a,b) => b.stock - a.stock).map((entry, i) => (
+                    <div key={i} className="flex items-center justify-between group">
+                      <div className="flex items-center gap-3">
+                        <div className="h-3 w-3 rounded-full shadow-sm" style={{ backgroundColor: entry.fill }} />
+                        <span className="text-sm font-medium text-foreground/80 group-hover:text-foreground transition-colors">{entry.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono font-bold text-muted-foreground">
+                          {((entry.stock / totalStock) * 100).toFixed(1)}%
+                        </span>
+                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all duration-1000" 
+                            style={{ backgroundColor: entry.fill, width: `${(entry.stock / totalStock) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
