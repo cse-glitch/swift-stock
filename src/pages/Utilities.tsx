@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Upload, Database, Printer, FileDown, FileUp, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { Download, Upload, Database, Printer, FileDown, FileUp, AlertTriangle, FileSpreadsheet, Trash2, Scale } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
@@ -61,6 +61,127 @@ const Utilities = () => {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // ── Duplicate Finder ──
+  const duplicates = useMemo(() => {
+    const skuMap = new Map<string, typeof variants[0][]>();
+    variants.forEach(v => {
+      const p = products.find(p => p.id === v.productId);
+      if (!p) return;
+      const key = `${p.businessId}::${v.sku}`;
+      if (!skuMap.has(key)) skuMap.set(key, []);
+      skuMap.get(key)!.push(v);
+    });
+    return Array.from(skuMap.values()).filter(group => group.length > 1);
+  }, [variants, products]);
+
+  // ── Orphaned Data Cleanup ──
+  const orphanedVariants = variants.filter(v => !products.some(p => p.id === v.productId));
+  const logs = useLiveQuery(() => db.inventoryLog.toArray()) ?? [];
+  const orphanedLogs = logs.filter(l => !products.some(p => p.id === l.productId));
+
+  const handleExportIssues = () => {
+    const rows: any[] = [];
+    
+    // Add duplicates
+    duplicates.forEach(group => {
+      group.forEach(v => {
+        const p = products.find(p => p.id === v.productId);
+        rows.push({ Type: 'Duplicate SKU', BusinessID: p?.businessId, Product: p?.name, Variant: v.name, SKU: v.sku, ID: v.id });
+      });
+    });
+
+    // Add orphans
+    orphanedVariants.forEach(v => {
+      rows.push({ Type: 'Orphaned Variant', BusinessID: 'N/A', Product: 'N/A', Variant: v.name, SKU: v.sku, ID: v.id });
+    });
+
+    if (rows.length === 0) {
+      toast({ title: "No issues found", description: "Your database is clean." });
+      return;
+    }
+
+    downloadFile(Papa.unparse(rows), `inventory-issues-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv");
+    toast({ title: "Issues exported", description: `${rows.length} issues exported to CSV.` });
+  };
+
+  const handleCleanupOrphans = async () => {
+    try {
+      await db.transaction('rw', [db.variants, db.inventoryLog], async () => {
+        if (orphanedVariants.length > 0) {
+          const vIds = orphanedVariants.map(v => v.id!);
+          await db.variants.bulkDelete(vIds);
+        }
+        if (orphanedLogs.length > 0) {
+          const lIds = orphanedLogs.map(l => l.id!);
+          await db.inventoryLog.bulkDelete(lIds);
+        }
+      });
+      toast({ title: "Cleanup complete", description: `Removed ${orphanedVariants.length} variants and ${orphanedLogs.length} logs.` });
+    } catch (err: any) {
+      toast({ title: "Cleanup failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // ── Stock Reconciliation ──
+  const [reconBizId, setReconBizId] = useState<string>("all");
+  const [physicalCounts, setPhysicalCounts] = useState<Record<number, string>>({});
+
+  const reconVariants = variants.filter(v => {
+    const p = products.find(p => p.id === v.productId);
+    if (!p) return false;
+    if (reconBizId !== "all" && p.businessId.toString() !== reconBizId) return false;
+    return true;
+  });
+
+  const handleReconcile = async () => {
+    const updates: { variantId: number; oldStock: number; newStock: number; diff: number; pId: number; bId: number }[] = [];
+    
+    for (const [vIdStr, countStr] of Object.entries(physicalCounts)) {
+      if (countStr.trim() === '') continue;
+      const count = parseInt(countStr);
+      if (isNaN(count) || count < 0) continue;
+
+      const vId = parseInt(vIdStr);
+      const v = variants.find(vx => vx.id === vId);
+      if (!v) continue;
+      
+      const p = products.find(px => px.id === v.productId);
+      if (!p) continue;
+
+      const diff = count - v.stock;
+      if (diff !== 0) {
+        updates.push({ variantId: vId, oldStock: v.stock, newStock: count, diff, pId: p.id!, bId: p.businessId });
+      }
+    }
+
+    if (updates.length === 0) {
+      toast({ title: "No changes", description: "No stock discrepancies to reconcile." });
+      return;
+    }
+
+    try {
+      await db.transaction('rw', [db.variants, db.inventoryLog], async () => {
+        for (const u of updates) {
+          await db.variants.update(u.variantId, { stock: u.newStock });
+          await db.inventoryLog.add({
+            businessId: u.bId,
+            productId: u.pId,
+            variantId: u.variantId,
+            type: u.diff > 0 ? 'add' : 'remove',
+            quantity: Math.abs(u.diff),
+            reason: 'Reconciliation',
+            note: `Physical count override (was ${u.oldStock}, now ${u.newStock})`,
+            timestamp: new Date()
+          });
+        }
+      });
+      toast({ title: "Reconciliation applied", description: `Updated stock for ${updates.length} items.` });
+      setPhysicalCounts({});
+    } catch (err: any) {
+      toast({ title: "Reconciliation failed", description: err.message, variant: "destructive" });
+    }
   };
 
   // ── JSON Backup (full schema) ──
@@ -545,6 +666,141 @@ const Utilities = () => {
               )}
             </div>
           )}
+        </CardContent>
+      </Card>
+      {/* Stock Reconciliation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><Scale className="h-4 w-4" />Stock Reconciliation</CardTitle>
+          <CardDescription>Enter physical counts to automatically correct stock levels</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Select value={reconBizId} onValueChange={setReconBizId}>
+            <SelectTrigger className="w-full sm:w-[300px]">
+              <SelectValue placeholder="Filter by Business" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Businesses</SelectItem>
+              {businesses.map(b => (
+                <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="max-h-[400px] overflow-auto border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead className="text-right">System Stock</TableHead>
+                  <TableHead className="w-[150px]">Physical Count</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reconVariants.map(v => {
+                  const p = products.find(px => px.id === v.productId);
+                  const b = businesses.find(bx => bx.id === p?.businessId);
+                  const isChanged = physicalCounts[v.id!] !== undefined && physicalCounts[v.id!] !== '' && parseInt(physicalCounts[v.id!]) !== v.stock;
+                  
+                  return (
+                    <TableRow key={v.id} className={isChanged ? "bg-warning/10" : ""}>
+                      <TableCell>
+                        <div className="font-medium text-sm">{p?.name}</div>
+                        <div className="text-xs text-muted-foreground">{b?.name} • {v.name}</div>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{v.sku}</TableCell>
+                      <TableCell className="text-right font-mono">{v.stock}</TableCell>
+                      <TableCell>
+                        <Input 
+                          type="number" 
+                          min="0"
+                          className="h-8 text-right font-mono"
+                          placeholder={v.stock.toString()}
+                          value={physicalCounts[v.id!] ?? ""}
+                          onChange={(e) => setPhysicalCounts({ ...physicalCounts, [v.id!]: e.target.value })}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div className="flex justify-end pt-2">
+            <Button onClick={handleReconcile} disabled={Object.keys(physicalCounts).length === 0}>
+              Apply Reconciliation
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Data Maintenance */}
+      <Card className="border-destructive/20 bg-destructive/5">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base text-destructive"><Trash2 className="h-4 w-4" />Data Maintenance</CardTitle>
+              <CardDescription>Clean up disconnected records and find duplicates</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExportIssues} className="h-8">
+              <FileSpreadsheet className="mr-2 h-4 w-4" /> Export Issues
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b pb-4 border-destructive/10">
+            <div className="text-sm">
+              <p className="font-medium">Orphaned Records</p>
+              <p className="text-muted-foreground">Variants or logs without a parent product</p>
+              <p className="mt-1 font-mono text-xs">Variants: {orphanedVariants.length} | Logs: {orphanedLogs.length}</p>
+            </div>
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={handleCleanupOrphans}
+              disabled={orphanedVariants.length === 0 && orphanedLogs.length === 0}
+            >
+              Clean Up Records
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm">
+              <p className="font-medium">Duplicate SKUs</p>
+              <p className="text-muted-foreground">Multiple variants with the same SKU in the same business</p>
+              <p className="mt-1 font-mono text-xs">Duplicate Groups: {duplicates.length}</p>
+            </div>
+            
+            {duplicates.length > 0 && (
+              <div className="max-h-48 overflow-auto border rounded-md bg-card">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Occurrences</TableHead>
+                      <TableHead>Variants</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {duplicates.map((group, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-mono text-xs">{group[0].sku}</TableCell>
+                        <TableCell className="text-xs">{group.length}</TableCell>
+                        <TableCell className="text-xs">
+                          {group.map(v => {
+                            const p = products.find(p => p.id === v.productId);
+                            return `${p?.name} (${v.name})`;
+                          }).join(", ")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

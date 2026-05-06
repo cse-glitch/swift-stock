@@ -8,6 +8,9 @@ import { PlaceOrderModal } from '@/components/PlaceOrderModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { useAutomation } from '@/hooks/use-automation';
+import { cn } from '@/lib/utils';
 import {
   ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase, Package,
   TrendingUp, AlertTriangle, BoxesIcon, Store, Activity,
@@ -128,10 +131,158 @@ const Dashboard = () => {
     }, 0);
   }, [logs, variantMap, productMap]);
 
+  const renderPropertiesDashboard = () => {
+    const bizProducts = products;
+    const bizListings = propertyListings.filter(l => bizProducts.some(p => p.id === l.productId));
+    const total = bizListings.length || 1;
+    const available = bizListings.filter(l => l.availability === 'available').length;
+    const sold = bizListings.filter(l => l.availability === 'sold').length;
+    const rented = bizListings.filter(l => l.availability === 'rented').length;
+    const pending = bizListings.filter(l => l.availability === 'pending').length;
+
+    const availablePercent = (available / total) * 100;
+
+    return (
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Listing Status Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex justify-center py-4">
+              <div className="relative h-32 w-32">
+                <svg className="h-full w-full" viewBox="0 0 100 100">
+                  <circle className="text-muted stroke-current" strokeWidth="10" fill="transparent" r="40" cx="50" cy="50" />
+                  <circle 
+                    className="text-primary stroke-current transition-all duration-1000 ease-in-out" 
+                    strokeWidth="10" 
+                    strokeDasharray={251.2} 
+                    strokeDashoffset={251.2 - (251.2 * availablePercent) / 100} 
+                    strokeLinecap="round" 
+                    fill="transparent" r="40" cx="50" cy="50" 
+                    transform="rotate(-90 50 50)" 
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold">{available}</span>
+                  <span className="text-[10px] text-muted-foreground uppercase">Available</span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Pending</span>
+                  <span className="font-medium">{pending}</span>
+                </div>
+                <Progress value={(pending / total) * 100} className="h-1.5 bg-warning/20" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Sold/Rented</span>
+                  <span className="font-medium">{sold + rented}</span>
+                </div>
+                <Progress value={((sold + rented) / total) * 100} className="h-1.5 bg-success/20" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Properties Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-md"><Building2 className="h-4 w-4 text-primary" /></div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Active Listings</p>
+                  <p className="text-lg font-bold">{bizListings.filter(l => l.availability !== 'sold').length}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Total Value</p>
+                <p className="text-lg font-bold text-success">
+                  ${bizListings.reduce((acc, l) => {
+                    const p = products.find(px => px.id === l.productId);
+                    return acc + (p?.basePrice || 0);
+                  }, 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   const totalRevenue = useMemo(
     () => calculateRevenue(activeBusinessId ?? undefined),
     [calculateRevenue, activeBusinessId]
   );
+
+  const renderServicesDashboard = () => {
+    const bizProducts = products;
+    const bizServices = services.filter(s => bizProducts.some(p => p.id === s.productId));
+    
+    const avgUtilization = bizServices.length 
+      ? bizServices.reduce((acc, s) => acc + (s.capacity ? (s.currentBookings / s.capacity) * 100 : 0), 0) / bizServices.length 
+      : 0;
+
+    return (
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Utilization Gauge</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center py-6">
+            <div className="relative h-32 w-48 overflow-hidden">
+              <svg className="h-full w-full" viewBox="0 0 100 60">
+                <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" strokeWidth="10" className="text-muted" />
+                <path 
+                  d="M 10 50 A 40 40 0 0 1 90 50" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="10" 
+                  strokeDasharray={126} 
+                  strokeDashoffset={126 - (126 * avgUtilization) / 100} 
+                  className={cn("transition-all duration-1000", avgUtilization > 80 ? "text-destructive" : avgUtilization > 50 ? "text-warning" : "text-success")}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+                <span className="text-2xl font-bold">{Math.round(avgUtilization)}%</span>
+                <span className="text-[10px] text-muted-foreground uppercase">Average Load</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Service Load Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {bizServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No services configured.</p>
+            ) : (
+              bizServices.slice(0, 4).map(s => {
+                const product = bizProducts.find(p => p.id === s.productId);
+                const util = s.capacity ? (s.currentBookings / s.capacity) * 100 : 0;
+                return (
+                  <div key={s.id} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium truncate">{product?.name}</span>
+                      <span className="text-muted-foreground">{Math.round(util)}%</span>
+                    </div>
+                    <Progress value={util} className={cn("h-1.5", util > 80 ? "bg-destructive/20" : util > 50 ? "bg-warning/20" : "bg-success/20")} />
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   const topSelling = useMemo(() =>
     products
