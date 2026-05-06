@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useAutomation } from '@/hooks/use-automation';
 import { cn } from '@/lib/utils';
 import {
   ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase, Package,
@@ -75,6 +74,8 @@ const Dashboard = () => {
     , [activeBusinessId]) ?? [];
 
   const variants = useLiveQuery(() => db.variants.toArray(), []) ?? [];
+  const propertyListings = useLiveQuery(() => db.propertyListings.toArray(), []) ?? [];
+  const services = useLiveQuery(() => db.services.toArray(), []) ?? [];
   const logs = useLiveQuery(() => db.inventoryLog.toArray(), []) ?? [];
   const recentLogs = useLiveQuery(
     () => db.inventoryLog.orderBy('timestamp').reverse().limit(10).toArray(), []
