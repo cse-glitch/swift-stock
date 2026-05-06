@@ -14,33 +14,29 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainNav = [
-  { title: "Dashboard",  url: "/",         icon: LayoutDashboard },
-  { title: "Products",   url: "/products",  icon: BoxesIcon },
-  { title: "Orders",     url: "/orders",    icon: ShoppingCart },
-  { title: "Add Stock",  url: "/add",       icon: PackagePlus },
-  { title: "Inventory",  url: "/inventory", icon: Package },
-  { title: "Analytics",  url: "/analytics", icon: BarChart3 },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Products", url: "/products", icon: BoxesIcon },
+  { title: "Orders", url: "/orders", icon: ShoppingCart },
+  { title: "Add Stock", url: "/add", icon: PackagePlus },
+  { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
 const manageNav = [
   { title: "Businesses", url: "/businesses", icon: Store },
   { title: "Categories", url: "/categories", icon: Layers },
   { title: "Properties", url: "/properties", icon: Building2 },
-  { title: "Services",   url: "/services",   icon: Briefcase },
+  { title: "Services", url: "/services", icon: Briefcase },
 ];
 
 const systemNav = [
-  { title: "History",    url: "/history",    icon: History },
-  { title: "Utilities",  url: "/utilities",  icon: Wrench },
-  { title: "Settings",   url: "/settings",   icon: Settings },
+  { title: "History", url: "/history", icon: History },
+  { title: "Utilities", url: "/utilities", icon: Wrench },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-// Admin-only nav items
-const adminNav = [
-  { title: "Users",      url: "/users",      icon: Users },
-  { title: "Audit Logs", url: "/audit-logs", icon: ScrollText },
-  { title: "Backup",     url: "/backup",     icon: HardDrive },
-];
+// Admin-only items are now moved to Profile page for a cleaner sidebar
+const adminNav: any[] = [];
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -58,8 +54,8 @@ export function AppSidebar() {
                 <NavLink
                   to={item.url}
                   end={item.url === "/"}
-                  className={cn("hover:bg-sidebar-accent/50 flex w-full h-full items-center", collapsed && "justify-center")}
-                  activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                  className={cn("hover:bg-sidebar-accent flex w-full h-full items-center transition-colors duration-200", collapsed && "justify-center")}
+                  activeClassName="bg-sidebar-accent text-sidebar-primary font-medium shadow-sm"
                 >
                   <item.icon className={cn("h-4 w-4", !collapsed && "mr-2")} />
                   {!collapsed && <span>{item.title}</span>}
@@ -103,36 +99,7 @@ export function AppSidebar() {
         <SidebarSeparator />
         <NavGroup label="System" items={systemNav} />
 
-        {/* Admin-only section */}
-        {user?.role === "admin" && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupLabel className="flex items-center gap-1.5">
-                {!collapsed && <ShieldCheck className="h-3 w-3 text-primary" />}
-                {!collapsed && "Admin"}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {adminNav.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          className={cn("hover:bg-sidebar-accent/50 flex w-full h-full items-center", collapsed && "justify-center")}
-                          activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                        >
-                          <item.icon className={cn("h-4 w-4 text-primary/70", !collapsed && "mr-2")} />
-                          {!collapsed && <span>{item.title}</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
+        {/* Admin-only section is now moved to Profile page */}
       </SidebarContent>
     </Sidebar>
   );

@@ -5,9 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Briefcase, Mail, Phone, Camera, Save, User as UserIcon, Trash2, AlertTriangle } from "lucide-react";
+import { 
+  Calendar, MapPin, Briefcase, Mail, Phone, Camera, Save, 
+  User as UserIcon, Trash2, AlertTriangle, ShieldCheck, 
+  Users, ScrollText, HardDrive, ArrowRight, FileText, LogOut
+} from "lucide-react";
 import { toast } from "sonner";
 import { db, seedBusinesses } from "@/lib/db";
+import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,15 +27,16 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Profile = () => {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
-    name: "Tanvir Ahmed",
-    email: "tanvir@saman.com",
+    name: user?.displayName || "User",
+    email: user?.username + "@saman.com",
     phone: "+880 1711-223344",
     location: "Dhaka, Bangladesh",
-    position: "Inventory Manager",
+    position: user?.role === 'admin' ? "System Administrator" : "Staff Member",
     department: "Operations",
-    joiningDate: "January 15, 2024",
+    joiningDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "January 15, 2024",
     avatar: "/logo.svg"
   });
 
@@ -40,12 +47,9 @@ const Profile = () => {
 
   const handleReset = async () => {
     try {
-      // Delete the database
       await db.delete();
-      // Re-seed the default data
       await seedBusinesses();
       toast.success("Application reset successfully!");
-      // Reload the page to clear any in-memory state
       setTimeout(() => {
         window.location.href = "/";
       }, 1000);
@@ -56,7 +60,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-page-enter">
+    <div className="max-w-4xl mx-auto space-y-6 animate-page-enter pb-12">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">User Profile</h1>
@@ -80,7 +84,7 @@ const Profile = () => {
               <div className="relative group">
                 <Avatar className="h-24 w-24 border-4 border-background shadow-xl">
                   <AvatarImage src={profile.avatar} className="object-contain p-2 bg-white" />
-                  <AvatarFallback className="text-2xl font-bold">TA</AvatarFallback>
+                  <AvatarFallback className="text-2xl font-bold">{user?.username?.[0]?.toUpperCase()}</AvatarFallback>
                 </Avatar>
                 {isEditing && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
@@ -91,7 +95,7 @@ const Profile = () => {
               <h2 className="mt-4 text-xl font-bold">{profile.name}</h2>
               <p className="text-sm text-muted-foreground">{profile.position}</p>
               <Badge variant="secondary" className="mt-2 px-3 py-0.5 rounded-full uppercase text-[10px] tracking-widest font-bold">
-                {profile.department}
+                {user?.role}
               </Badge>
             </div>
 
@@ -207,29 +211,93 @@ const Profile = () => {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-none shadow-lg bg-card/50 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-base font-bold">Activity Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Total Sales Managed</span>
-                <span className="text-lg font-bold">৳1,245,600</span>
-              </div>
-              <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-none">+12%</Badge>
+      {/* Admin Tools Section */}
+      {user?.role === 'admin' && (
+        <Card className="border-none shadow-xl bg-card/50 backdrop-blur-sm overflow-hidden">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <CardTitle className="text-base font-bold">Administration</CardTitle>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div className="flex flex-col">
-                <span className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Inventory Updates</span>
-                <span className="text-lg font-bold">842 Actions</span>
-              </div>
-              <Badge variant="outline">Top 5%</Badge>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2">
+              <Button variant="ghost" asChild className="w-full justify-between hover:bg-primary/10 h-12 px-4 group transition-all duration-200 border border-transparent hover:border-primary/20">
+                <Link to="/users" className="flex items-center gap-3 w-full">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-semibold text-foreground">Team Management</span>
+                    <span className="text-[10px] text-muted-foreground">Manage users and roles</span>
+                  </div>
+                  <ArrowRight className="h-3 w-3 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                </Link>
+              </Button>
+
+              <Button variant="ghost" asChild className="w-full justify-between hover:bg-primary/10 h-12 px-4 group transition-all duration-200 border border-transparent hover:border-primary/20">
+                <Link to="/audit-logs" className="flex items-center gap-3 w-full">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                    <ScrollText className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-semibold text-foreground">Audit Logs</span>
+                    <span className="text-[10px] text-muted-foreground">View system activity history</span>
+                  </div>
+                  <ArrowRight className="h-3 w-3 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                </Link>
+              </Button>
+
+              <Button variant="ghost" asChild className="w-full justify-between hover:bg-primary/10 h-12 px-4 group transition-all duration-200 border border-transparent hover:border-primary/20">
+                <Link to="/backup" className="flex items-center gap-3 w-full">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
+                    <HardDrive className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-sm font-semibold text-foreground">Data Backup</span>
+                    <span className="text-[10px] text-muted-foreground">Export/Import database JSON</span>
+                  </div>
+                  <ArrowRight className="h-3 w-3 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
+      )}
 
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Support & Legal */}
+        <Card className="border-none shadow-lg bg-card/50 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-bold">Support & Legal</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button variant="ghost" className="w-full justify-start gap-3 h-10 px-3">
+              <FileText className="h-4 w-4 text-primary/70" />
+              <span className="text-sm">Terms of Service</span>
+            </Button>
+            <Button variant="ghost" className="w-full justify-start gap-3 h-10 px-3">
+              <ShieldCheck className="h-4 w-4 text-primary/70" />
+              <span className="text-sm">Privacy Policy</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                if(confirm('Are you sure you want to sign out?')) {
+                  sessionStorage.clear();
+                  window.location.href = '#/login';
+                  window.location.reload();
+                }
+              }}
+              className="w-full justify-start gap-3 h-10 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm font-semibold">Sign Out</span>
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
         <Card className="border-none shadow-lg bg-card/50 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="text-base font-bold text-destructive flex items-center gap-2">
@@ -239,7 +307,7 @@ const Profile = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Resetting the application will delete all your inventory, businesses, and settings. This action cannot be undone.
+              Resetting the application will delete all data. This action cannot be undone.
             </p>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -252,7 +320,7 @@ const Profile = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete all data from your local database and restore the application to its original state.
+                    This will permanently delete all data from your local database.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

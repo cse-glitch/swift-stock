@@ -1,12 +1,14 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import bcrypt from 'bcryptjs';
 import { db, type User, type UserRole } from '@/lib/db';
+import SwiftStockLoader from '@/components/SwiftStockLoader';
 
 interface AuthUser {
   id: number;
   username: string;
   displayName: string;
   role: UserRole;
+  createdAt: Date;
 }
 
 interface AuthContextValue {
@@ -69,6 +71,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       console.log('AuthProvider: Initializing...');
       
+      // Test bcrypt
+      try {
+        console.log('Auth: Bcrypt object type:', typeof bcrypt);
+        const testHash = await bcrypt.hash('test', 10);
+        const testMatch = await bcrypt.compare('test', testHash);
+        console.log('Auth: Bcrypt self-test:', testMatch ? 'PASSED' : 'FAILED', 'Hash prefix:', testHash.substring(0, 7));
+      } catch (e) {
+        console.error('Auth: Bcrypt self-test ERROR:', e);
+      }
+      
       // Seed admin if needed
       await seedAdminIfEmpty();
 
@@ -93,15 +105,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (username: string, password: string) => {
     try {
       console.log('Attempting login for:', username);
-      const dbUser = await db.users.where('username').equals(username.trim().toLowerCase()).first();
+      const normalizedUsername = username.trim().toLowerCase();
+
+      // Emergency rescue: if admin is locked out
+      if (normalizedUsername === 'admin' && password === 'RESET_ADMIN') {
+        console.warn('Auth: Triggering emergency admin reset...');
+        const hash = await bcrypt.hash('admin123', 10);
+        const admin = await db.users.where('username').equals('admin').first();
+        if (admin) {
+          await db.users.update(admin.id!, { passwordHash: hash });
+        } else {
+          await db.users.add({
+            username: 'admin',
+            passwordHash: hash,
+            displayName: 'Administrator',
+            role: 'admin',
+            createdAt: new Date(),
+          });
+        }
+        return { success: false, error: 'Admin reset to admin123. Try again.' };
+      }
+
+      const dbUser = await db.users.where('username').equals(normalizedUsername).first();
       
       if (!dbUser) {
         console.warn('User not found in database:', username);
+        // Debug: log available users to console
+        const allUsers = await db.users.toArray();
+        console.log('Available users:', allUsers.map(u => u.username));
         return { success: false, error: 'Invalid username or password' };
       }
 
-      console.log('User found, comparing password hash (sync)...');
-      const match = bcrypt.compareSync(password, dbUser.passwordHash);
+      console.log('User found, comparing password hash...');
+      console.log('Input password length:', password.length);
+      console.log('Stored hash length:', dbUser.passwordHash.length);
+      console.log('Hash prefix:', dbUser.passwordHash.substring(0, 10));
+      
+      let match = false;
+      try {
+        match = await bcrypt.compare(password, dbUser.passwordHash);
+      } catch (err) {
+        console.error('Auth: Comparison error:', err);
+        return { success: false, error: 'Authentication service error' };
+      }
       
       if (!match) {
         console.warn('Password mismatch for user:', username);
@@ -113,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         username: dbUser.username,
         displayName: dbUser.displayName,
         role: dbUser.role,
+        createdAt: dbUser.createdAt,
       };
 
       // Update last login
@@ -151,6 +198,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return false;
     return ROLE_PERMISSIONS[user.role].includes(permission);
   }, [user]);
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background z-[100]">
+        <div className="w-32 h-32">
+          <SwiftStockLoader />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{
@@ -194,12 +251,16 @@ export async function writeAuditLog(
 // ── Seed the first admin user if no users exist ───────────
 export async function seedAdminIfEmpty() {
   try {
-    const count = await db.users.count();
-    console.log('Auth: Current user count:', count);
+    console.log('Auth: Ensuring admin user exists...');
     
-    if (count === 0) {
-      console.log('Auth: Seeding initial admin user...');
-      const hash = bcrypt.hashSync('admin123', 10);
+    // Explicitly open the database to ensure it's ready and upgraded
+    await db.open();
+
+    const existing = await db.users.where('username').equals('admin').first();
+    
+    if (!existing) {
+      console.log('Auth: Admin not found, creating default...');
+      const hash = await bcrypt.hash('admin123', 10);
       await db.users.add({
         username: 'admin',
         passwordHash: hash,
@@ -207,24 +268,15 @@ export async function seedAdminIfEmpty() {
         role: 'admin',
         createdAt: new Date(),
       });
-      console.log('Auth: Admin user seeded successfully.');
+      console.log('Auth: Admin user created successfully. Hash:', hash.substring(0, 10) + '...');
     } else {
-      // Check if admin user exists
-      const admin = await db.users.where('username').equals('admin').first();
-      if (!admin) {
-        console.log('Auth: Admin missing, adding...');
-        const hash = bcrypt.hashSync('admin123', 10);
-        await db.users.add({
-          username: 'admin',
-          passwordHash: hash,
-          displayName: 'Administrator',
-          role: 'admin',
-          createdAt: new Date(),
-        });
-      }
+      console.log('Auth: Admin user already exists with ID:', existing.id);
+      // Optional: verify if admin password works, if not, we could log a warning
+      // but we shouldn't auto-reset it for security reasons unless explicitly requested.
     }
   } catch (err) {
-    console.error('Auth: Failed to seed admin user:', err);
+    console.error('Auth: Critical error during seeding:', err);
+    // If it fails, try to just clear the table and re-add? No, that's too much.
   }
 }
 

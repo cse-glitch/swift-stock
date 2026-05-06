@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Lock, User, AlertCircle, Package, ShieldCheck, BarChart3 } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, AlertCircle, Package, ShieldCheck, BarChart3, RefreshCcw } from 'lucide-react';
+import { db } from '@/lib/db';
 
 const schema = z.object({
   username: z.string().min(1, 'Username is required'),
@@ -21,10 +23,18 @@ const features = [
 ];
 
 export default function Login() {
-  const { login } = useAuth();
+  const navigate = useNavigate();
+  const { login, isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -33,9 +43,20 @@ export default function Login() {
   async function onSubmit(data: FormValues) {
     setIsLoading(true);
     setAuthError('');
-    const result = await login(data.username, data.password);
-    if (!result.success) setAuthError(result.error ?? 'Login failed');
-    setIsLoading(false);
+    try {
+      const result = await login(data.username, data.password);
+      if (result.success) {
+        // Success! Navigation will be handled by the useEffect above
+        // or we can explicitly call it here for faster response
+        navigate('/', { replace: true });
+      } else {
+        setAuthError(result.error ?? 'Login failed');
+      }
+    } catch (err) {
+      setAuthError('An unexpected error occurred during login');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -218,13 +239,29 @@ export default function Login() {
           </form>
 
           {/* Default credentials hint */}
-          <div className="mt-6 rounded-xl border border-border bg-muted/60 px-4 py-3">
-            <p className="text-[12px] text-muted-foreground text-center leading-relaxed">
-              First time? Use default credentials:<br />
-              <code className="font-mono font-semibold text-foreground">admin</code>
-              {' / '}
-              <code className="font-mono font-semibold text-foreground">admin123</code>
-            </p>
+          <div className="mt-6 space-y-4">
+            <div className="rounded-xl border border-border bg-muted/60 px-4 py-3">
+              <p className="text-[12px] text-muted-foreground text-center leading-relaxed">
+                First time? Use default credentials:<br />
+                <code className="font-mono font-semibold text-foreground">admin</code>
+                {' / '}
+                <code className="font-mono font-semibold text-foreground">admin123</code>
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={async () => {
+                if (confirm('⚠️ WARNING: This will DELETE ALL DATA and reset the system. Continue?')) {
+                  await db.delete();
+                  window.location.reload();
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
+            >
+              <RefreshCcw className="h-3 w-3" />
+              Emergency System Reset (Delete all data)
+            </button>
           </div>
         </div>
       </div>
