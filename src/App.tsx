@@ -24,7 +24,7 @@ import Analytics from "./pages/Analytics";
 import Inventory from "./pages/Inventory";
 import Orders from "./pages/Orders";
 import Profile from "./pages/Profile";
-import UserManagement from "./pages/UserManagement";
+import TeamPage from "./pages/Team";
 import BackupRestore from "./pages/BackupRestore";
 import AuditLogs from "./pages/AuditLogs";
 import NotFound from "./pages/NotFound";
@@ -64,7 +64,7 @@ const App = () => (
                         <Route path="/history" element={<History />} />
                         <Route path="/utilities" element={<ProtectedRoute permission="settings.manage"><Utilities /></ProtectedRoute>} />
                         <Route path="/settings" element={<ProtectedRoute permission="settings.manage"><Settings /></ProtectedRoute>} />
-                        <Route path="/users" element={<ProtectedRoute permission="users.manage"><UserManagement /></ProtectedRoute>} />
+                        <Route path="/team" element={<ProtectedRoute permission="users.manage"><TeamPage /></ProtectedRoute>} />
                         <Route path="/backup" element={<ProtectedRoute permission="export.data"><BackupRestore /></ProtectedRoute>} />
                         <Route path="/audit-logs" element={<ProtectedRoute permission="settings.manage"><AuditLogs /></ProtectedRoute>} />
                         <Route path="/profile" element={<Profile />} />

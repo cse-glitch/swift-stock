@@ -1,0 +1,17 @@
+{
+  "name": "SAMAN Inventory Management",
+  "short_name": "SAMAN",
+  "description": "Professional Inventory and Stock Management System",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

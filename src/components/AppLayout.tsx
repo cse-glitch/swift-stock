@@ -15,6 +15,7 @@ import {
 import { User, Settings, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { MobileNav } from "@/components/MobileNav";
 
 const ROLE_LABEL: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   admin: { label: 'Admin', variant: 'default' },
@@ -34,10 +35,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="h-screen flex w-full bg-background overflow-hidden relative">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <header className="h-14 flex items-center border-b px-3 sm:px-4 bg-card shrink-0 sticky top-0 z-20 shadow-sm">
+          <header className="h-14 flex items-center border-b px-3 sm:px-4 bg-card/80 backdrop-blur-md shrink-0 sticky top-0 z-30 shadow-sm transition-all duration-200">
             <SidebarTrigger className="mr-3 shrink-0" />
             <div className="flex-1 min-w-0" />
             <div className="flex items-center gap-2 sm:gap-3">
@@ -76,7 +77,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuItem>
                   {user?.role === 'admin' && (
                     <DropdownMenuItem asChild>
-                      <Link to="/settings" className="cursor-pointer w-full flex items-center">
+                      <Link to="/team" className="cursor-pointer w-full flex items-center">
                         <ShieldCheck className="mr-2 h-4 w-4" />
                         <span>Users & Roles</span>
                       </Link>
@@ -102,10 +103,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </header>
           <main
             key={location.pathname}
-            className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 custom-scrollbar animate-page-enter"
+            className="flex-1 overflow-auto p-3 sm:p-4 md:p-6 pb-20 md:pb-6 custom-scrollbar animate-page-enter"
           >
             {children}
           </main>
+          <MobileNav />
         </div>
       </div>
     </SidebarProvider>

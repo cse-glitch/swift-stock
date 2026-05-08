@@ -223,7 +223,7 @@ const Profile = () => {
           <CardContent>
             <div className="grid gap-2">
               <Button variant="ghost" asChild className="w-full justify-between hover:bg-primary/10 h-12 px-4 group transition-all duration-200 border border-transparent hover:border-primary/20">
-                <Link to="/users" className="flex items-center gap-3 w-full">
+                <Link to="/team" className="flex items-center gap-3 w-full">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:scale-110 transition-transform">
                     <Users className="h-4 w-4" />
                   </div>
@@ -272,14 +272,6 @@ const Profile = () => {
             <CardTitle className="text-base font-bold">Support & Legal</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button variant="ghost" className="w-full justify-start gap-3 h-10 px-3">
-              <FileText className="h-4 w-4 text-primary/70" />
-              <span className="text-sm">Terms of Service</span>
-            </Button>
-            <Button variant="ghost" className="w-full justify-start gap-3 h-10 px-3">
-              <ShieldCheck className="h-4 w-4 text-primary/70" />
-              <span className="text-sm">Privacy Policy</span>
-            </Button>
             <Button 
               variant="ghost" 
               onClick={() => {
