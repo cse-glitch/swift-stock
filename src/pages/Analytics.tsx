@@ -310,7 +310,7 @@ const Analytics = () => {
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Select
             value={activeBusinessId?.toString() ?? "all"}
-            onValueChange={v => setActiveBusinessId(v === "all" ? null : Number(v))}
+            onValueChange={v => setActiveBusinessId(v === "all" ? null : v)}
           >
             <SelectTrigger className="w-full sm:w-[180px] bg-card/50">
               <SelectValue placeholder="All Businesses" />

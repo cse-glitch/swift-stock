@@ -213,7 +213,7 @@ export default function Inventory() {
         <div className="flex items-center gap-3">
           <Select
             value={activeBusinessId?.toString() ?? "all"}
-            onValueChange={v => setActiveBusinessId(v === "all" ? null : Number(v))}
+            onValueChange={v => setActiveBusinessId(v === "all" ? null : v)}
           >
             <SelectTrigger className="w-[200px] bg-card">
               <SelectValue placeholder="All Businesses" />

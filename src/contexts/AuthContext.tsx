@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import bcrypt from 'bcryptjs';
 import { db, type User, type UserRole, seedRolesIfEmpty } from '@/lib/db';
 import SwiftStockLoader from '@/components/SwiftStockLoader';
+import { pullSupabaseToLocal } from '@/lib/sync';
 
 interface AuthUser {
   id: number;
@@ -71,6 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const parsed = JSON.parse(raw) as AuthUser;
             setUser(parsed);
+            
+            // Background sync when session restored
+            pullSupabaseToLocal().catch(err => console.error('Auto-sync pull error:', err));
           } catch (err) {
             sessionStorage.removeItem(SESSION_KEY);
           }
@@ -114,6 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(authUser));
       setUser(authUser);
+
+      // Perform initial pull after login
+      pullSupabaseToLocal().catch(err => console.error('Login sync error:', err));
+
       return { success: true };
     } catch (err) {
       return { success: false, error: 'An unexpected error occurred' };

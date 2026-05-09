@@ -5,14 +5,14 @@ import { db, seedBusinesses, type Business } from '@/lib/db';
 interface BusinessContextValue {
   businesses: Business[];
   activeBusiness: Business | null;   // null = "All Businesses"
-  setActiveBusinessId: (id: number | null) => void;
-  activeBusinessId: number | null;
+  setActiveBusinessId: (id: string | null) => void;
+  activeBusinessId: string | null;
 }
 
 const BusinessContext = createContext<BusinessContextValue | undefined>(undefined);
 
 export function BusinessProvider({ children }: { children: ReactNode }) {
-  const [activeBusinessId, setActiveBusinessId] = useState<number | null>(null);
+  const [activeBusinessId, setActiveBusinessId] = useState<string | null>(null);
 
   useEffect(() => {
     seedBusinesses();

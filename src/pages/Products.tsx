@@ -50,11 +50,11 @@ export default function Products() {
     return matchSearch && matchStatus;
   });
 
-  function getProductVariants(productId: number) {
+  function getProductVariants(productId: string) {
     return variants.filter(v => v.productId === productId);
   }
 
-  function getTotalStock(productId: number) {
+  function getTotalStock(productId: string) {
     return getProductVariants(productId).reduce((sum, v) => sum + v.stock, 0);
   }
 
@@ -84,8 +84,8 @@ export default function Products() {
         </div>
         <div className="flex gap-2 flex-wrap">
           <Select
-            value={activeBusinessId?.toString() ?? "all"}
-            onValueChange={v => setActiveBusinessId(v === "all" ? null : Number(v))}
+            value={activeBusinessId ?? "all"}
+            onValueChange={(v) => setActiveBusinessId(v === 'all' ? null : v)}
           >
             <SelectTrigger className="w-full sm:w-[180px] bg-card text-sm">
               <SelectValue placeholder="All Businesses" />
@@ -93,7 +93,7 @@ export default function Products() {
             <SelectContent>
               <SelectItem value="all">All Businesses</SelectItem>
               {businesses.map(b => (
-                <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+                <SelectItem key={b.id} value={b.id!}>{b.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -302,7 +302,7 @@ function ProductDialog({
   product: Product | null;
   businesses: Business[];
   activeBusiness: Business | null;
-  categories: { id?: number; businessId: number; name: string }[];
+  categories: { id?: string; businessId: string; name: string }[];
   existingVariants: Variant[];
 }) {
   const isEdit = !!product;
@@ -329,10 +329,10 @@ function ProductDialog({
 
   useEffect(() => {
     if (open) {
-      setBusinessId(product?.businessId?.toString() ?? activeBusiness?.id?.toString() ?? '');
+      setBusinessId(product?.businessId ?? activeBusiness?.id ?? '');
       setName(product?.name ?? '');
       setSku(product?.sku ?? '');
-      setCategoryId(product?.categoryId?.toString() ?? 'none');
+      setCategoryId(product?.categoryId ?? 'none');
       setDescription(product?.description ?? '');
       setBasePrice(product?.basePrice?.toString() ?? '');
       setStatus(product?.status ?? 'active');
@@ -348,9 +348,9 @@ function ProductDialog({
     }
   }, [open, product, existingVariants, activeBusiness]);
 
-  const selectedBiz = businesses.find(b => b.id === Number(businessId));
+  const selectedBiz = businesses.find(b => b.id === businessId);
   const config = selectedBiz ? getBusinessConfig(selectedBiz.type) : null;
-  const bizCategories = categories.filter(c => c.businessId === Number(businessId));
+  const bizCategories = categories.filter(c => c.businessId === businessId);
   const productType = config?.hasStock
     ? (config.type === 'properties' ? 'listing' : 'physical')
     : config?.type === 'services' ? 'service' : 'physical';

@@ -11,9 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Upload, Database, Printer, FileDown, FileUp, AlertTriangle, FileSpreadsheet, Trash2, Scale } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { pushLocalToSupabase, pullSupabaseToLocal } from "@/lib/sync";
+import { Download, Upload, Database, Printer, FileDown, FileUp, AlertTriangle, FileSpreadsheet, Trash2, Scale, Cloud, RefreshCw, CloudUpload, CloudDownload } from "lucide-react";
 
 interface ImportRow {
   business_slug: string;
@@ -52,6 +53,31 @@ const Utilities = () => {
   const [importErrors, setImportErrors] = useState<ImportError[]>([]);
   const [importFileName, setImportFileName] = useState("");
   const [restoreData, setRestoreData] = useState<any>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handlePushSync = async () => {
+    setIsSyncing(true);
+    try {
+      await pushLocalToSupabase();
+      toast({ title: "Cloud Sync Complete", description: "All local data has been pushed to Supabase." });
+    } catch (err: any) {
+      toast({ title: "Sync Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handlePullSync = async () => {
+    setIsSyncing(true);
+    try {
+      await pullSupabaseToLocal();
+      toast({ title: "Cloud Sync Complete", description: "Data has been updated from Supabase." });
+    } catch (err: any) {
+      toast({ title: "Sync Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const downloadFile = (content: string, filename: string, type: string) => {
     const blob = new Blob([content], { type });
@@ -477,8 +503,61 @@ const Utilities = () => {
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Utilities</h1>
-        <p className="text-muted-foreground">Backup, import/export, bulk upload, and print labels</p>
+        <p className="text-muted-foreground">Backup, import/export, bulk upload, and cloud sync</p>
       </div>
+
+      {/* Cloud Sync Section */}
+      <Card className="border-primary/20 bg-primary/5 shadow-lg overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2 text-xl font-bold text-primary">
+              <Cloud className="h-5 w-5" />
+              Cloud Sync
+            </CardTitle>
+            <CardDescription>
+              Sync your local database with Supabase to access your inventory on PC and Mobile.
+            </CardDescription>
+          </div>
+          <RefreshCw className={`h-5 w-5 text-primary ${isSyncing ? 'animate-spin' : ''}`} />
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Backup to Cloud</h3>
+              <p className="text-xs text-muted-foreground mb-3">Push all your local products and stock to Supabase.</p>
+              <Button 
+                onClick={handlePushSync} 
+                className="w-full gap-2 bg-primary/10 text-primary hover:bg-primary/20 border-primary/20" 
+                variant="outline"
+                disabled={isSyncing}
+              >
+                <CloudUpload className="h-4 w-4" />
+                {isSyncing ? "Pushing..." : "Push Local to Cloud"}
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Restore from Cloud</h3>
+              <p className="text-xs text-muted-foreground mb-3">Update your local storage with the latest data from Supabase.</p>
+              <Button 
+                onClick={handlePullSync} 
+                className="w-full gap-2" 
+                variant="outline"
+                disabled={isSyncing}
+              >
+                <CloudDownload className="h-4 w-4" />
+                {isSyncing ? "Pulling..." : "Pull Cloud to Local"}
+              </Button>
+            </div>
+          </div>
+          
+          <div className="mt-4 p-3 bg-background/50 rounded-lg border border-dashed border-primary/20">
+            <p className="text-[10px] text-muted-foreground flex items-center gap-2">
+              <AlertTriangle className="h-3 w-3 text-warning" />
+              Ensure you have configured VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Backup & Export */}
       <div className="grid gap-4 sm:grid-cols-2">

@@ -1,5 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 
+export const generateId = () => crypto.randomUUID();
+
 // ── Business types ──
 export type BusinessType = 'general' | 'fashion' | 'lubricants' | 'properties' | 'agro' | 'services';
 export type ProductType = 'physical' | 'service' | 'listing';
@@ -9,7 +11,7 @@ export type InventoryAction = 'add' | 'remove' | 'adjust';
 export type UserRole = 'admin' | 'manager' | 'staff';
 
 export interface Business {
-  id?: number;
+  id: string;
   name: string;
   slug: string;
   type: BusinessType;
@@ -20,16 +22,16 @@ export interface Business {
 }
 
 export interface Category {
-  id?: number;
-  businessId: number;
+  id: string;
+  businessId: string;
   name: string;
-  parentId?: number;
+  parentId?: string;
 }
 
 export interface Product {
-  id?: number;
-  businessId: number;
-  categoryId?: number;
+  id: string;
+  businessId: string;
+  categoryId?: string;
   name: string;
   sku: string;
   type: ProductType;
@@ -48,8 +50,8 @@ export interface Product {
 }
 
 export interface Variant {
-  id?: number;
-  productId: number;
+  id: string;
+  productId: string;
   name: string;
   sku: string;
   attributes: Record<string, string | number>;
@@ -61,10 +63,10 @@ export interface Variant {
 }
 
 export interface InventoryLog {
-  id?: number;
-  productId: number;
-  variantId?: number;
-  businessId: number;
+  id: string;
+  productId: string;
+  variantId?: string;
+  businessId: string;
   type: InventoryAction;
   quantity: number;
   reason: string;
@@ -73,8 +75,8 @@ export interface InventoryLog {
 }
 
 export interface PropertyListing {
-  id?: number;
-  productId: number;
+  id: string;
+  productId: string;
   listingType: 'sale' | 'rent';
   location: string;
   area?: number;
@@ -84,8 +86,8 @@ export interface PropertyListing {
 }
 
 export interface Service {
-  id?: number;
-  productId: number;
+  id: string;
+  productId: string;
   duration?: string;
   capacity?: number;
   currentBookings: number;
@@ -93,10 +95,10 @@ export interface Service {
 }
 
 export interface Order {
-  id?: number;
-  businessId: number;
-  productId: number;
-  variantId?: number;
+  id: string;
+  businessId: string;
+  productId: string;
+  variantId?: string;
   customerName: string;
   customerNumber: string;
   price: number;
@@ -221,19 +223,18 @@ class InventoryDB extends Dexie {
       auditLogs: '++id, userId, action, entityType, timestamp',
     });
     this.version(8).stores({
-      items: '++id, &sku, productName, category, weight, lastUpdated',
-      removals: '++id, sku, reason, timestamp',
-      businesses: '++id, &slug, type, isActive',
-      categories: '++id, businessId, name, parentId',
-      products: '++id, businessId, categoryId, sku, type, status, *tags',
-      variants: '++id, productId, sku, [productId+id]',
-      inventoryLog: '++id, productId, variantId, businessId, type, timestamp, [businessId+type], [businessId+type+timestamp]',
-      propertyListings: '++id, productId, listingType, availability',
-      services: '++id, productId',
-      orders: '++id, businessId, productId, customerName, customerNumber, status, timestamp, [businessId+status]',
-      users: '++id, &username, role, createdAt',
       auditLogs: '++id, userId, action, entityType, timestamp',
       rolePermissions: '++id, &role',
+    });
+    this.version(9).stores({
+      businesses: 'id, &slug, type, isActive',
+      categories: 'id, businessId, name, parentId',
+      products: 'id, businessId, categoryId, sku, type, status, *tags',
+      variants: 'id, productId, sku, [productId+id]',
+      inventoryLog: 'id, productId, variantId, businessId, type, timestamp, [businessId+type], [businessId+type+timestamp]',
+      propertyListings: 'id, productId, listingType, availability',
+      services: 'id, productId',
+      orders: 'id, businessId, productId, customerName, customerNumber, status, timestamp, [businessId+status]',
     });
   }
 }
@@ -283,13 +284,13 @@ export async function seedBusinesses() {
   }
 
   await db.businesses.bulkAdd([
-    { name: 'SAMAN Kenakata', slug: 'kenakata', type: 'general', color: '230 65% 52%', icon: 'ShoppingBag', isActive: true, createdAt: new Date() },
-    { name: 'Saman Pink', slug: 'pink', type: 'fashion', color: '330 70% 60%', icon: 'Shirt', isActive: true, createdAt: new Date() },
-    { name: 'Saman Blue', slug: 'blue', type: 'fashion', color: '210 75% 55%', icon: 'Shirt', isActive: true, createdAt: new Date() },
-    { name: 'SAMAN Lubricants', slug: 'lubricants', type: 'lubricants', color: '38 92% 50%', icon: 'Droplets', isActive: true, createdAt: new Date() },
-    { name: 'SAMAN Properties', slug: 'properties', type: 'properties', color: '160 50% 45%', icon: 'Building2', isActive: true, createdAt: new Date() },
-    { name: 'SAMAN Agro & Food', slug: 'agro', type: 'agro', color: '120 50% 40%', icon: 'Leaf', isActive: true, createdAt: new Date() },
-    { name: 'SAMAN Work Terminal', slug: 'terminal', type: 'services', color: '270 55% 55%', icon: 'Briefcase', isActive: true, createdAt: new Date() },
+    { id: generateId(), name: 'SAMAN Kenakata', slug: 'kenakata', type: 'general', color: '230 65% 52%', icon: 'ShoppingBag', isActive: true, createdAt: new Date() },
+    { id: generateId(), name: 'Saman Pink', slug: 'pink', type: 'fashion', color: '330 70% 60%', icon: 'Shirt', isActive: true, createdAt: new Date() },
+    { id: generateId(), name: 'Saman Blue', slug: 'blue', type: 'fashion', color: '210 75% 55%', icon: 'Shirt', isActive: true, createdAt: new Date() },
+    { id: generateId(), name: 'SAMAN Lubricants', slug: 'lubricants', type: 'lubricants', color: '38 92% 50%', icon: 'Droplets', isActive: true, createdAt: new Date() },
+    { id: generateId(), name: 'SAMAN Properties', slug: 'properties', type: 'properties', color: '160 50% 45%', icon: 'Building2', isActive: true, createdAt: new Date() },
+    { id: generateId(), name: 'SAMAN Agro & Food', slug: 'agro', type: 'agro', color: '120 50% 40%', icon: 'Leaf', isActive: true, createdAt: new Date() },
+    { id: generateId(), name: 'SAMAN Work Terminal', slug: 'terminal', type: 'services', color: '270 55% 55%', icon: 'Briefcase', isActive: true, createdAt: new Date() },
   ]);
 
   await seedSampleData();
@@ -303,14 +304,18 @@ async function seedSampleData() {
   const now = new Date();
 
   for (const biz of businesses) {
-    let catId = await db.categories.add({ businessId: biz.id!, name: 'Default Category' });
-    const pId = await db.products.add({
+    const catId = generateId();
+    await db.categories.add({ id: catId, businessId: biz.id!, name: 'Default Category' });
+    const pId = generateId();
+    await db.products.add({
+      id: pId,
       businessId: biz.id!, categoryId: catId, name: `Sample Product ${biz.name}`, sku: `${biz.slug.toUpperCase()}-001`,
       type: 'physical', basePrice: 1000, currency: 'BDT', tags: ['sample'],
       attributes: {}, status: 'active', isSeasonal: false, expiryTracking: false, createdAt: now, updatedAt: now
     });
     await db.variants.add({
-      productId: pId as number, name: 'Standard', sku: `${biz.slug.toUpperCase()}-001-STD`,
+      id: generateId(),
+      productId: pId, name: 'Standard', sku: `${biz.slug.toUpperCase()}-001-STD`,
       attributes: {}, stock: 50, lowStockThreshold: 5
     });
   }

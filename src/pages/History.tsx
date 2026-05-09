@@ -38,7 +38,7 @@ const History = () => {
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return logs.filter(log => {
-      if (businessFilter !== "All" && log.businessId !== Number(businessFilter)) return false;
+      if (businessFilter !== "All" && log.businessId !== businessFilter) return false;
       if (actionFilter !== "All" && log.type !== actionFilter) return false;
       if (reasonFilter !== "All" && log.reason !== reasonFilter) return false;
       if (dateFrom && new Date(log.timestamp) < dateFrom) return false;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type Category } from '@/lib/db';
+import { db, generateId, type Category } from '@/lib/db';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { getBusinessConfig } from '@/lib/business-config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,7 +18,7 @@ export default function Categories() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState<string>('none');
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string>('');
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
 
   const categories = useLiveQuery(
     () => activeBusinessId
@@ -27,24 +27,24 @@ export default function Categories() {
     [activeBusinessId]
   ) ?? [];
 
-  const targetBusinessId = activeBusinessId ?? (selectedBusinessId ? Number(selectedBusinessId) : null);
+  const targetBusinessId = activeBusinessId ?? selectedBusinessId;
 
   const topLevel = categories.filter(c => !c.parentId);
-  const getChildren = (parentId: number) => categories.filter(c => c.parentId === parentId);
+  const getChildren = (parentId: string) => categories.filter(c => c.parentId === parentId);
 
   function openAdd() {
     setEditingCategory(null);
     setName('');
     setParentId('none');
-    setSelectedBusinessId(activeBusinessId?.toString() ?? '');
+    setSelectedBusinessId(activeBusinessId ?? null);
     setDialogOpen(true);
   }
 
   function openEdit(cat: Category) {
     setEditingCategory(cat);
     setName(cat.name);
-    setParentId(cat.parentId?.toString() ?? 'none');
-    setSelectedBusinessId(cat.businessId.toString());
+    setParentId(cat.parentId ?? 'none');
+    setSelectedBusinessId(cat.businessId);
     setDialogOpen(true);
   }
 
@@ -57,14 +57,14 @@ export default function Categories() {
     const data = {
       businessId: targetBusinessId,
       name: name.trim(),
-      parentId: parentId !== 'none' ? Number(parentId) : undefined,
+      parentId: parentId !== 'none' ? parentId : undefined,
     };
 
     if (editingCategory?.id) {
       await db.categories.update(editingCategory.id, data);
       toast({ title: 'Category updated' });
     } else {
-      await db.categories.add(data);
+      await db.categories.add({ id: generateId(), ...data });
       toast({ title: 'Category added' });
     }
     setDialogOpen(false);
