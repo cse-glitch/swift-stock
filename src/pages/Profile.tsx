@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Calendar, MapPin, Briefcase, Mail, Phone, Camera, Save, 
-  User as UserIcon, Trash2, AlertTriangle, ShieldCheck, 
+import {
+  Calendar, MapPin, Briefcase, Mail, Phone, Camera, Save,
+  User as UserIcon, Trash2, AlertTriangle, ShieldCheck,
   Users, ScrollText, HardDrive, ArrowRight, FileText, LogOut
 } from "lucide-react";
 import { toast } from "sonner";
@@ -66,8 +66,8 @@ const Profile = () => {
           <h1 className="text-3xl font-bold tracking-tight">User Profile</h1>
           <p className="text-muted-foreground">Manage your personal information and preferences</p>
         </div>
-        <Button 
-          variant={isEditing ? "outline" : "default"} 
+        <Button
+          variant={isEditing ? "outline" : "default"}
           onClick={() => isEditing ? setIsEditing(false) : setIsEditing(true)}
           className="gap-2"
         >
@@ -124,12 +124,12 @@ const Profile = () => {
                 <Label htmlFor="name">Full Name</Label>
                 <div className="relative">
                   <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="name" 
-                    value={profile.name} 
-                    disabled={!isEditing} 
+                  <Input
+                    id="name"
+                    value={profile.name}
+                    disabled={!isEditing}
                     className="pl-10"
-                    onChange={(e) => setProfile({...profile, name: e.target.value})}
+                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                   />
                 </div>
               </div>
@@ -137,12 +137,12 @@ const Profile = () => {
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="email" 
-                    value={profile.email} 
-                    disabled={!isEditing} 
+                  <Input
+                    id="email"
+                    value={profile.email}
+                    disabled={!isEditing}
                     className="pl-10"
-                    onChange={(e) => setProfile({...profile, email: e.target.value})}
+                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                   />
                 </div>
               </div>
@@ -150,12 +150,12 @@ const Profile = () => {
                 <Label htmlFor="phone">Phone Number</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="phone" 
-                    value={profile.phone} 
-                    disabled={!isEditing} 
+                  <Input
+                    id="phone"
+                    value={profile.phone}
+                    disabled={!isEditing}
                     className="pl-10"
-                    onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                   />
                 </div>
               </div>
@@ -163,12 +163,12 @@ const Profile = () => {
                 <Label htmlFor="location">Location</Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="location" 
-                    value={profile.location} 
-                    disabled={!isEditing} 
+                  <Input
+                    id="location"
+                    value={profile.location}
+                    disabled={!isEditing}
                     className="pl-10"
-                    onChange={(e) => setProfile({...profile, location: e.target.value})}
+                    onChange={(e) => setProfile({ ...profile, location: e.target.value })}
                   />
                 </div>
               </div>
@@ -176,12 +176,12 @@ const Profile = () => {
                 <Label htmlFor="position">Position</Label>
                 <div className="relative">
                   <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="position" 
-                    value={profile.position} 
-                    disabled={!isEditing} 
+                  <Input
+                    id="position"
+                    value={profile.position}
+                    disabled={!isEditing}
                     className="pl-10"
-                    onChange={(e) => setProfile({...profile, position: e.target.value})}
+                    onChange={(e) => setProfile({ ...profile, position: e.target.value })}
                   />
                 </div>
               </div>
@@ -189,10 +189,10 @@ const Profile = () => {
                 <Label htmlFor="joining">Date of Joining</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="joining" 
-                    value={profile.joiningDate} 
-                    disabled={true} 
+                  <Input
+                    id="joining"
+                    value={profile.joiningDate}
+                    disabled={true}
                     className="pl-10 opacity-70"
                   />
                 </div>
@@ -272,10 +272,10 @@ const Profile = () => {
             <CardTitle className="text-base font-bold">Support & Legal</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => {
-                if(confirm('Are you sure you want to sign out?')) {
+                if (confirm('Are you sure you want to sign out?')) {
                   sessionStorage.clear();
                   window.location.href = '#/login';
                   window.location.reload();

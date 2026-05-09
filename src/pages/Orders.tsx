@@ -93,6 +93,7 @@ const OrdersPage = () => {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [customPrice, setCustomPrice] = useState<string>('');
   const [formData, setFormData] = useState({
     customerName: '',
     phone: '',
@@ -145,12 +146,12 @@ const OrdersPage = () => {
 
   // ── Summary Calculations ──
   const summary = useMemo(() => {
-    const unitPrice = selectedProduct?.basePrice ?? 0;
+    const unitPrice = customPrice !== '' ? parseFloat(customPrice) || 0 : (selectedProduct?.basePrice ?? 0);
     const subtotal = unitPrice * quantity;
     const tax = subtotal * TAX_RATE;
     const total = subtotal + tax + DELIVERY_FEE;
     return { unitPrice, subtotal, tax, total };
-  }, [selectedProduct, quantity]);
+  }, [selectedProduct, quantity, customPrice]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -186,6 +187,7 @@ const OrdersPage = () => {
       setSelectedBusinessId(null);
       setSelectedProductId(null);
       setQuantity(1);
+      setCustomPrice('');
       setFormData({
         customerName: '',
         phone: '',
@@ -486,6 +488,7 @@ const OrdersPage = () => {
                                   onSelect={() => {
                                     setSelectedProductId(p.id!);
                                     setQuantity(1);
+                                    setCustomPrice(p.basePrice.toString());
                                     setProductSearchOpen(false);
                                   }}
                                   className="flex items-center justify-between p-3 cursor-pointer rounded-lg hover:bg-primary/5 data-[selected=true]:bg-primary/5 transition-colors"
@@ -543,9 +546,22 @@ const OrdersPage = () => {
                       </div>
                     </div>
 
-                    <div className="text-center md:text-right px-6 border-l border-muted-foreground/10 hidden md:block">
+                    <div className="flex flex-col items-center gap-2 px-4 py-2 bg-background/50 rounded-xl border border-muted-foreground/5 shadow-inner">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Unit Price</Label>
+                      <div className="flex items-center">
+                        <span className="text-muted-foreground mr-1 font-bold">৳</span>
+                        <Input 
+                          type="number" 
+                          value={customPrice} 
+                          onChange={(e) => setCustomPrice(e.target.value)} 
+                          className="w-20 h-9 text-center font-bold px-2 py-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="text-center md:text-right px-6 md:border-l border-muted-foreground/10">
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Subtotal</p>
-                      <p className="text-2xl font-black text-primary">৳{(selectedProduct.basePrice * quantity).toLocaleString()}</p>
+                      <p className="text-2xl font-black text-primary">৳{summary.subtotal.toLocaleString()}</p>
                     </div>
                   </div>
                 ) : (

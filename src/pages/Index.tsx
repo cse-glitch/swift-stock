@@ -154,14 +154,14 @@ const Dashboard = () => {
               <div className="relative h-32 w-32">
                 <svg className="h-full w-full" viewBox="0 0 100 100">
                   <circle className="text-muted stroke-current" strokeWidth="10" fill="transparent" r="40" cx="50" cy="50" />
-                  <circle 
-                    className="text-primary stroke-current transition-all duration-1000 ease-in-out" 
-                    strokeWidth="10" 
-                    strokeDasharray={251.2} 
-                    strokeDashoffset={251.2 - (251.2 * availablePercent) / 100} 
-                    strokeLinecap="round" 
-                    fill="transparent" r="40" cx="50" cy="50" 
-                    transform="rotate(-90 50 50)" 
+                  <circle
+                    className="text-primary stroke-current transition-all duration-1000 ease-in-out"
+                    strokeWidth="10"
+                    strokeDasharray={251.2}
+                    strokeDashoffset={251.2 - (251.2 * availablePercent) / 100}
+                    strokeLinecap="round"
+                    fill="transparent" r="40" cx="50" cy="50"
+                    transform="rotate(-90 50 50)"
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -225,9 +225,9 @@ const Dashboard = () => {
   const renderServicesDashboard = () => {
     const bizProducts = products;
     const bizServices = services.filter(s => bizProducts.some(p => p.id === s.productId));
-    
-    const avgUtilization = bizServices.length 
-      ? bizServices.reduce((acc, s) => acc + (s.capacity ? (s.currentBookings / s.capacity) * 100 : 0), 0) / bizServices.length 
+
+    const avgUtilization = bizServices.length
+      ? bizServices.reduce((acc, s) => acc + (s.capacity ? (s.currentBookings / s.capacity) * 100 : 0), 0) / bizServices.length
       : 0;
 
     return (
@@ -240,13 +240,13 @@ const Dashboard = () => {
             <div className="relative h-32 w-48 overflow-hidden">
               <svg className="h-full w-full" viewBox="0 0 100 60">
                 <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="currentColor" strokeWidth="10" className="text-muted" />
-                <path 
-                  d="M 10 50 A 40 40 0 0 1 90 50" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="10" 
-                  strokeDasharray={126} 
-                  strokeDashoffset={126 - (126 * avgUtilization) / 100} 
+                <path
+                  d="M 10 50 A 40 40 0 0 1 90 50"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="10"
+                  strokeDasharray={126}
+                  strokeDashoffset={126 - (126 * avgUtilization) / 100}
                   className={cn("transition-all duration-1000", avgUtilization > 80 ? "text-destructive" : avgUtilization > 50 ? "text-warning" : "text-success")}
                 />
               </svg>
@@ -421,46 +421,52 @@ const Dashboard = () => {
       {!activeBusiness && (
         <div>
           <h2 className="text-base sm:text-lg font-semibold mb-3">Business Overview</h2>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {activeBusinesses.map(b => {
+          <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {activeBusinesses.map((b, index) => {
               const Icon = iconMap[b.icon] ?? Store;
               const bProducts = productsByBusiness.get(b.id!) ?? [];
               const bVariants = bProducts.flatMap(p => variantsByProduct.get(p.id!) ?? []);
               const bStock = bVariants.reduce((s, v) => s + v.stock, 0);
               const bLow = bVariants.filter(v => v.stock > 0 && v.stock <= v.lowStockThreshold).length;
 
+              // Make every 3rd card span full width on small screens for a bento feel
+              const isWide = index % 3 === 0;
+
               return (
                 <Card
                   key={b.id}
                   onClick={() => handleBusinessClick(b)}
-                  className="card-hover hover:shadow-md transition-all cursor-pointer border-l-4 active:scale-[0.98]"
+                  className={cn(
+                    "card-hover hover:shadow-md transition-all cursor-pointer border-l-4 active:scale-[0.98]",
+                    isWide ? "col-span-2 sm:col-span-1" : "col-span-1"
+                  )}
                   style={{ borderLeftColor: `hsl(${b.color})` }}
                 >
-                  <CardHeader className="flex flex-row items-center gap-3 pb-2 px-3 pt-3 sm:px-4 sm:pt-4">
+                  <CardHeader className="flex flex-row items-center gap-2 pb-1.5 px-2.5 pt-2.5 sm:gap-3 sm:px-4 sm:pt-4">
                     <div
-                      className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg shrink-0"
+                      className="flex h-7 w-7 sm:h-9 sm:w-9 items-center justify-center rounded-lg shrink-0"
                       style={{ backgroundColor: `hsl(${b.color} / 0.12)`, color: `hsl(${b.color})` }}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </div>
                     <div className="min-w-0">
-                      <CardTitle className="text-sm truncate">{b.name}</CardTitle>
-                      <p className="text-xs text-muted-foreground capitalize">{b.type}</p>
+                      <CardTitle className="text-xs sm:text-sm truncate">{b.name}</CardTitle>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground capitalize leading-tight">{b.type}</p>
                     </div>
                   </CardHeader>
-                  <CardContent className="px-3 pb-3 sm:px-4 sm:pb-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{bProducts.length} products</span>
-                      <span className="font-medium text-success text-xs">৳{calculateRevenue(b.id!).toLocaleString()}</span>
+                  <CardContent className="px-2.5 pb-2.5 sm:px-4 sm:pb-4">
+                    <div className="flex items-center justify-between text-[10px] sm:text-sm">
+                      <span className="text-muted-foreground truncate">{bProducts.length} items</span>
+                      <span className="font-medium text-success">৳{calculateRevenue(b.id!).toLocaleString()}</span>
                     </div>
-                    <div className="flex items-center justify-between text-sm mt-1.5">
-                      <span className="text-muted-foreground text-xs">Total Stock</span>
+                    <div className="flex items-center justify-between text-[10px] sm:text-sm mt-1 sm:mt-1.5">
+                      <span className="text-muted-foreground truncate">Stock</span>
                       <span className="font-medium">{bStock.toLocaleString()}</span>
                     </div>
                     {bLow > 0 && (
-                      <Badge variant="destructive" className="mt-2 gap-1 text-[10px] h-5">
-                        <AlertTriangle className="h-3 w-3" />
-                        {bLow} low stock
+                      <Badge variant="destructive" className="mt-1.5 gap-1 text-[9px] h-4 px-1.5 sm:mt-2 sm:text-[10px] sm:h-5">
+                        <AlertTriangle className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                        {bLow} low
                       </Badge>
                     )}
                   </CardContent>

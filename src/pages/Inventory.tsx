@@ -55,8 +55,8 @@ export default function Inventory() {
 
   // Fetch data
   const products = useLiveQuery(
-    () => activeBusinessId 
-      ? db.products.where('businessId').equals(activeBusinessId).toArray() 
+    () => activeBusinessId
+      ? db.products.where('businessId').equals(activeBusinessId).toArray()
       : db.products.toArray(),
     [activeBusinessId]
   ) ?? [];
@@ -74,7 +74,7 @@ export default function Inventory() {
       const product = productMap.get(v.productId)!;
       const biz = bizMap.get(product.businessId);
       const cat = product.categoryId ? catMap.get(product.categoryId) : null;
-      
+
       const price = v.price || product.basePrice || 0;
       const value = v.stock * price;
       const isLowStock = v.stock <= v.lowStockThreshold && v.stock > 0;
@@ -95,9 +95,9 @@ export default function Inventory() {
 
     if (search) {
       const q = search.toLowerCase();
-      results = results.filter(r => 
-        r.productName.toLowerCase().includes(q) || 
-        r.name.toLowerCase().includes(q) || 
+      results = results.filter(r =>
+        r.productName.toLowerCase().includes(q) ||
+        r.name.toLowerCase().includes(q) ||
         r.sku.toLowerCase().includes(q)
       );
     }
@@ -203,8 +203,8 @@ export default function Inventory() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search SKU or product name..." 
+          <Input
+            placeholder="Search SKU or product name..."
             className="pl-9 bg-card"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -225,7 +225,7 @@ export default function Inventory() {
               ))}
             </SelectContent>
           </Select>
-          <Button 
+          <Button
             variant={showLowStockOnly ? "destructive" : "outline"}
             size="sm"
             onClick={() => setShowLowStockOnly(!showLowStockOnly)}
@@ -255,8 +255,8 @@ export default function Inventory() {
                       <p className="font-bold text-foreground truncate">{item.productName}</p>
                       <p className="text-xs text-muted-foreground truncate">{item.name}</p>
                     </div>
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className="whitespace-nowrap shrink-0 text-[10px] font-mono h-6"
                     >
                       {item.sku}
@@ -267,8 +267,8 @@ export default function Inventory() {
                     <div className="flex flex-col">
                       <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Business & Category</span>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className="whitespace-nowrap text-[10px] h-5 px-2"
                           style={{ borderColor: item.businessColor ? `hsl(${item.businessColor})` : undefined }}
                         >
@@ -283,10 +283,9 @@ export default function Inventory() {
                     <div className="flex flex-col">
                       <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Stock</span>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`text-lg font-mono font-bold ${
-                          item.isOutOfStock ? 'text-destructive' : 
-                          item.isLowStock ? 'text-warning' : 'text-foreground'
-                        }`}>
+                        <span className={`text-lg font-mono font-bold ${item.isOutOfStock ? 'text-destructive' :
+                            item.isLowStock ? 'text-warning' : 'text-foreground'
+                          }`}>
                           {item.stock}
                         </span>
                         {item.isLowStock && <Badge variant="warning" className="h-4 text-[8px] px-1">LOW</Badge>}
@@ -302,18 +301,18 @@ export default function Inventory() {
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                    <Button 
-                      variant="secondary" 
-                      size="sm" 
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       className="flex-1 h-8 text-xs gap-2"
                       onClick={() => navigate('/add')}
                     >
                       <PlusCircle className="h-3.5 w-3.5" />
                       Add
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="flex-1 h-8 text-xs gap-2"
                       onClick={() => navigate('/remove')}
                     >
@@ -370,8 +369,8 @@ export default function Inventory() {
                       </TableCell>
                       {!activeBusinessId && (
                         <TableCell className="whitespace-nowrap">
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="font-normal text-[10px] whitespace-nowrap"
                             style={{ borderColor: item.businessColor ? `hsl(${item.businessColor})` : undefined }}
                           >
@@ -384,10 +383,9 @@ export default function Inventory() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex flex-col items-end">
-                          <span className={`font-mono font-bold ${
-                            item.isOutOfStock ? 'text-destructive' : 
-                            item.isLowStock ? 'text-warning' : 'text-foreground'
-                          }`}>
+                          <span className={`font-mono font-bold ${item.isOutOfStock ? 'text-destructive' :
+                              item.isLowStock ? 'text-warning' : 'text-foreground'
+                            }`}>
                             {item.stock}
                           </span>
                           {item.isLowStock && (

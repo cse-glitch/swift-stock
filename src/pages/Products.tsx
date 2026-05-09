@@ -150,8 +150,8 @@ export default function Products() {
                       <div className="flex flex-col">
                         <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Business & Category</span>
                         <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="whitespace-nowrap text-[10px] h-5 px-2"
                             style={{ borderColor: biz ? `hsl(${biz.color})` : undefined }}
                           >
