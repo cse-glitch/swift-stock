@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
-import { useAuth, writeAuditLog } from "@/contexts/AuthContext";
+import { db, type Business, type Category, type Product, type Variant, type InventoryLog, type PropertyListing, type Service, type Order } from "@/lib/db";
+
+import { useAuth } from "@/contexts/AuthContext";
+import { writeAuditLog } from "@/lib/auth-utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,10 +19,19 @@ interface BackupData {
   tables: Record<string, unknown[]>;
 }
 
+type BackupTableName = typeof BACKUP_TABLES[number];
+
+type BackupTableType = Business | Category | Product | Variant | InventoryLog | PropertyListing | Service | Order;
+type BackedTable = { count(): Promise<number>; toArray(): Promise<BackupTableType[]>; clear(): Promise<void>; bulkAdd(items: Omit<BackupTableType, 'id'>[]): Promise<unknown> };
+
 const BACKUP_TABLES = [
   "businesses", "categories", "products", "variants",
   "inventoryLog", "propertyListings", "services", "orders",
 ] as const;
+
+function getTable(tableName: BackupTableName): BackedTable {
+  return db[tableName] as unknown as BackedTable;
+}
 
 export default function BackupRestore() {
   const { user } = useAuth();
@@ -32,7 +43,7 @@ export default function BackupRestore() {
   const counts = useLiveQuery(async () => {
     const results: Record<string, number> = {};
     for (const t of BACKUP_TABLES) {
-      results[t] = await (db as any)[t].count();
+      results[t] = await getTable(t).count();
     }
     return results;
   }) ?? {};
@@ -48,7 +59,7 @@ export default function BackupRestore() {
       };
 
       for (const tableName of BACKUP_TABLES) {
-        backup.tables[tableName] = await (db as any)[tableName].toArray();
+        backup.tables[tableName] = await getTable(tableName).toArray();
       }
 
       const json = JSON.stringify(backup, null, 2);
@@ -89,11 +100,11 @@ export default function BackupRestore() {
       for (const tableName of BACKUP_TABLES) {
         const rows = backup.tables[tableName];
         if (!Array.isArray(rows)) continue;
-        const table = (db as any)[tableName];
+        const table = getTable(tableName);
         await table.clear();
         if (rows.length > 0) {
           // Strip IDs so Dexie auto-assigns new ones cleanly
-          const cleaned = rows.map(({ id: _id, ...rest }: any) => rest);
+          const cleaned = rows.map(({ id: _id, ...rest }) => rest as Omit<BackupTableType, 'id'>);
           await table.bulkAdd(cleaned);
         }
       }

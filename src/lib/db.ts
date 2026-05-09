@@ -2,6 +2,20 @@ import Dexie, { type Table } from 'dexie';
 
 export const generateId = () => crypto.randomUUID();
 
+// Subscription system for auto-sync
+export const dbEvents = {
+  listeners: [] as (() => void)[],
+  subscribe(fn: () => void) {
+    this.listeners.push(fn);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== fn);
+    };
+  },
+  notify() {
+    this.listeners.forEach(fn => fn());
+  }
+};
+
 // ── Business types ──
 export type BusinessType = 'general' | 'fashion' | 'lubricants' | 'properties' | 'agro' | 'services';
 export type ProductType = 'physical' | 'service' | 'listing';
@@ -109,7 +123,7 @@ export interface Order {
 }
 
 export interface User {
-  id?: number;
+  id?: string;
   username: string;
   passwordHash: string;
   displayName: string;
@@ -119,18 +133,18 @@ export interface User {
 }
 
 export interface AuditLog {
-  id?: number;
-  userId?: number;
+  id?: string;
+  userId?: string;
   username: string;
   action: string;
   entityType?: string;
-  entityId?: number;
+  entityId?: string;
   details?: string;
   timestamp: Date;
 }
 
 export interface RolePermission {
-  id?: number;
+  id?: string;
   role: UserRole;
   permissions: string[];
 }
@@ -236,6 +250,27 @@ class InventoryDB extends Dexie {
       services: 'id, productId',
       orders: 'id, businessId, productId, customerName, customerNumber, status, timestamp, [businessId+status]',
     });
+    this.version(10).stores({
+      users: 'id, &username, role, createdAt',
+      auditLogs: 'id, userId, action, entityType, timestamp',
+      rolePermissions: 'id, &role',
+    });
+
+    // --- Mutation Hooks for Auto-Sync ---
+    const tables = [
+      'businesses', 'categories', 'products', 'variants', 
+      'inventoryLog', 'propertyListings', 'services', 
+      'orders', 'users', 'auditLogs', 'rolePermissions'
+    ];
+
+    tables.forEach(tableName => {
+      const table = (this as unknown as Record<string, { hook?: (event: string, cb: () => void) => void }>)[tableName];
+      if (table && typeof table.hook === 'function') {
+        table.hook('creating', () => dbEvents.notify());
+        table.hook('updating', () => dbEvents.notify());
+        table.hook('deleting', () => dbEvents.notify());
+      }
+    });
   }
 }
 
@@ -247,6 +282,7 @@ export async function seedRolesIfEmpty() {
 
   await db.rolePermissions.bulkAdd([
     {
+      id: crypto.randomUUID(),
       role: 'admin',
       permissions: [
         'products.create', 'products.edit', 'products.delete',
@@ -257,6 +293,7 @@ export async function seedRolesIfEmpty() {
       ]
     },
     {
+      id: crypto.randomUUID(),
       role: 'manager',
       permissions: [
         'products.create', 'products.edit',
@@ -266,6 +303,7 @@ export async function seedRolesIfEmpty() {
       ]
     },
     {
+      id: crypto.randomUUID(),
       role: 'staff',
       permissions: [
         'products.create',

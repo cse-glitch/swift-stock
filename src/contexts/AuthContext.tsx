@@ -1,16 +1,14 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import bcrypt from 'bcryptjs';
-import { db, type User, type UserRole, seedRolesIfEmpty } from '@/lib/db';
+import { db, type UserRole, seedRolesIfEmpty } from '@/lib/db';
 import SwiftStockLoader from '@/components/SwiftStockLoader';
 import { pullSupabaseToLocal } from '@/lib/sync';
-
-interface AuthUser {
-  id: number;
-  username: string;
-  displayName: string;
-  role: UserRole;
-  createdAt: Date;
-}
+import { 
+  type AuthUser, 
+  type Permission, 
+  SESSION_KEY, 
+  seedAdminIfEmpty 
+} from '@/lib/auth-utils';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -20,25 +18,6 @@ interface AuthContextValue {
   logout: () => void;
   hasPermission: (permission: Permission) => boolean;
 }
-
-// ── Permission model ──────────────────────────────────────
-export type Permission =
-  | 'products.create'
-  | 'products.edit'
-  | 'products.delete'
-  | 'orders.create'
-  | 'orders.edit'
-  | 'orders.delete'
-  | 'inventory.add'
-  | 'inventory.remove'
-  | 'businesses.manage'
-  | 'users.manage'
-  | 'settings.manage'
-  | 'analytics.view'
-  | 'export.data';
-
-// ── Session storage key ───────────────────────────────────
-const SESSION_KEY = 'saman_auth_session';
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -59,22 +38,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await seedRolesIfEmpty();
         await seedAdminIfEmpty();
 
-        // Load permissions from DB
+        // Load initial permissions from DB
         const perms = await db.rolePermissions.toArray();
-        const permMap: any = {};
+        const permMap: Record<UserRole, string[]> = { admin: [], manager: [], staff: [] };
         perms.forEach(p => {
           permMap[p.role] = p.permissions;
         });
         setRolePermissions(permMap);
+
+        // --- NEW: Sync users and permissions before login for "Online App" feel ---
+        try {
+          console.log('AuthProvider: Syncing accounts from cloud...');
+          await pullSupabaseToLocal(); // Pull all data to be safe, including users
+          
+          // Refresh permissions map after pull
+          const updatedPerms = await db.rolePermissions.toArray();
+          const updatedMap: Record<UserRole, string[]> = { admin: [], manager: [], staff: [] };
+          updatedPerms.forEach(p => {
+            updatedMap[p.role] = p.permissions;
+          });
+          setRolePermissions(updatedMap);
+        } catch (syncErr) {
+          console.error('AuthProvider: Initial cloud sync failed:', syncErr);
+        }
 
         const raw = sessionStorage.getItem(SESSION_KEY);
         if (raw) {
           try {
             const parsed = JSON.parse(raw) as AuthUser;
             setUser(parsed);
-            
-            // Background sync when session restored
-            pullSupabaseToLocal().catch(err => console.error('Auto-sync pull error:', err));
           } catch (err) {
             sessionStorage.removeItem(SESSION_KEY);
           }
@@ -101,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!match) return { success: false, error: 'Invalid username or password' };
 
       const authUser: AuthUser = {
-        id: dbUser.id!,
+        id: dbUser.id as unknown as number, // Cast from UUID string to number if needed, or update interface
         username: dbUser.username,
         displayName: dbUser.displayName,
         role: dbUser.role,
@@ -110,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await db.users.update(dbUser.id!, { lastLoginAt: new Date() });
       await db.auditLogs.add({
-        userId: dbUser.id,
+        userId: dbUser.id as unknown as number,
         username: dbUser.username,
         action: 'LOGIN',
         timestamp: new Date(),
@@ -131,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     if (user) {
       db.auditLogs.add({
-        userId: user.id,
+        userId: user.id as unknown as number,
         username: user.username,
         action: 'LOGOUT',
         timestamp: new Date(),
@@ -171,64 +163,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
 
-// ── Audit log helper for use anywhere in the app ──────────
-export async function writeAuditLog(
-  user: AuthUser | null,
-  action: string,
-  entityType?: string,
-  entityId?: number,
-  details?: object
-) {
-  await db.auditLogs.add({
-    userId: user?.id,
-    username: user?.username ?? 'system',
-    action,
-    entityType,
-    entityId,
-    details: details ? JSON.stringify(details) : undefined,
-    timestamp: new Date(),
-  });
-}
-
-// ── Seed the first admin user if no users exist ───────────
-export async function seedAdminIfEmpty() {
-  try {
-    console.log('Auth: Ensuring admin user exists...');
-
-    // Explicitly open the database to ensure it's ready and upgraded
-    await db.open();
-
-    const existing = await db.users.where('username').equals('admin').first();
-
-    if (!existing) {
-      console.log('Auth: Admin not found, creating default...');
-      const hash = await bcrypt.hash('admin123', 10);
-      await db.users.add({
-        username: 'admin',
-        passwordHash: hash,
-        displayName: 'Administrator',
-        role: 'admin',
-        createdAt: new Date(),
-      });
-      console.log('Auth: Admin user created successfully. Hash:', hash.substring(0, 10) + '...');
-    } else {
-      console.log('Auth: Admin user already exists with ID:', existing.id);
-      // Optional: verify if admin password works, if not, we could log a warning
-      // but we shouldn't auto-reset it for security reasons unless explicitly requested.
-    }
-  } catch (err) {
-    console.error('Auth: Critical error during seeding:', err);
-    // If it fails, try to just clear the table and re-add? No, that's too much.
-  }
-}
-
-// Expose DB for debugging
+// Expose DB for debugging (safe cast via unknown)
 if (typeof window !== 'undefined') {
-  (window as any).db = db;
+  (window as unknown as Record<string, unknown>)['db'] = db;
 }

@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BusinessProvider } from "@/contexts/BusinessContext";
-import { AuthProvider, seedAdminIfEmpty } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useEffect } from "react";
@@ -28,11 +28,16 @@ import TeamPage from "./pages/Team";
 import BackupRestore from "./pages/BackupRestore";
 import AuditLogs from "./pages/AuditLogs";
 import NotFound from "./pages/NotFound";
+import { useAutoSync } from "@/hooks/use-auto-sync";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => {
+  // Initialize background cloud sync
+  useAutoSync();
+
+  return (
+    <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -81,5 +86,6 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
+};
 
 export default App;

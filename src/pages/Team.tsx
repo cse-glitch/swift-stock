@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import bcrypt from "bcryptjs";
 import { db, type UserRole, type User as DBUser } from "@/lib/db";
-import { useAuth, writeAuditLog } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { writeAuditLog } from "@/lib/auth-utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,12 +63,13 @@ export default function TeamPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("members");
 
-  const users = useLiveQuery(() => db.users.orderBy("createdAt").toArray()) ?? [];
+  const rawUsers = useLiveQuery(() => db.users.orderBy("createdAt").toArray());
+  const users = useMemo(() => rawUsers ?? [], [rawUsers]);
   const logs = useLiveQuery(() => db.auditLogs.orderBy("timestamp").reverse().limit(50).toArray()) ?? [];
   const dbRolePermissions = useLiveQuery(() => db.rolePermissions.toArray()) ?? [];
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<UserFormData>(defaultForm);
   const [saving, setSaving] = useState(false);
   const [permissionChanges, setPermissionChanges] = useState<Record<string, string[]>>({});
@@ -110,6 +112,11 @@ export default function TeamPage() {
   }
 
   async function handleSave() {
+    if (me?.role !== 'admin') {
+      toast({ title: "Only Admin can create account.", variant: "destructive" });
+      return;
+    }
+    
     if (!form.username.trim() || !form.displayName.trim()) {
       toast({ title: "Required fields missing", variant: "destructive" });
       return;
@@ -131,24 +138,30 @@ export default function TeamPage() {
       } else {
         const hash = await bcrypt.hash(form.password, 10);
         const id = await db.users.add({
+          id: crypto.randomUUID(),
           username: form.username.trim().toLowerCase(),
           displayName: form.displayName.trim(),
           passwordHash: hash,
           role: form.role,
           createdAt: new Date(),
         });
-        await writeAuditLog(me, "CREATE_USER", "user", Number(id), { username: form.username });
+        await writeAuditLog(me, "CREATE_USER", "user", String(id), { username: form.username });
         toast({ title: "Member added" });
       }
       setDialogOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      console.error('Team save error:', err);
       toast({ title: "Action failed", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete(userId: number, username: string) {
+  async function handleDelete(userId: string, username: string) {
+    if (me?.role !== 'admin') {
+      toast({ title: "Only Admin can delete accounts.", variant: "destructive" });
+      return;
+    }
     if (userId === me?.id) return;
     await db.users.delete(userId);
     await writeAuditLog(me, "DELETE_USER", "user", userId, { username });
@@ -166,6 +179,11 @@ export default function TeamPage() {
   }
 
   async function handleSavePermissions() {
+    if (me?.role !== 'admin') {
+      toast({ title: "Only Admin can assign roles.", variant: "destructive" });
+      return;
+    }
+    
     setSaving(true);
     try {
       for (const [role, perms] of Object.entries(permissionChanges)) {
@@ -176,7 +194,7 @@ export default function TeamPage() {
       }
       setPermissionChanges({});
       toast({ title: "Permissions saved" });
-      await writeAuditLog(me, "UPDATE_PERMISSIONS", "system", 0, { roles: Object.keys(permissionChanges) });
+      await writeAuditLog(me, "UPDATE_PERMISSIONS", "system", "0", { roles: Object.keys(permissionChanges) });
     } catch (err) {
       toast({ title: "Save failed", variant: "destructive" });
     } finally {
@@ -191,9 +209,11 @@ export default function TeamPage() {
           <h1 className="text-3xl font-bold tracking-tight">Team Management</h1>
           <p className="text-muted-foreground mt-1">Control access, roles, and monitor team activity</p>
         </div>
-        <Button onClick={openCreate} className="shadow-lg shadow-primary/20 gap-2">
-          <UserPlus className="h-4 w-4" /> Add Member
-        </Button>
+        {me?.role === 'admin' && (
+          <Button onClick={openCreate} className="shadow-lg shadow-primary/20 gap-2">
+            <UserPlus className="h-4 w-4" /> Add Member
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -245,16 +265,18 @@ export default function TeamPage() {
                       <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center text-xl font-bold border-2 border-background shadow-inner">
                         {u.displayName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onClick={() => openEdit(u)}><Pencil className="mr-2 h-4 w-4" /> Edit Profile</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" disabled={isMe} onClick={() => handleDelete(u.id!, u.username)}><Trash2 className="mr-2 h-4 w-4" /> Remove</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {me?.role === 'admin' && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100"><MoreHorizontal className="h-4 w-4" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => openEdit(u)}><Pencil className="mr-2 h-4 w-4" /> Edit Profile</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" disabled={isMe} onClick={() => handleDelete(u.id as string, u.username)}><Trash2 className="mr-2 h-4 w-4" /> Remove</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                     <h3 className="font-bold text-lg">{u.displayName} {isMe && <Badge variant="secondary" className="text-[9px] px-1 h-3.5 ml-1">YOU</Badge>}</h3>
                     <p className="text-sm text-muted-foreground">@{u.username}</p>
@@ -276,7 +298,7 @@ export default function TeamPage() {
                 <CardTitle>Role Permissions Overview</CardTitle>
                 <CardDescription>Detailed breakdown of what each team role can perform within the system.</CardDescription>
               </div>
-              {Object.keys(permissionChanges).length > 0 && (
+              {Object.keys(permissionChanges).length > 0 && me?.role === 'admin' && (
                 <Button onClick={handleSavePermissions} disabled={saving} size="sm" className="gap-2 shadow-lg shadow-primary/20">
                   <CheckCircle2 className="h-4 w-4" /> Save Changes
                 </Button>
@@ -304,7 +326,7 @@ export default function TeamPage() {
                             : (roleObj?.permissions.includes(item.perm) || false);
                           return (
                             <td key={role} className="text-center py-3">
-                              <button onClick={() => handleTogglePermission(role, item.perm)} className="focus:outline-none transition-transform active:scale-90">
+                              <button onClick={() => handleTogglePermission(role, item.perm)} disabled={me?.role !== 'admin'} className={cn("focus:outline-none transition-transform active:scale-90", me?.role !== 'admin' && "cursor-not-allowed opacity-50")}>
                                 {isAllowed ? (
                                   <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto" />
                                 ) : (
