@@ -1,0 +1,42 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - React
+  - Vite
+  - TailwindCSS
+  - Dexie (IndexedDB)
+  - Supabase
+  - Capacitor
+features:
+  - name: Authentication
+    description: Login, session management, and role-based access control
+    files:
+      - src/contexts/AuthContext.tsx
+      - src/lib/auth-utils.ts
+    endpoints:
+      - method: GET
+        path: /login
+        description: Login page
+        auth_required: false
+  - name: Inventory Management
+    description: Create, read, update, delete products, variants, and categories
+    files:
+      - src/pages/Inventory.tsx
+      - src/lib/db.ts
+    endpoints:
+      - method: GET
+        path: /inventory
+        description: View inventory
+        auth_required: true
+  - name: Database Synchronization
+    description: Synchronization of local Dexie data to remote Supabase instances
+    files:
+      - src/lib/sync.ts
+      - src/hooks/use-auto-sync.ts
+    endpoints:
+      - method: GET
+        path: /backup-restore
+        description: Backup and restore data
+        auth_required: true
+known_limitations: []

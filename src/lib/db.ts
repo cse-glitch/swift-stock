@@ -250,7 +250,15 @@ class InventoryDB extends Dexie {
       services: 'id, productId',
       orders: 'id, businessId, productId, customerName, customerNumber, status, timestamp, [businessId+status]',
     });
+    // v10: DROP tables whose primary key must change (++id → id).
+    // IndexedDB does not allow altering a primary key in-place.
+    // seedAdminIfEmpty + seedRolesIfEmpty will repopulate them in v11.
     this.version(10).stores({
+      users: null,
+      auditLogs: null,
+      rolePermissions: null,
+    });
+    this.version(11).stores({
       users: 'id, &username, role, createdAt',
       auditLogs: 'id, userId, action, entityType, timestamp',
       rolePermissions: 'id, &role',

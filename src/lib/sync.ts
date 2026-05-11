@@ -156,7 +156,7 @@ export async function pullSupabaseToLocal() {
       status: o.status, note: o.note, timestamp: new Date(o.timestamp)
     }));
 
-    await pullTable('users', db.users, (u: { id: number; username: string; password_hash: string; display_name: string; role: UserRole; created_at: string; last_login_at?: string }) => ({
+    await pullTable('users', db.users, (u: { id: string; username: string; password_hash: string; display_name: string; role: UserRole; created_at: string; last_login_at?: string }) => ({
       id: u.id, username: u.username, passwordHash: u.password_hash,
       displayName: u.display_name, role: u.role,
       createdAt: new Date(u.created_at), lastLoginAt: u.last_login_at ? new Date(u.last_login_at) : undefined
@@ -168,7 +168,7 @@ export async function pullSupabaseToLocal() {
       reason: l.reason, note: l.note, timestamp: new Date(l.timestamp)
     }));
 
-    await pullTable('role_permissions', db.rolePermissions, (p: { id: number; role: UserRole; permissions: string[] }) => ({
+    await pullTable('role_permissions', db.rolePermissions, (p: { id: string; role: UserRole; permissions: string[] }) => ({
       id: p.id, role: p.role, permissions: p.permissions
     }));
 

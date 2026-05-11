@@ -1,0 +1,27 @@
+[
+  {
+    "id": "TC001",
+    "title": "getloginpagewithoutauthentication",
+    "description": "Verify that accessing GET /login returns the login page without requiring authentication."
+  },
+  {
+    "id": "TC002",
+    "title": "getinventorywithauthentication",
+    "description": "Verify that accessing GET /inventory with a valid authenticated session returns the inventory page with the user's product records."
+  },
+  {
+    "id": "TC003",
+    "title": "getinventorywithoutauthentication",
+    "description": "Verify that accessing GET /inventory without authentication returns an authorization error or access denial."
+  },
+  {
+    "id": "TC004",
+    "title": "getbackuprestorewithauthentication",
+    "description": "Verify that accessing GET /backup-restore with a valid authenticated session returns the backup and restore interface and initiates data synchronization."
+  },
+  {
+    "id": "TC005",
+    "title": "getbackuprestorewithoutauthentication",
+    "description": "Verify that accessing GET /backup-restore without authentication returns an authorization error and does not start synchronization."
+  }
+]

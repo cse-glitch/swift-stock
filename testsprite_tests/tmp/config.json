@@ -1,0 +1,20 @@
+{
+  "status": "init",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5175/",
+  "backendAuthType": "basic token",
+  "backendUsername": "admin",
+  "backendPassword": "admin123",
+  "executionArgs": {
+    "projectName": "swift-stock",
+    "projectPath": "d:\\Inventory\\swift-stock",
+    "testIds": [],
+    "additionalInstruction": "",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-PmiiX77SMHOdjwsNiV57BMJ00EWOGtbHarhvLYqAAJiD_v3H_uYU8kWKMGyvpT48jvP4Mxpde_8QM729zmmc9cEuuzlAqeblptrpvD-I-RkpyKn75LnhRQslynZDgvHigP0"
+    }
+  },
+  "serverPort": 63613
+}

@@ -1,0 +1,509 @@
+[
+  {
+    "id": "TC001",
+    "title": "Sign in and access the stock search home screen",
+    "description": "This verifies that a shopper can log in successfully and reach the home search experience used for stock lookups.",
+    "category": "Ticker Search and Stock Detail View",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the home search screen is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to the stock lookup flow is available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Open a stock detail view from a valid ticker",
+    "description": "This verifies that a user can enter a valid ticker and reach the detail screen with market summary data and the 1-day intra-day chart.",
+    "category": "Ticker Search and Stock Detail View",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the ticker field with AAPL"
+      },
+      {
+        "type": "action",
+        "description": "Submit the stock search"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the stock detail screen is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify market summary data and the 1-day intra-day chart are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Sign in and access protected pages",
+    "description": "This test verifies that a user can sign in successfully and then open protected pages that require an authenticated session.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to the inventory page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the inventory page is accessible"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to the backup and restore page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the backup and restore page is accessible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Stay signed in after returning to login",
+    "description": "This test verifies that an authenticated user keeps their session when revisiting the login screen and can still access protected pages.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to the inventory page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the inventory page is accessible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Log in and open the inventory page",
+    "description": "This verifies that an authenticated user can access the inventory management area and see loaded product records.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open inventory management"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the inventory page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product records are loaded"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Reject invalid login credentials",
+    "description": "This test verifies that entering invalid credentials keeps the user on the login screen and shows a login error.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with invalid-user"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with invalid-password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a login error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user remains on the login screen"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Block inventory access without signing in",
+    "description": "This verifies that an unauthenticated visitor cannot open the inventory page and is denied access or redirected to sign in.",
+    "category": "Inventory Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /inventory"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to the inventory page is denied"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a sign-in or authorization denial state is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Require authentication for protected pages",
+    "description": "This test verifies that an unauthenticated user cannot open protected pages and is denied access.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /inventory"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to the inventory page is denied"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /backup-restore"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to the backup and restore page is denied"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Reject incomplete login submission",
+    "description": "This test verifies that missing credentials prevent sign-in and produce inline validation feedback.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form without entering credentials"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a login validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user remains on the login screen"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC010",
+    "title": "Log in and open the backup and restore page",
+    "description": "This verifies that an authenticated user can access the synchronization interface and see sync status controls.",
+    "category": "Database Synchronization",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open backup and restore"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the backup and restore interface is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify sync status or action controls are visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC011",
+    "title": "Sign in and open backup restore tools",
+    "description": "This test verifies that an authenticated user can sign in and reach the backup and restore screen for sync actions.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to the backup and restore page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the backup and restore page is accessible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC012",
+    "title": "Block backup and restore access without signing in",
+    "description": "This verifies that an unauthenticated visitor cannot open the backup and restore page and is denied access.",
+    "category": "Database Synchronization",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /backup-restore"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to the backup and restore page is denied"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a sign-in or authorization denial state is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC013",
+    "title": "Reject an empty stock search",
+    "description": "This verifies that submitting an empty ticker keeps the user on the home screen and shows validation feedback.",
+    "category": "Ticker Search and Stock Detail View",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Leave the ticker field empty"
+      },
+      {
+        "type": "action",
+        "description": "Submit the stock search"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no stock detail screen is opened"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify ticker validation feedback is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC014",
+    "title": "Reject an invalid numeric ticker",
+    "description": "This verifies that invalid numeric-only input is rejected and cannot be submitted as a stock lookup.",
+    "category": "Ticker Search and Stock Detail View",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the ticker field with 123"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to submit the stock search"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the ticker input rejects the invalid value"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no stock detail screen is opened"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC015",
+    "title": "Sync local data from the backup and restore screen",
+    "description": "This verifies that an authenticated user can start synchronization and see a completed success status in the interface.",
+    "category": "Database Synchronization",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the username field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the link to open backup and restore"
+      },
+      {
+        "type": "action",
+        "description": "Start synchronization"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify synchronization progress or completion status is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a successful sync confirmation is visible"
+      }
+    ],
+    "priority": "Medium"
+  }
+]

@@ -86,27 +86,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const normalizedUsername = username.trim().toLowerCase();
 
       const dbUser = await db.users.where('username').equals(normalizedUsername).first();
-
       if (!dbUser) return { success: false, error: 'Invalid username or password' };
 
-      const match = await bcrypt.compare(password, dbUser.passwordHash);
+      // Handle both camelCase (new) and snake_case (old IndexedDB records) field names
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = dbUser as any;
+      const passwordHash: string = dbUser.passwordHash ?? raw.password_hash;
+      const displayName: string = dbUser.displayName ?? raw.display_name ?? dbUser.username;
+      const userId: string = String(dbUser.id ?? raw.id);
+
+      if (!passwordHash) {
+        console.error('Login error: passwordHash missing for user', dbUser.username);
+        return { success: false, error: 'Account data is corrupted. Please contact admin.' };
+      }
+
+      const match = await bcrypt.compare(password, passwordHash);
       if (!match) return { success: false, error: 'Invalid username or password' };
 
       const authUser: AuthUser = {
-        id: dbUser.id as unknown as number, // Cast from UUID string to number if needed, or update interface
+        id: userId,
         username: dbUser.username,
-        displayName: dbUser.displayName,
+        displayName,
         role: dbUser.role,
-        createdAt: dbUser.createdAt,
+        createdAt: dbUser.createdAt ?? new Date(),
       };
 
-      await db.users.update(dbUser.id!, { lastLoginAt: new Date() });
-      await db.auditLogs.add({
-        userId: dbUser.id as unknown as number,
-        username: dbUser.username,
-        action: 'LOGIN',
-        timestamp: new Date(),
-      });
+      // Non-critical steps — failures must not block login
+      try {
+        await db.users.update(userId as string & IDBValidKey, { lastLoginAt: new Date() });
+      } catch (e) { console.warn('Could not update lastLoginAt:', e); }
+
+      try {
+        await db.auditLogs.add({
+          id: crypto.randomUUID(),
+          userId,
+          username: dbUser.username,
+          action: 'LOGIN',
+          timestamp: new Date(),
+        });
+      } catch (e) { console.warn('Could not write login audit log:', e); }
 
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(authUser));
       setUser(authUser);
@@ -116,14 +134,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return { success: true };
     } catch (err) {
-      return { success: false, error: 'An unexpected error occurred' };
+      console.error('Login error:', err);
+      return { success: false, error: `Login failed: ${err instanceof Error ? err.message : String(err)}` };
     }
   }, []);
 
   const logout = useCallback(() => {
     if (user) {
       db.auditLogs.add({
-        userId: user.id as unknown as number,
+        id: crypto.randomUUID(),
+        userId: user.id,
         username: user.username,
         action: 'LOGOUT',
         timestamp: new Date(),
