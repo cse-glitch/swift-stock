@@ -30,7 +30,6 @@ export default function Properties() {
     [propBiz?.id]
   ) ?? [];
 
-  // Form state
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [listingType, setListingType] = useState<'sale' | 'rent'>('sale');

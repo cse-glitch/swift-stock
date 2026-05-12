@@ -36,17 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     staff: []
   });
 
-  // Restore session and seed admin on mount
   useEffect(() => {
     const init = async () => {
       try {
         console.log('AuthProvider: Initializing...');
 
-        // Seed roles and admin if needed
         await seedRolesIfEmpty();
         await seedAdminIfEmpty();
 
-        // Load initial permissions from DB
         const perms = await db.rolePermissions.toArray();
         const permMap: Record<UserRole, string[]> = {
           super_admin: ['*'],
@@ -64,13 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         setRolePermissions(permMap);
 
-        // Sync from cloud with a 5-second timeout
         try {
           console.log('AuthProvider: Syncing accounts from cloud...');
           const timeout = new Promise<void>(resolve => setTimeout(resolve, 5000));
           await Promise.race([pullSupabaseToLocal(), timeout]);
 
-          // Refresh permissions map after pull
           const updatedPerms = await db.rolePermissions.toArray();
           const updatedMap: Record<UserRole, string[]> = {
             super_admin: ['*'],
@@ -209,14 +204,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
 
-// Expose DB for debugging (safe cast via unknown)
 if (typeof window !== 'undefined') {
   (window as unknown as Record<string, unknown>)['db'] = db;
 }

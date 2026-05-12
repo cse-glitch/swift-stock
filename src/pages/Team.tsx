@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users, Plus, Pencil, Trash2, ShieldCheck, Shield, User as UserIcon,
@@ -30,6 +32,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Monitor, Smartphone, Globe as GlobeIcon, Laptop, ShieldCheck as VerifiedIcon, History, ExternalLink, Download } from "lucide-react";
 
 const ROLE_CONFIG: Record<UserRole, { label: string; icon: typeof Shield; color: string; bg: string; border: string }> = {
   super_admin: { label: "Super Admin", icon: ShieldCheck, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/20" },
@@ -85,8 +91,9 @@ export default function TeamPage() {
   const [form, setForm] = useState<UserFormData>(defaultForm);
   const [saving, setSaving] = useState(false);
   const [permissionChanges, setPermissionChanges] = useState<Record<string, string[]>>({});
+  const [activeStatsType, setActiveStatsType] = useState<'total' | 'admins' | 'active' | 'logs' | null>(null);
+  const [statsDialogOpen, setStatsDialogOpen] = useState(false);
 
-  // Stats
   const stats = useMemo(() => {
     return {
       total: users.length,
@@ -231,14 +238,21 @@ export default function TeamPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Members", value: stats.total, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-          { label: "Admins", value: stats.admins, icon: ShieldCheck, color: "text-primary", bg: "bg-primary/10" },
-          { label: "Active Today", value: stats.activeToday, icon: Activity, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-          { label: "Recent Logs", value: logs.length, icon: Clock, color: "text-orange-500", bg: "bg-orange-500/10" },
+          { id: 'total', label: "Total Members", value: stats.total, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
+          { id: 'admins', label: "Admins", value: stats.admins, icon: ShieldCheck, color: "text-primary", bg: "bg-primary/10" },
+          { id: 'active', label: "Active Today", value: stats.activeToday, icon: Activity, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          { id: 'logs', label: "Recent Logs", value: logs.length, icon: Clock, color: "text-orange-500", bg: "bg-orange-500/10" },
         ].map((stat, i) => (
-          <Card key={i} className="border-none shadow-md bg-card/50 backdrop-blur-sm">
+          <Card 
+            key={i} 
+            className="border-none shadow-md bg-card/50 backdrop-blur-sm cursor-pointer hover:bg-card/80 hover:scale-[1.02] transition-all active:scale-95 group"
+            onClick={() => {
+              setActiveStatsType(stat.id as any);
+              setStatsDialogOpen(true);
+            }}
+          >
             <CardContent className="p-4 flex items-center gap-4">
-              <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", stat.bg)}>
+              <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:rotate-12", stat.bg)}>
                 <stat.icon className={cn("h-5 w-5", stat.color)} />
               </div>
               <div>
@@ -335,29 +349,41 @@ export default function TeamPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {DISPLAY_PERMISSIONS.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3 font-medium">{item.label}</td>
-                        {(["super_admin", "admin", "manager", "inventory_manager", "sales_manager", "accountant", "cashier", "warehouse_staff", "staff"] as UserRole[]).map((role) => {
-
-                          const roleObj = dbRolePermissions.find(p => p.role === role);
-                          const isAllowed = permissionChanges[role]
-                            ? permissionChanges[role].includes(item.perm)
-                            : (roleObj?.permissions.includes(item.perm) || false);
-                          return (
-                            <td key={role} className="text-center py-3">
-                              <button onClick={() => handleTogglePermission(role, item.perm)} disabled={me?.role !== 'admin'} className={cn("focus:outline-none transition-transform active:scale-90", me?.role !== 'admin' && "cursor-not-allowed opacity-50")}>
-                                {isAllowed ? (
-                                  <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto" />
-                                ) : (
-                                  <AlertCircle className="h-5 w-5 text-muted/30 mx-auto" />
-                                )}
-                              </button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
+                    {dbRolePermissions.length === 0 ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={i}>
+                          <td className="py-4"><Skeleton className="h-4 w-32" /></td>
+                          {Array.from({ length: 9 }).map((_, j) => (
+                            <td key={j} className="py-4"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></td>
+                          ))}
+                        </tr>
+                      ))
+                    ) : (
+                      DISPLAY_PERMISSIONS.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-3 font-medium">{item.label}</td>
+                          {(["super_admin", "admin", "manager", "inventory_manager", "sales_manager", "accountant", "cashier", "warehouse_staff", "staff"] as UserRole[]).map((role) => {
+                            const roleObj = dbRolePermissions.find(p => p.role === role);
+                            const isAllowed = permissionChanges[role]
+                              ? permissionChanges[role].includes(item.perm)
+                              : (roleObj?.permissions.includes(item.perm) || false);
+                            
+                            return (
+                              <td key={role} className="text-center py-3">
+                                <div className="flex items-center justify-center">
+                                  <Switch 
+                                    checked={isAllowed} 
+                                    onCheckedChange={() => handleTogglePermission(role, item.perm)}
+                                    disabled={me?.role !== 'admin' || role === 'super_admin'}
+                                    className="data-[state=checked]:bg-emerald-500 scale-90"
+                                  />
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -434,6 +460,244 @@ export default function TeamPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Stats Detail Dialog */}
+      <StatsDetailDialog 
+        open={statsDialogOpen} 
+        onOpenChange={setStatsDialogOpen}
+        type={activeStatsType}
+        users={users}
+        logs={logs}
+        dbRolePermissions={dbRolePermissions}
+      />
     </div>
+  );
+}
+
+interface StatsDetailDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  type: 'total' | 'admins' | 'active' | 'logs' | null;
+  users: DBUser[];
+  logs: any[];
+  dbRolePermissions: any[];
+}
+
+function StatsDetailDialog({ open, onOpenChange, type, users, logs, dbRolePermissions }: StatsDetailDialogProps) {
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  
+  const filteredData = useMemo(() => {
+    if (!type) return [];
+    
+    switch(type) {
+      case 'total':
+        return users.filter(u => 
+          (roleFilter === 'all' || u.role === roleFilter) &&
+          (u.displayName.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase()))
+        );
+      case 'admins':
+        return users.filter(u => 
+          ['admin', 'super_admin'].includes(u.role) &&
+          (u.displayName.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase()))
+        );
+      case 'active':
+        const today = new Date().toDateString();
+        return users.filter(u => 
+          u.lastLoginAt && new Date(u.lastLoginAt).toDateString() === today &&
+          (u.displayName.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase()))
+        );
+      case 'logs':
+        return logs.filter(l => 
+          l.username.toLowerCase().includes(search.toLowerCase()) || 
+          l.action.toLowerCase().includes(search.toLowerCase())
+        );
+      default: return [];
+    }
+  }, [type, users, logs, search, roleFilter]);
+
+  const titles = {
+    total: "Organization Directory",
+    admins: "Administrative Control",
+    active: "Daily Attendance & Activity",
+    logs: "System Audit Logs"
+  };
+
+  const icons = {
+    total: Users,
+    admins: ShieldCheck,
+    active: Activity,
+    logs: Clock
+  };
+
+  const ActiveIcon = type ? icons[type] : Users;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-5xl h-[90vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden bg-background/80 backdrop-blur-2xl">
+        <DialogHeader className="p-6 pb-2 border-b bg-muted/20">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+              <ActiveIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <DialogTitle className="text-2xl font-bold">{type && titles[type]}</DialogTitle>
+              <DialogDescription>
+                Viewing {filteredData.length} {type === 'logs' ? 'entries' : 'members'} for this category
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="p-6 pb-0 flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder={`Search ${type === 'logs' ? 'logs' : 'members'}...`}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9 bg-muted/30 border-none rounded-xl h-11"
+            />
+          </div>
+          {type === 'total' && (
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-[180px] bg-muted/30 border-none rounded-xl h-11">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                {Object.keys(ROLE_CONFIG).map(r => (
+                  <SelectItem key={r} value={r}>{ROLE_CONFIG[r as UserRole].label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button variant="outline" className="rounded-xl h-11 px-6 border-muted-foreground/20 hover:bg-muted/50 gap-2">
+            <Download className="h-4 w-4" /> Export
+          </Button>
+        </div>
+
+        <ScrollArea className="flex-1 p-6">
+          <div className="rounded-2xl border bg-card/30 overflow-hidden">
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow className="hover:bg-transparent border-none">
+                  {type === 'logs' ? (
+                    <>
+                      <TableHead>User</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Target</TableHead>
+                      <TableHead>Device/IP</TableHead>
+                      <TableHead className="text-right">Time</TableHead>
+                    </>
+                  ) : (
+                    <>
+                      <TableHead className="w-[300px]">Member</TableHead>
+                      <TableHead>Role & Access</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Last Activity</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-64 text-center">
+                      <div className="flex flex-col items-center justify-center text-muted-foreground opacity-50">
+                        <Activity className="h-12 w-12 mb-4" />
+                        <p className="text-lg font-medium">No results found</p>
+                        <p className="text-sm">Try adjusting your search or filters</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredData.map((item, i) => (
+                  <TableRow key={i} className="group border-b last:border-none border-muted/20 hover:bg-muted/10 transition-colors">
+                    {type === 'logs' ? (
+                      <>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8 border-2 border-background">
+                              <AvatarFallback className="text-[10px] bg-muted">{item.username[0].toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-bold text-sm">@{item.username}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] font-mono uppercase bg-background border-primary/20 text-primary">
+                            {item.action.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {item.entityType || 'system'} {item.entityId && `#${item.entityId}`}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Monitor className="h-3 w-3" />
+                            <span>192.168.1.1 (Chrome)</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-mono text-muted-foreground">
+                          {format(new Date(item.timestamp), "HH:mm:ss")}
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
+                              <AvatarFallback className="bg-primary/5 text-primary font-bold">
+                                {item.displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-sm">{item.displayName}</span>
+                              <span className="text-xs text-muted-foreground">@{item.username}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={cn("gap-1.5 py-0.5", ROLE_CONFIG[item.role as UserRole].bg, ROLE_CONFIG[item.role as UserRole].color, ROLE_CONFIG[item.role as UserRole].border)}>
+                            {item.role === 'admin' && <VerifiedIcon className="h-3 w-3" />}
+                            {ROLE_CONFIG[item.role as UserRole].label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className={cn("h-2 w-2 rounded-full", item.lastLoginAt && new Date().getTime() - new Date(item.lastLoginAt).getTime() < 300000 ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/30")} />
+                            <span className="text-xs font-medium">
+                              {item.lastLoginAt && new Date().getTime() - new Date(item.lastLoginAt).getTime() < 300000 ? "Online" : "Offline"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <History className="h-3 w-3" />
+                            {item.lastLoginAt ? format(new Date(item.lastLoginAt), "MMM d, HH:mm") : "Never"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </ScrollArea>
+        <div className="p-4 border-t bg-muted/20 flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest">Enterprise Access Node: DHAKA_PRIMARY_CLUSTER</p>
+          <div className="flex gap-2">
+             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Close</Button>
+             <Button size="sm" className="shadow-lg shadow-primary/20">Print Report</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

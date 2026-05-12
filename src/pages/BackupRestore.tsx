@@ -39,7 +39,6 @@ export default function BackupRestore() {
   const [restoring, setRestoring] = useState(false);
   const [lastBackup, setLastBackup] = useState<string | null>(() => localStorage.getItem("last_backup_time"));
 
-  // Get counts for each table
   const counts = useLiveQuery(async () => {
     const results: Record<string, number> = {};
     for (const t of BACKUP_TABLES) {
@@ -96,14 +95,12 @@ export default function BackupRestore() {
         throw new Error("Invalid backup file format");
       }
 
-      // Restore each table
       for (const tableName of BACKUP_TABLES) {
         const rows = backup.tables[tableName];
         if (!Array.isArray(rows)) continue;
         const table = getTable(tableName);
         await table.clear();
         if (rows.length > 0) {
-          // Strip IDs so Dexie auto-assigns new ones cleanly
           const cleaned = rows.map(({ id: _id, ...rest }) => rest as Omit<BackupTableType, 'id'>);
           await table.bulkAdd(cleaned);
         }

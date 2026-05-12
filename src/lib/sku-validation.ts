@@ -1,6 +1,5 @@
 import { db } from './db';
 
-// SKU format: 2–30 chars, uppercase alphanumeric + hyphens only
 const SKU_REGEX = /^[A-Z0-9][A-Z0-9\-]{0,28}[A-Z0-9]$/;
 const SKU_MIN = 2;
 const SKU_MAX = 30;
@@ -42,7 +41,6 @@ export async function checkSkuConflicts(
   let productError: string | null = null;
   const variantErrors: Record<number, string> = {};
 
-  // 1. Gather all existing SKUs in this business
   const bizProducts = await db.products.where('businessId').equals(businessId).toArray();
   const otherProducts = bizProducts.filter(p => p.id !== excludeProductId);
   const productSkuMap = new Map(otherProducts.map(p => [p.sku, p.name]));
@@ -53,38 +51,32 @@ export async function checkSkuConflicts(
     : [];
   const variantSkuMap = new Map(existingVariants.map(v => [v.sku, v.name || `Variant #${v.id}`]));
 
-  // All existing SKUs combined (products + variants)
   const allExistingSkus = new Map<string, { name: string; type: 'product' | 'variant' }>();
   for (const [sku, name] of productSkuMap) allExistingSkus.set(sku, { name, type: 'product' });
   for (const [sku, name] of variantSkuMap) allExistingSkus.set(sku, { name, type: 'variant' });
 
-  // 2. Check product SKU
   const existing = allExistingSkus.get(productSku);
   if (existing) {
     productError = `Conflicts with existing ${existing.type}: "${existing.name}"`;
     conflicts.push({ sku: productSku, existingName: existing.name, existingType: existing.type });
   }
 
-  // 3. Check variant SKUs — also check for duplicates within the form
   const seenInForm = new Map<string, number>(); // sku → first index
   for (let i = 0; i < variantSkus.length; i++) {
     const vs = variantSkus[i];
     if (!vs) continue;
 
-    // Duplicate within form
     if (seenInForm.has(vs)) {
       variantErrors[i] = `Duplicate of variant ${seenInForm.get(vs)! + 1}`;
       continue;
     }
     seenInForm.set(vs, i);
 
-    // Also conflicts with the product SKU itself
     if (vs === productSku) {
       variantErrors[i] = 'Same as product SKU';
       continue;
     }
 
-    // Against existing DB records
     const ex = allExistingSkus.get(vs);
     if (ex) {
       variantErrors[i] = `Conflicts with existing ${ex.type}: "${ex.name}"`;
@@ -106,7 +98,6 @@ export async function validateCsvSkus(
   validRows: typeof rows;
   errorRows: { row: number; sku: string; name: string; error: string }[];
 }> {
-  // Gather existing
   const bizProducts = await db.products.where('businessId').equals(businessId).toArray();
   const existingProductSkus = new Set(bizProducts.map(p => p.sku));
 

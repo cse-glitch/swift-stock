@@ -33,7 +33,6 @@ export function VariantManager({ variants, onChange, attributeLabels, skuErrors 
       const attrKey = field.slice(5);
       updated[index] = { ...updated[index], attributes: { ...updated[index].attributes, [attrKey]: value } };
     } else if (field === 'sku') {
-      // Normalize on the fly
       updated[index] = { ...updated[index], sku: normalizeSku(value as string) };
     } else {
       updated[index] = { ...updated[index], [field]: value };

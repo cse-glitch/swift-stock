@@ -16,7 +16,6 @@ import {
   AreaChart, Area, ResponsiveContainer,
 } from 'recharts';
 
-// Dummy data for sparklines to match the aesthetic
 const generateSparkData = (seed: number) => {
   return Array.from({ length: 12 }, (_, i) => ({
     value: Math.floor(Math.random() * 20) + 10 + Math.sin(i + seed) * 10
@@ -53,7 +52,6 @@ export default function Inventory() {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const navigate = useNavigate();
 
-  // Fetch data
   const products = useLiveQuery(
     () => activeBusinessId
       ? db.products.where('businessId').equals(activeBusinessId).toArray()
@@ -64,7 +62,6 @@ export default function Inventory() {
   const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
   const categories = useLiveQuery(() => db.categories.toArray()) ?? [];
 
-  // Data processing
   const inventoryData = useMemo(() => {
     const productMap = new Map(products.map(p => [p.id, p]));
     const bizMap = new Map(businesses.map(b => [b.id, b]));
@@ -109,7 +106,6 @@ export default function Inventory() {
     return results;
   }, [products, variants, businesses, categories, search, showLowStockOnly]);
 
-  // Metrics
   const metrics = useMemo(() => {
     const totalItems = inventoryData.length;
     const lowStockCount = inventoryData.filter(r => r.isLowStock).length;
@@ -119,7 +115,6 @@ export default function Inventory() {
     return { totalItems, lowStockCount, outOfStockCount, totalValue };
   }, [inventoryData]);
 
-  // Memoized sparkline data
   const sparkData = useMemo(() => [
     generateSparkData(5),
     generateSparkData(6),

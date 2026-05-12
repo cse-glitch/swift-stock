@@ -37,7 +37,6 @@ import { Toaster as ToasterSonner } from "@/components/ui/sonner";
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Initialize background cloud sync
   useAutoSync();
 
   return (

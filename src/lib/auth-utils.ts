@@ -9,7 +9,6 @@ export interface AuthUser {
   createdAt: Date;
 }
 
-// ── Permission model ──────────────────────────────────────
 export type Permission =
   | '*' // Super Admin wildcard
   | 'products.create'
@@ -32,10 +31,8 @@ export type Permission =
   | 'accounting.manage'
   | 'notifications.manage';
 
-// ── Session storage key ───────────────────────────────────
 export const SESSION_KEY = 'saman_auth_session';
 
-// ── Audit log helper for use anywhere in the app ──────────
 export async function writeAuditLog(
   user: AuthUser | null,
   action: string,
@@ -55,12 +52,10 @@ export async function writeAuditLog(
   });
 }
 
-// ── Seed the first admin user if no users exist ───────────
 export async function seedAdminIfEmpty() {
   try {
     console.log('Auth: Ensuring admin users exist...');
 
-    // Explicitly open the database to ensure it's ready and upgraded
     await db.open();
 
     const existingSuper = await db.users.where('username').equals('superadmin').first();

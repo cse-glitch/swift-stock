@@ -27,7 +27,6 @@ export default function ServicesPage() {
     [svcBiz?.id]
   ) ?? [];
 
-  // Form state
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
   const [duration, setDuration] = useState('');

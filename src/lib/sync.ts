@@ -15,7 +15,6 @@ export async function pushLocalToSupabase() {
   console.log('Sync: Pushing local data to Supabase...');
 
   try {
-    // 1. Businesses
     const biz = await db.businesses.toArray();
     if (biz.length > 0) {
       const { error } = await supabase.from('businesses').upsert(biz.map(b => ({
@@ -25,7 +24,6 @@ export async function pushLocalToSupabase() {
       if (error) console.error('Push Error (businesses):', error);
     }
 
-    // 2. Categories
     const cats = await db.categories.toArray();
     if (cats.length > 0) {
       const { error } = await supabase.from('categories').upsert(cats.map(c => ({
@@ -34,7 +32,6 @@ export async function pushLocalToSupabase() {
       if (error) console.error('Push Error (categories):', error);
     }
 
-    // 3. Products
     const prods = await db.products.toArray();
     if (prods.length > 0) {
       const { error } = await supabase.from('products').upsert(prods.map(p => ({
@@ -48,7 +45,6 @@ export async function pushLocalToSupabase() {
       if (error) console.error('Push Error (products):', error);
     }
 
-    // 4. Variants
     const vars = await db.variants.toArray();
     if (vars.length > 0) {
       const { error } = await supabase.from('variants').upsert(vars.map(v => ({
@@ -59,7 +55,6 @@ export async function pushLocalToSupabase() {
       if (error) console.error('Push Error (variants):', error);
     }
 
-    // 5. Orders
     const orders = await db.orders.toArray();
     if (orders.length > 0) {
       const { error } = await supabase.from('orders').upsert(orders.map(o => ({
@@ -71,7 +66,6 @@ export async function pushLocalToSupabase() {
       if (error) console.error('Push Error (orders):', error);
     }
 
-    // 6. Users
     const users = await db.users.toArray();
     if (users.length > 0) {
       const { error } = await supabase.from('users').upsert(users.map(u => ({
@@ -82,7 +76,6 @@ export async function pushLocalToSupabase() {
       if (error) console.error('Push Error (users):', error);
     }
 
-    // 7. Inventory Log
     const logs = await db.inventoryLog.toArray();
     if (logs.length > 0) {
       const { error } = await supabase.from('inventory_log').upsert(logs.map(l => ({
@@ -93,7 +86,6 @@ export async function pushLocalToSupabase() {
       if (error) console.error('Push Error (inventory_log):', error);
     }
 
-    // 8. Role Permissions
     const perms = await db.rolePermissions.toArray();
     if (perms.length > 0) {
       const { error } = await supabase.from('role_permissions').upsert(perms.map(p => ({
@@ -116,7 +108,6 @@ export async function pullSupabaseToLocal() {
   console.log('Sync: Pulling data from Supabase...');
 
   try {
-    // Helper to pull a table
     const pullTable = async <T, U>(
       tableName: string, 
       dbTable: { bulkPut: (items: T[]) => Promise<unknown> }, 

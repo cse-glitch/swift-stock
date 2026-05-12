@@ -48,7 +48,6 @@ const AddStock = () => {
   const [quantities, setQuantities] = useState<Map<string, number>>(new Map());
   const [note, setNote] = useState("");
   
-  // File Upload State
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{row: number, message: string}[]>([]);
   const [validatedData, setValidatedData] = useState<any[] | null>(null);
@@ -176,7 +175,6 @@ const AddStock = () => {
         rawData = XLSX.utils.sheet_to_json(worksheet);
       }
 
-      // Validation
       const expectedCols = getTemplateColumns(selectedBusiness.type);
       const errors: {row: number, message: string}[] = [];
       const parsedData: any[] = [];

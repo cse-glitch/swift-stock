@@ -2,7 +2,6 @@ import Dexie, { type Table } from 'dexie';
 
 export const generateId = () => crypto.randomUUID();
 
-// Subscription system for auto-sync
 export const dbEvents = {
   listeners: [] as (() => void)[],
   subscribe(fn: () => void) {
@@ -16,7 +15,6 @@ export const dbEvents = {
   }
 };
 
-// ── Business types ──
 export type BusinessType = 'general' | 'fashion' | 'lubricants' | 'properties' | 'agro' | 'services';
 export type ProductType = 'physical' | 'service' | 'listing';
 export type ProductStatus = 'active' | 'draft' | 'archived';
@@ -33,7 +31,6 @@ export interface Business {
   icon: string;        // Lucide icon name
   isActive: boolean;
   createdAt: Date;
-  // Enterprise fields
   logo?: string;
   address?: string;
   phone?: string;
@@ -439,7 +436,6 @@ class InventoryDB extends Dexie {
       stockTransfers: 'id, businessId, sourceWarehouseId, targetWarehouseId, variantId, quantity, status, createdAt',
     });
 
-    // --- Mutation Hooks for Auto-Sync ---
     const tables = [
       'businesses', 'categories', 'products', 'variants', 
       'warehouses', 'warehouseStock', 'inventoryLog', 'stockTransfers',
@@ -530,7 +526,6 @@ export async function seedRolesIfEmpty() {
     if (!existing) {
       await db.rolePermissions.add(r);
     } else {
-      // Update with latest permissions if missing
       const newPerms = [...new Set([...existing.permissions, ...r.permissions])];
       if (newPerms.length !== existing.permissions.length) {
         await db.rolePermissions.update(existing.id, { permissions: newPerms });
@@ -558,7 +553,6 @@ export async function seedBusinesses() {
 
   await db.businesses.bulkAdd(businesses);
 
-  // Seed default warehouses for each business
   for (const biz of businesses) {
     await db.warehouses.add({
       id: generateId(),
@@ -598,7 +592,6 @@ async function seedSampleData() {
       attributes: {}, stock: 50, lowStockThreshold: 5
     });
 
-    // Link stock to main warehouse
     const mainWarehouse = await db.warehouses.where('businessId').equals(biz.id).and(w => w.isMain).first();
     if (mainWarehouse) {
       await db.warehouseStock.add({

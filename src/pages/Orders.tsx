@@ -88,7 +88,6 @@ const OrdersPage = () => {
     setSearchParams({ tab: value });
   };
 
-  // ── New Order State ──
   const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
@@ -121,7 +120,6 @@ const OrdersPage = () => {
     [products, selectedProductId]
   );
 
-  // ── History Filter State ──
   const [historySearch, setHistorySearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Order['status']>('all');
   const [businessFilter, setBusinessFilter] = useState<string | 'all'>('all');
@@ -144,7 +142,6 @@ const OrdersPage = () => {
     return matchesSearch && matchesStatus && matchesBusiness;
   }), [orders, historySearch, statusFilter, businessFilter]);
 
-  // ── Summary Calculations ──
   const summary = useMemo(() => {
     const unitPrice = customPrice !== '' ? parseFloat(customPrice) || 0 : (selectedProduct?.basePrice ?? 0);
     const subtotal = unitPrice * quantity;
@@ -183,7 +180,6 @@ const OrdersPage = () => {
 
       toast.success("Order placed successfully!");
       
-      // Reset
       setSelectedBusinessId(null);
       setSelectedProductId(null);
       setQuantity(1);

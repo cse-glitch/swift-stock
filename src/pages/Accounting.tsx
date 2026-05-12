@@ -44,7 +44,6 @@ export default function Accounting() {
     [activeBusinessId]
   ) ?? [];
 
-  // Wrap in useMemo to stabilize dependencies for other hooks
   const expenses = useMemo(() => rawExpenses, [rawExpenses]);
   const orders = useMemo(() => rawOrders, [rawOrders]);
 
@@ -56,7 +55,6 @@ export default function Accounting() {
   }, [orders, expenses]);
 
   const chartData = useMemo(() => {
-    // Basic aggregation by date
     const data: Record<string, { date: string, income: number, expense: number }> = {};
     
     orders.forEach(o => {

@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-// Dummy data for sparklines to match the aesthetic
 const generateSparkData = (seed: number) => {
   return Array.from({ length: 12 }, (_, i) => ({
     value: Math.floor(Math.random() * 20) + 10 + Math.sin(i + seed) * 10
@@ -77,13 +76,11 @@ const Analytics = () => {
     [businesses]
   );
 
-  // ── Pre-built O(1) lookup Maps (rebuilt only when source data changes) ──
   const variantMap  = useMemo(() => new Map(variants.map(v  => [v.id,  v])),  [variants]);
   const productMap  = useMemo(() => new Map(products.map(p  => [p.id,  p])),  [products]);
   const categoryMap = useMemo(() => new Map(categories.map(c => [c.id, c])), [categories]);
   const businessMap = useMemo(() => new Map(businesses.map(b => [b.id, b])), [businesses]);
 
-  // Variants grouped by productId for O(1) per-product variant retrieval
   const variantsByProduct = useMemo(() => {
     const m = new Map<number, typeof variants>();
     for (const v of variants) {
@@ -94,7 +91,6 @@ const Analytics = () => {
     return m;
   }, [variants]);
 
-  // Products grouped by businessId
   const productsByBusiness = useMemo(() => {
     const m = new Map<number, typeof products>();
     for (const p of products) {
@@ -105,7 +101,6 @@ const Analytics = () => {
     return m;
   }, [products]);
 
-  // Filter logs by time range
   const filteredLogs = useMemo(() => {
     let base = logs;
     if (activeBusinessId) base = base.filter(l => l.businessId === activeBusinessId);
@@ -114,7 +109,6 @@ const Analytics = () => {
     return base.filter(l => new Date(l.timestamp).getTime() >= cutoff);
   }, [logs, timeRange, activeBusinessId]);
 
-  // ── Revenue per business (O(n) with Map lookups) ──
   const revenueByBusiness = useMemo(() => {
     const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
     const revenueMap = new Map<number, number>();
@@ -134,7 +128,6 @@ const Analytics = () => {
     }));
   }, [activeBusinesses, filteredLogs, variantMap, productMap]);
 
-  // ── Sales trend (daily aggregation — O(n)) ──
   const salesTrend = useMemo(() => {
     const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
     const dayMap = new Map<string, { sold: number; revenue: number }>();
@@ -142,7 +135,6 @@ const Analytics = () => {
     for (const log of soldLogs) {
       const day = new Date(log.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
       const existing = dayMap.get(day) ?? { sold: 0, revenue: 0 };
-      // O(1) Map lookup instead of O(n) .find()
       const v = variantMap.get(log.variantId!);
       const p = productMap.get(log.productId);
       const price = v?.price ?? p?.basePrice ?? 0;
@@ -154,7 +146,6 @@ const Analytics = () => {
     return Array.from(dayMap.entries()).map(([date, data]) => ({ date, ...data }));
   }, [filteredLogs, variantMap, productMap]);
 
-  // ── Category volumes (O(n) with Map lookups) ──
   const categoryVolumes = useMemo(() => {
     const bizProds = activeBusinessId
       ? (productsByBusiness.get(activeBusinessId) ?? [])
@@ -174,7 +165,6 @@ const Analytics = () => {
       .slice(0, 10);
   }, [products, productsByBusiness, variantsByProduct, categoryMap, activeBusinessId]);
   
-  // ── Top Products by Revenue (O(n) with Map lookups) ──
   const topProducts = useMemo(() => {
     const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
     const productRevenue = new Map<number, number>();
@@ -192,7 +182,6 @@ const Analytics = () => {
       .slice(0, 10);
   }, [filteredLogs, variantMap, productMap]);
 
-  // ── Stock distribution per business (O(n) with grouped Maps) ──
   const stockByBusiness = useMemo(() => {
     return activeBusinesses.map((b, i) => {
       const bProds = productsByBusiness.get(b.id!) ?? [];
@@ -203,7 +192,6 @@ const Analytics = () => {
     });
   }, [activeBusinesses, productsByBusiness, variantsByProduct]);
 
-  // ── Summary stats (derived from already-computed values) ──
   const totalRevenue = useMemo(() => {
     if (activeBusinessId) {
       return revenueByBusiness.find(b => b.businessId === activeBusinessId)?.revenue ?? 0;
@@ -227,7 +215,6 @@ const Analytics = () => {
 
   const totalMovements = useMemo(() => filteredLogs.length, [filteredLogs]);
 
-  // Memoized sparkline data
   const sparkData = useMemo(() => [
     generateSparkData(9),
     generateSparkData(10),
@@ -266,7 +253,6 @@ const Analytics = () => {
     URL.revokeObjectURL(url);
   }, [totalRevenue, totalSold, totalStock, totalMovements, revenueByBusiness, topProducts]);
 
-  // ── Visual Utilities ──
   const formatCurrency = (val: number) => {
     if (val >= 10000000) return `৳${(val / 10000000).toFixed(1)}Cr`;
     if (val >= 1000000) return `৳${(val / 1000000).toFixed(1)}M`;

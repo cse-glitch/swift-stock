@@ -46,7 +46,6 @@ const systemNav = [
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
-// Admin-only items are now moved to Profile page for a cleaner sidebar
 const adminNav: { title: string; url: string; icon: React.ElementType }[] = [];
 
 export function AppSidebar() {

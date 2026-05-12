@@ -1,7 +1,6 @@
 const SETTINGS_KEY = "inv_settings";
 
 export interface AppSettings {
-  // General
   appName: string;
   logoUrl?: string;
   language: string;
@@ -12,45 +11,37 @@ export interface AppSettings {
   fiscalYearStart: string;
   maintenanceMode: boolean;
 
-  // Inventory
   skuPattern: string;
   autoBarcode: boolean;
   lowStockThreshold: number;
   expiryAlertDays: number;
   autoReorderEnabled: boolean;
 
-  // Security
   mfaRequired: boolean;
   sessionTimeoutMinutes: number;
   passwordComplexity: 'low' | 'medium' | 'high';
   ipWhitelisting: boolean;
 
-  // Notifications
   emailEnabled: boolean;
   smsEnabled: boolean;
   whatsappEnabled: boolean;
   lowStockAlerts: boolean;
   expiryAlerts: boolean;
 
-  // Warehouse
   warehouseHierarchyEnabled: boolean;
   stockTransferApprovalRequired: boolean;
 
-  // Employees
   employeeMonitoringEnabled: boolean;
   shiftSchedulingEnabled: boolean;
   defaultWorkHours: number;
 
-  // Automation
   aiForecastingEnabled: boolean;
   autoBackupCloud: boolean;
   smartReorderEnabled: boolean;
 
-  // API
   apiAccessEnabled: boolean;
   webhookUrl?: string;
 
-  // System
   backupIntervalHours: number;
   autoSyncCloud: boolean;
 }

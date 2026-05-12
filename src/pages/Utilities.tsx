@@ -43,12 +43,10 @@ const Utilities = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Label printing state
   const [selectedProductId, setSelectedProductId] = useState("");
   const selectedProduct = products.find(p => p.id?.toString() === selectedProductId);
   const selectedVariants = variants.filter(v => v.productId === selectedProduct?.id);
 
-  // Bulk import state
   const [importData, setImportData] = useState<ImportRow[] | null>(null);
   const [importErrors, setImportErrors] = useState<ImportError[]>([]);
   const [importFileName, setImportFileName] = useState("");
@@ -89,7 +87,6 @@ const Utilities = () => {
     URL.revokeObjectURL(url);
   };
 
-  // ── Duplicate Finder ──
   const duplicates = useMemo(() => {
     const skuMap = new Map<string, typeof variants[0][]>();
     variants.forEach(v => {
@@ -102,7 +99,6 @@ const Utilities = () => {
     return Array.from(skuMap.values()).filter(group => group.length > 1);
   }, [variants, products]);
 
-  // ── Orphaned Data Cleanup ──
   const orphanedVariants = variants.filter(v => !products.some(p => p.id === v.productId));
   const logs = useLiveQuery(() => db.inventoryLog.toArray()) ?? [];
   const orphanedLogs = logs.filter(l => !products.some(p => p.id === l.productId));
@@ -110,7 +106,6 @@ const Utilities = () => {
   const handleExportIssues = () => {
     const rows: any[] = [];
     
-    // Add duplicates
     duplicates.forEach(group => {
       group.forEach(v => {
         const p = products.find(p => p.id === v.productId);
@@ -118,7 +113,6 @@ const Utilities = () => {
       });
     });
 
-    // Add orphans
     orphanedVariants.forEach(v => {
       rows.push({ Type: 'Orphaned Variant', BusinessID: 'N/A', Product: 'N/A', Variant: v.name, SKU: v.sku, ID: v.id });
     });
@@ -150,7 +144,6 @@ const Utilities = () => {
     }
   };
 
-  // ── Stock Reconciliation ──
   const [reconBizId, setReconBizId] = useState<string>("all");
   const [physicalCounts, setPhysicalCounts] = useState<Record<number, string>>({});
 
@@ -210,7 +203,6 @@ const Utilities = () => {
     }
   };
 
-  // ── JSON Backup (full schema) ──
   const handleJsonExport = async () => {
     const data = {
       businesses: await db.businesses.toArray(),
@@ -227,7 +219,6 @@ const Utilities = () => {
     toast({ title: "Backup exported", description: "Full database backup downloaded." });
   };
 
-  // ── JSON Restore ──
   const handleJsonFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -263,7 +254,6 @@ const Utilities = () => {
     }
   };
 
-  // ── CSV Export (products + variants) ──
   const handleCsvExport = () => {
     const rows = products.flatMap(p => {
       const pVariants = variants.filter(v => v.productId === p.id);
@@ -281,7 +271,6 @@ const Utilities = () => {
     toast({ title: "CSV exported", description: `${rows.length} rows exported.` });
   };
 
-  // ── Template Download ──
   const handleDownloadTemplate = () => {
     const template = [
       { business_slug: "kenakata", category: "Electronics", product_name: "Wireless Mouse", product_sku: "WM-001", variant_name: "Black", variant_sku: "WM-001-BLK", price: "25.99", stock: "100", low_stock_threshold: "10" },
@@ -291,7 +280,6 @@ const Utilities = () => {
     toast({ title: "Template downloaded", description: "Fill in the template and upload it back." });
   };
 
-  // ── Bulk Import ──
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -347,7 +335,6 @@ const Utilities = () => {
       if (seenSkus.has(vSku)) { errors.push({ row: rowNum, sku: vSku, name: row.product_name, error: "Duplicate variant SKU in file" }); continue; }
       seenSkus.add(vSku);
 
-      // Check DB for existing variant SKU in same business
       const biz = businesses.find(b => b.slug === row.business_slug.trim());
       if (biz) {
         const existingVariant = await db.variants.where("sku").equals(vSku).first();
@@ -382,7 +369,6 @@ const Utilities = () => {
     }
 
     try {
-      // Group by product_sku
       const productGroups = new Map<string, ImportRow[]>();
       for (const row of validRows) {
         const key = `${row.business_slug.trim()}::${normalizeSku(row.product_sku)}`;
@@ -397,7 +383,6 @@ const Utilities = () => {
           const first = rows[0];
           const biz = businesses.find(b => b.slug === first.business_slug.trim())!;
 
-          // Find or create category
           let categoryId: number | undefined;
           if (first.category?.trim()) {
             let cat = await db.categories.where({ businessId: biz.id!, name: first.category.trim() }).first();
@@ -408,7 +393,6 @@ const Utilities = () => {
             }
           }
 
-          // Create product
           const productId = await db.products.add({
             businessId: biz.id!,
             categoryId,
@@ -426,7 +410,6 @@ const Utilities = () => {
           });
           productsCreated++;
 
-          // Create variants
           for (const row of rows) {
             const stock = parseInt(row.stock) || 0;
             const variantId = await db.variants.add({
@@ -471,7 +454,6 @@ const Utilities = () => {
     downloadFile(csv, `import-errors-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv");
   };
 
-  // ── Label Printing ──
   const handlePrintLabel = (variant?: typeof selectedVariants[0]) => {
     if (!selectedProduct) return;
     const v = variant ?? selectedVariants[0];

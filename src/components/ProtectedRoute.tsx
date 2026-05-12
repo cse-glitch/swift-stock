@@ -13,13 +13,10 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, hasPermission } = useAuth();
 
-  // Still restoring session — show nothing
   if (isLoading) return null;
 
-  // Not logged in → redirect to login
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  // Logged in but missing required permission → redirect to dashboard
   if (permission && !hasPermission(permission)) {
     return <Navigate to="/" replace />;
   }

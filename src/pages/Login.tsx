@@ -29,7 +29,6 @@ export default function Login() {
   const [authError, setAuthError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/', { replace: true });
@@ -46,8 +45,6 @@ export default function Login() {
     try {
       const result = await login(data.username, data.password);
       if (result.success) {
-        // Success! Navigation will be handled by the useEffect above
-        // or we can explicitly call it here for faster response
         navigate('/', { replace: true });
       } else {
         setAuthError(result.error ?? 'Login failed');

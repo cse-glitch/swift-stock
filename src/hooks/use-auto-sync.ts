@@ -10,14 +10,11 @@ export function useAutoSync() {
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Subscribe to database changes
     const unsubscribe = dbEvents.subscribe(() => {
-      // Clear existing timeout
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
       }
 
-      // Set a new timeout to sync after 2 seconds of inactivity
       syncTimeoutRef.current = setTimeout(async () => {
         try {
           await pushLocalToSupabase();

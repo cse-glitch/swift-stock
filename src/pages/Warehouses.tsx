@@ -313,7 +313,6 @@ function StockTransferDialog({ sourceWarehouse, warehouses }: { sourceWarehouse:
   const [variantId, setVariantId] = useState<string>('');
   const [qty, setQty] = useState('');
 
-  // Get stock for this specific warehouse
   const currentStocks = useLiveQuery(
     () => db.warehouseStock.where('warehouseId').equals(sourceWarehouse.id).toArray(),
     [sourceWarehouse.id]
@@ -338,10 +337,8 @@ function StockTransferDialog({ sourceWarehouse, warehouses }: { sourceWarehouse:
 
     try {
       await db.transaction('rw', [db.warehouseStock, db.inventoryLog, db.stockTransfers], async () => {
-        // 1. Deduct from source
         await db.warehouseStock.update(sourceStock.id, { quantity: sourceStock.quantity - amount });
 
-        // 2. Add to target
         const targetStock = await db.warehouseStock.where({ warehouseId: targetId, variantId }).first();
         if (targetStock) {
           await db.warehouseStock.update(targetStock.id, { quantity: targetStock.quantity + amount });
@@ -355,7 +352,6 @@ function StockTransferDialog({ sourceWarehouse, warehouses }: { sourceWarehouse:
           });
         }
 
-        // 3. Log the transfer
         await db.stockTransfers.add({
           id: crypto.randomUUID(),
           businessId: sourceWarehouse.businessId,

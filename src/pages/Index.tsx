@@ -26,7 +26,6 @@ const iconMap: Record<string, LucideIcon> = {
   ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase,
 };
 
-// Dummy data for sparklines to match the aesthetic
 const generateSparkData = (seed: number) => {
   return Array.from({ length: 12 }, (_, i) => ({
     value: Math.floor(Math.random() * 20) + 10 + Math.sin(i + seed) * 10
@@ -86,7 +85,6 @@ const Dashboard = () => {
     [businesses]
   );
 
-  // Pre-built grouping maps — O(1) per-business/product lookups
   const variantsByProduct = useMemo(() => {
     const m = new Map<number, typeof variants>();
     for (const v of variants) {
@@ -116,7 +114,6 @@ const Dashboard = () => {
   const lowStockItems = useMemo(() => relevantVariants.filter(v => v.stock > 0 && v.stock <= v.lowStockThreshold), [relevantVariants]);
   const outOfStock = useMemo(() => relevantVariants.filter(v => v.stock === 0), [relevantVariants]);
 
-  // Pre-built variant price map (productId → basePrice, variantId → price)
   const variantMap = useMemo(() => new Map(variants.map(v => [v.id, v])), [variants]);
   const productMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
@@ -298,7 +295,6 @@ const Dashboard = () => {
       .slice(0, 5)
     , [products, logs]);
 
-  // Memoized sparkline data to prevent re-renders
   const sparkData = useMemo(() => [
     generateSparkData(1),
     generateSparkData(2),
@@ -429,7 +425,6 @@ const Dashboard = () => {
               const bStock = bVariants.reduce((s, v) => s + v.stock, 0);
               const bLow = bVariants.filter(v => v.stock > 0 && v.stock <= v.lowStockThreshold).length;
 
-              // Make every 3rd card span full width on small screens for a bento feel
               const isWide = index % 3 === 0;
 
               return (

@@ -1,14 +1,10 @@
-// Weight conversions (internal storage: kg)
 export const kgToLb = (kg: number) => kg * 2.20462;
 export const lbToKg = (lb: number) => lb / 2.20462;
 
-// Dimension conversions (internal storage: cm)
 export const cmToIn = (cm: number) => cm / 2.54;
 export const inToCm = (inch: number) => inch * 2.54;
 
-// Volume: cm³ → m³
 export const cm3ToM3 = (cm3: number) => cm3 / 1_000_000;
-// Volume: cm³ → ft³
 export const cm3ToFt3 = (cm3: number) => cm3 / 28316.846592;
 
 export const displayWeight = (kg: number, unit: 'kg' | 'lb') =>
