@@ -2,7 +2,7 @@
   "status": "init",
   "type": "frontend",
   "scope": "codebase",
-  "localEndpoint": "http://localhost:5175/",
+  "localEndpoint": "http://localhost:8080/",
   "backendAuthType": "basic token",
   "backendUsername": "admin",
   "backendPassword": "admin123",
@@ -16,5 +16,5 @@
       "API_KEY": "sk-user-PmiiX77SMHOdjwsNiV57BMJ00EWOGtbHarhvLYqAAJiD_v3H_uYU8kWKMGyvpT48jvP4Mxpde_8QM729zmmc9cEuuzlAqeblptrpvD-I-RkpyKn75LnhRQslynZDgvHigP0"
     }
   },
-  "serverPort": 63613
+  "serverPort": 53530
 }

@@ -93,6 +93,7 @@ export default function TeamPage() {
   const [permissionChanges, setPermissionChanges] = useState<Record<string, string[]>>({});
   const [activeStatsType, setActiveStatsType] = useState<'total' | 'admins' | 'active' | 'logs' | null>(null);
   const [statsDialogOpen, setStatsDialogOpen] = useState(false);
+  const [permissionsRoleFilter, setPermissionsRoleFilter] = useState<string>("admin");
 
   const stats = useMemo(() => {
     return {
@@ -337,7 +338,7 @@ export default function TeamPage() {
                 <div className="md:hidden space-y-4">
                   <div className="bg-muted/30 p-4 rounded-2xl border border-dashed">
                     <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Select Role to Configure</Label>
-                    <Select value={roleFilter === 'all' ? 'admin' : roleFilter} onValueChange={setRoleFilter}>
+                    <Select value={permissionsRoleFilter} onValueChange={setPermissionsRoleFilter}>
                       <SelectTrigger className="h-12 bg-background border-muted-foreground/20 rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
@@ -351,7 +352,7 @@ export default function TeamPage() {
 
                   <div className="space-y-3">
                     {DISPLAY_PERMISSIONS.map((item, idx) => {
-                      const role = (roleFilter === 'all' ? 'admin' : roleFilter) as UserRole;
+                      const role = permissionsRoleFilter as UserRole;
                       const roleObj = dbRolePermissions.find(p => p.role === role);
                       const isAllowed = permissionChanges[role]
                         ? permissionChanges[role].includes(item.perm)
