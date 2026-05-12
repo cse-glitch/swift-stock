@@ -1,5 +1,5 @@
 import { db, type BusinessType, type ProductType, type ProductStatus, type InventoryAction, type UserRole } from './db';
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 /**
  * Sync Engine for SAMAN Inventory
@@ -8,6 +8,10 @@ import { supabase } from './supabase';
  */
 
 export async function pushLocalToSupabase() {
+  if (!isSupabaseConfigured) {
+    console.warn('Sync: Skipping push — Supabase not configured.');
+    return;
+  }
   console.log('Sync: Pushing local data to Supabase...');
 
   try {
@@ -105,6 +109,10 @@ export async function pushLocalToSupabase() {
 }
 
 export async function pullSupabaseToLocal() {
+  if (!isSupabaseConfigured) {
+    console.warn('Sync: Skipping pull — Supabase not configured.');
+    return;
+  }
   console.log('Sync: Pulling data from Supabase...');
 
   try {

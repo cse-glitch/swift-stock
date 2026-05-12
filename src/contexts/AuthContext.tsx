@@ -46,11 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         setRolePermissions(permMap);
 
-        // --- NEW: Sync users and permissions before login for "Online App" feel ---
+        // Sync from cloud with a 5-second timeout so a missing/slow connection
+        // never blocks the loading screen.
         try {
           console.log('AuthProvider: Syncing accounts from cloud...');
-          await pullSupabaseToLocal(); // Pull all data to be safe, including users
-          
+          const timeout = new Promise<void>(resolve => setTimeout(resolve, 5000));
+          await Promise.race([pullSupabaseToLocal(), timeout]);
+
           // Refresh permissions map after pull
           const updatedPerms = await db.rolePermissions.toArray();
           const updatedMap: Record<UserRole, string[]> = { admin: [], manager: [], staff: [] };
@@ -59,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           setRolePermissions(updatedMap);
         } catch (syncErr) {
-          console.error('AuthProvider: Initial cloud sync failed:', syncErr);
+          console.error('AuthProvider: Initial cloud sync failed (non-blocking):', syncErr);
         }
 
         const raw = sessionStorage.getItem(SESSION_KEY);
