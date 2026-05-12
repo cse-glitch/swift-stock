@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, Product, Business, Order } from '@/lib/db';
+import { getSettings } from '@/lib/settings';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -103,12 +104,15 @@ const OrdersPage = () => {
     note: '',
   });
 
-  const businesses = useLiveQuery(() => db.businesses.toArray()) ?? [];
-  const products = useLiveQuery(() => 
+  const businessesRaw = useLiveQuery(() => db.businesses.toArray());
+  const productsRaw = useLiveQuery(() => 
     selectedBusinessId 
       ? db.products.where('businessId').equals(selectedBusinessId).toArray() 
       : db.products.toArray()
-  , [selectedBusinessId]) ?? [];
+  , [selectedBusinessId]);
+
+  const businesses = useMemo(() => businessesRaw ?? [], [businessesRaw]);
+  const products = useMemo(() => productsRaw ?? [], [productsRaw]);
 
   const selectedBusiness = useMemo(() => 
     businesses.find(b => b.id === selectedBusinessId), 
@@ -124,11 +128,13 @@ const OrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | Order['status']>('all');
   const [businessFilter, setBusinessFilter] = useState<string | 'all'>('all');
 
-  const orders = useLiveQuery(() => 
+  const ordersRaw = useLiveQuery(() => 
     activeBusinessId 
       ? db.orders.where('businessId').equals(activeBusinessId).reverse().toArray()
       : db.orders.orderBy('timestamp').reverse().toArray()
-  , [activeBusinessId]) ?? [];
+  , [activeBusinessId]);
+
+  const orders = useMemo(() => ordersRaw ?? [], [ordersRaw]);
 
   const productMap  = useMemo(() => new Map(products.map(p  => [p.id,  p])),  [products]);
   const businessMap = useMemo(() => new Map(businesses.map(b => [b.id, b])), [businesses]);
@@ -143,10 +149,12 @@ const OrdersPage = () => {
   }), [orders, historySearch, statusFilter, businessFilter]);
 
   const summary = useMemo(() => {
-    const unitPrice = customPrice !== '' ? parseFloat(customPrice) || 0 : (selectedProduct?.basePrice ?? 0);
+    if (!selectedProduct) return { unitPrice: 0, subtotal: 0, tax: 0, total: 0 };
+    const appSettings = getSettings();
+    const unitPrice = (customPrice !== '' && customPrice !== null) ? parseFloat(customPrice) || 0 : (selectedProduct.basePrice || 0);
     const subtotal = unitPrice * quantity;
-    const tax = subtotal * TAX_RATE;
-    const total = subtotal + tax + DELIVERY_FEE;
+    const tax = subtotal * (appSettings.taxRate / 100);
+    const total = subtotal + tax;
     return { unitPrice, subtotal, tax, total };
   }, [selectedProduct, quantity, customPrice]);
 
@@ -166,14 +174,18 @@ const OrdersPage = () => {
     }
 
     try {
+      const orderId = crypto.randomUUID();
       await db.orders.add({
+        id: orderId,
         businessId: selectedProduct.businessId,
         productId: selectedProduct.id!,
         customerName: formData.customerName,
         customerNumber: formData.phone,
-        price: summary.total,
+        price: summary.unitPrice,
+        totalPrice: summary.total,
         location: `${formData.address}${formData.city ? ', ' + formData.city : ''}`,
         status: 'pending',
+        paymentMethod: 'Cash',
         timestamp: new Date(),
         note: formData.note,
       });
@@ -681,14 +693,23 @@ const OrdersPage = () => {
                         </div>
                       </div>
 
-                      <Button 
-                        onClick={handleSubmitOrder} 
-                        disabled={!selectedProduct || !formData.customerName || !formData.phone}
-                        className="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-lg shadow-xl shadow-primary/20 transition-all active:scale-[0.98] gap-3"
-                      >
-                        <ShoppingCart className="h-5 w-5" />
-                        Confirm Order
-                      </Button>
+                      <div className="flex flex-col gap-3">
+                        <Button 
+                          onClick={handleSubmitOrder} 
+                          disabled={!selectedProduct || !formData.customerName || !formData.phone}
+                          className="w-full h-14 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-lg shadow-xl shadow-primary/20 transition-all active:scale-[0.98] gap-3"
+                        >
+                          <ShoppingCart className="h-5 w-5" />
+                          Confirm Order
+                        </Button>
+                        <Button 
+                          variant="ghost"
+                          onClick={() => handleTabChange('history')}
+                          className="w-full h-12 rounded-xl font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all"
+                        >
+                          Cancel & Go Back
+                        </Button>
+                      </div>
                       
                       <p className="text-[10px] text-center text-muted-foreground leading-relaxed px-2 italic">
                         By confirming, you are registering this order into the system. Inventory will not be automatically deducted.

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User, Settings, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/use-auth";
 import { MobileNav } from "@/components/MobileNav";
 
 const ROLE_LABEL: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {

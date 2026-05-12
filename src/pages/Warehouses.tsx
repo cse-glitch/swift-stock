@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Plus, MapPin, Boxes, ArrowRightLeft, ShieldCheck, Activity, Trash2, Pencil, Users } from 'lucide-react';
+import { Building2, Plus, MapPin, Boxes, ArrowRightLeft, ShieldCheck, Activity, Trash2, Pencil, Users, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -115,7 +115,16 @@ export default function Warehouses() {
           <DialogTrigger asChild>
             <Button className="gap-2 shadow-lg shadow-primary/20" onClick={() => {
               setEditingWarehouse(null);
-              setForm({ name: '', location: '', capacity: '', isMain: false });
+              setForm({ 
+                name: '', 
+                location: '', 
+                capacity: '', 
+                isMain: false,
+                managerName: '',
+                managerPhone: '',
+                primaryProducts: '',
+                businessId: activeBusinessId || ''
+              });
             }}>
               <Plus className="h-4 w-4" /> Add Warehouse
             </Button>
@@ -355,13 +364,13 @@ function StockTransferDialog({ sourceWarehouse, warehouses }: { sourceWarehouse:
         await db.stockTransfers.add({
           id: crypto.randomUUID(),
           businessId: sourceWarehouse.businessId,
-          sourceWarehouseId: sourceWarehouse.id,
-          targetWarehouseId: targetId,
+          fromWarehouseId: sourceWarehouse.id,
+          toWarehouseId: targetId,
           variantId,
           quantity: amount,
-          status: 'completed',
-          performedBy: 'current-user', // Should be auth.user.id
-          createdAt: new Date()
+          status: 'received',
+          requestedBy: 'current-user',
+          timestamp: new Date()
         });
       });
 

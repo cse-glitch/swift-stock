@@ -1,4 +1,4 @@
-import { db, type BusinessType, type ProductType, type ProductStatus, type InventoryAction, type UserRole } from './db';
+import { db, type BusinessType, type ProductType, type ProductStatus, type InventoryAction, type UserRole, type StockTransfer } from './db';
 import { supabase, isSupabaseConfigured } from './supabase';
 
 /**
@@ -94,6 +94,39 @@ export async function pushLocalToSupabase() {
       if (error) console.error('Push Error (role_permissions):', error);
     }
 
+    const warehouses = await db.warehouses.toArray();
+    if (warehouses.length > 0) {
+      const { error } = await supabase.from('warehouses').upsert(warehouses.map(w => ({
+        id: w.id, business_id: w.businessId, name: w.name, location: w.location, 
+        is_active: w.isActive, is_main: w.isMain, manager_name: w.managerName, 
+        manager_phone: w.managerPhone
+      })));
+      if (error) console.error('Push Error (warehouses):', error);
+    }
+
+    const stock = await db.warehouseStock.toArray();
+    if (stock.length > 0) {
+      const { error } = await supabase.from('warehouse_stock').upsert(stock.map(s => ({
+        id: s.id, warehouse_id: s.warehouseId, variant_id: s.variantId, 
+        quantity: s.quantity, last_updated: s.lastUpdated
+      })));
+      if (error) console.error('Push Error (warehouse_stock):', error);
+    }
+
+    const transfers = await db.stockTransfers.toArray();
+    for (const t of transfers) {
+      await supabase.from('stock_transfers').upsert({
+        id: t.id,
+        business_id: t.businessId,
+        source_warehouse_id: t.fromWarehouseId,
+        target_warehouse_id: t.toWarehouseId,
+        variant_id: t.variantId,
+        quantity: t.quantity,
+        status: t.status,
+        created_at: t.timestamp.toISOString()
+      });
+    }
+
     console.log('Sync: Push complete.');
   } catch (err) {
     console.error('Sync: Critical failure in push:', err);
@@ -148,17 +181,18 @@ export async function pullSupabaseToLocal() {
       lowStockThreshold: v.low_stock_threshold, weight: v.weight, dimensions: v.dimensions
     }));
 
-    await pullTable('orders', db.orders, (o: { id: string; business_id: string; product_id: string; variant_id?: string; customer_name: string; customer_number: string; price: number; location: string; status: 'pending' | 'completed' | 'cancelled'; note?: string; timestamp: string }) => ({
-      id: o.id, businessId: o.business_id, productId: o.product_id,
-      variantId: o.variant_id, customerName: o.customer_name,
-      customerNumber: o.customer_number, price: o.price, location: o.location,
-      status: o.status, note: o.note, timestamp: new Date(o.timestamp)
+    await pullTable('orders', db.orders, (o: { id: string; business_id: string; product_id: string; variant_id?: string; customer_name: string; customer_number: string; price: number; total_price?: number; payment_method?: string; location: string; status: "pending" | "completed" | "cancelled"; note?: string; timestamp: string }) => ({
+      id: o.id, businessId: o.business_id, productId: o.product_id, variantId: o.variant_id, 
+      customerName: o.customer_name, customerNumber: o.customer_number, 
+      price: o.price, totalPrice: o.total_price || o.price, 
+      paymentMethod: o.payment_method || 'Cash',
+      location: o.location, status: o.status, note: o.note || '', timestamp: new Date(o.timestamp)
     }));
 
-    await pullTable('users', db.users, (u: { id: string; username: string; password_hash: string; display_name: string; role: UserRole; created_at: string; last_login_at?: string }) => ({
-      id: u.id, username: u.username, passwordHash: u.password_hash,
-      displayName: u.display_name, role: u.role,
-      createdAt: new Date(u.created_at), lastLoginAt: u.last_login_at ? new Date(u.last_login_at) : undefined
+    await pullTable('users', db.users, (u: { id: string; username: string; password_hash: string; display_name: string; role: UserRole; created_at: string; last_login_at?: string; two_factor_enabled?: boolean }) => ({
+      id: u.id, username: u.username, passwordHash: u.password_hash, displayName: u.display_name, 
+      role: u.role, createdAt: new Date(u.created_at), lastLoginAt: u.last_login_at ? new Date(u.last_login_at) : undefined,
+      twoFactorEnabled: u.two_factor_enabled || false
     }));
 
     await pullTable('inventory_log', db.inventoryLog, (l: { id: string; product_id: string; variant_id?: string; business_id: string; type: InventoryAction; quantity: number; reason: string; note?: string; timestamp: string }) => ({
@@ -169,6 +203,28 @@ export async function pullSupabaseToLocal() {
 
     await pullTable('role_permissions', db.rolePermissions, (p: { id: string; role: UserRole; permissions: string[] }) => ({
       id: p.id, role: p.role, permissions: p.permissions
+    }));
+    
+    await pullTable('warehouses', db.warehouses, (w: { id: string; business_id: string; name: string; location: string; is_active: boolean; is_main: boolean; manager_name?: string; manager_phone?: string }) => ({
+      id: w.id, businessId: w.business_id, name: w.name, location: w.location, 
+      isActive: w.is_active, isMain: w.is_main, managerName: w.manager_name, 
+      managerPhone: w.manager_phone
+    }));
+
+    await pullTable('warehouse_stock', db.warehouseStock, (s: { id: string; warehouse_id: string; variant_id: string; quantity: number; last_updated: string }) => ({
+      id: s.id, warehouseId: s.warehouse_id, variantId: s.variant_id, 
+      quantity: s.quantity, lastUpdated: new Date(s.last_updated)
+    }));
+
+    await pullTable('stock_transfers', db.stockTransfers, (t: { id: string; business_id: string; source_warehouse_id: string; target_warehouse_id: string; variant_id: string; quantity: number; status: string; requested_by?: string; created_at: string }) => ({
+      id: t.id, businessId: t.business_id, 
+      fromWarehouseId: t.source_warehouse_id, 
+      toWarehouseId: t.target_warehouse_id, 
+      variantId: t.variant_id, 
+      quantity: t.quantity, 
+      status: t.status as StockTransfer['status'], 
+      requestedBy: t.requested_by || 'system',
+      timestamp: new Date(t.created_at)
     }));
 
     console.log('Sync: Pull complete.');

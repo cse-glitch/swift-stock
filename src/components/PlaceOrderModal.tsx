@@ -551,6 +551,14 @@ export const PlaceOrderModal: React.FC<PlaceOrderModalProps> = ({ trigger }) => 
             onEscapeKeyDown={(e) => e.preventDefault()}
             className="max-w-4xl max-h-[92vh] overflow-y-auto custom-scrollbar p-0 gap-0 border-none rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
           >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4 z-50 h-8 w-8 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:bg-muted transition-all active:scale-90"
+              onClick={() => setOpen(false)}
+            >
+              <LucideIcons.X className="h-4 w-4" />
+            </Button>
             <div className="grid grid-cols-1 md:grid-cols-5 h-full">
               {/* Sidebar / Progress */}
               <div className="col-span-2 bg-muted/30 border-r p-8 space-y-8 flex flex-col">
@@ -635,7 +643,7 @@ export const PlaceOrderModal: React.FC<PlaceOrderModalProps> = ({ trigger }) => 
     }
 
     return (
-      <Drawer dismissible={false} open={open} onOpenChange={v => { setOpen(v); if (!v) reset(); }}>
+      <Drawer open={open} onOpenChange={v => { setOpen(v); if (!v) reset(); }}>
         <DrawerTrigger asChild>
           {trigger || (
             <Button variant="outline" size="sm" className="gap-2 font-bold active:scale-95 transition-all">
@@ -644,7 +652,15 @@ export const PlaceOrderModal: React.FC<PlaceOrderModalProps> = ({ trigger }) => 
           )}
         </DrawerTrigger>
         <DrawerContent className="max-h-[96vh] rounded-t-[2.5rem]">
-          <DrawerHeader className="pb-0 pt-6">
+          <DrawerHeader className="pb-0 pt-6 relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4 h-8 w-8 rounded-full bg-muted"
+              onClick={() => setOpen(false)}
+            >
+              <LucideIcons.X className="h-4 w-4" />
+            </Button>
             <DrawerTitle className="text-xl font-black text-center tracking-tight">Create New Order</DrawerTitle>
             <DrawerDescription className="text-center text-xs font-medium">Quickly place an order from your phone</DrawerDescription>
           </DrawerHeader>

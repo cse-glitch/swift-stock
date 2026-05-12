@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import bcrypt from 'bcryptjs';
-import { db, type UserRole, seedRolesIfEmpty } from '@/lib/db';
+import { db, type UserRole, type User, seedRolesIfEmpty } from '@/lib/db';
 import SwiftStockLoader from '@/components/SwiftStockLoader';
 import { pullSupabaseToLocal } from '@/lib/sync';
 import { 
@@ -9,17 +9,7 @@ import {
   SESSION_KEY, 
   seedAdminIfEmpty 
 } from '@/lib/auth-utils';
-
-interface AuthContextValue {
-  user: AuthUser | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  hasPermission: (permission: Permission) => boolean;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { AuthContext, type AuthContextValue } from './use-auth';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -39,8 +29,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       try {
-        console.log('AuthProvider: Initializing...');
-
         await seedRolesIfEmpty();
         await seedAdminIfEmpty();
 
@@ -62,7 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRolePermissions(permMap);
 
         try {
-          console.log('AuthProvider: Syncing accounts from cloud...');
           const timeout = new Promise<void>(resolve => setTimeout(resolve, 5000));
           await Promise.race([pullSupabaseToLocal(), timeout]);
 
@@ -83,20 +70,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           setRolePermissions(updatedMap);
         } catch (syncErr) {
-          console.error('AuthProvider: Initial cloud sync failed:', syncErr);
+          console.error(syncErr);
         }
 
         const raw = sessionStorage.getItem(SESSION_KEY);
         if (raw) {
           try {
-            const parsed = JSON.parse(raw) as AuthUser;
-            setUser(parsed);
+            const parsed = JSON.parse(raw) as AuthUser & { _expiry?: string };
+            if (parsed._expiry && new Date() > new Date(parsed._expiry)) {
+              sessionStorage.removeItem(SESSION_KEY);
+            } else {
+              const { _expiry: _, ...user } = parsed;
+              setUser(user);
+            }
           } catch (err) {
             sessionStorage.removeItem(SESSION_KEY);
           }
         }
       } catch (err) {
-        console.error('AuthProvider init error:', err);
+        console.error(err);
       } finally {
         setIsLoading(false);
       }
@@ -112,18 +104,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const dbUser = await db.users.where('username').equals(normalizedUsername).first();
       if (!dbUser) return { success: false, error: 'Invalid username or password' };
 
+      if (dbUser.lockedUntil && new Date() < new Date(dbUser.lockedUntil)) {
+        const remaining = Math.ceil((new Date(dbUser.lockedUntil).getTime() - Date.now()) / 60000);
+        return { success: false, error: `Account locked. Try again in ${remaining} minute(s).` };
+      }
+
       const passwordHash: string = dbUser.passwordHash;
       const displayName: string = dbUser.displayName ?? dbUser.username;
       const userId: string = String(dbUser.id);
 
-      if (!passwordHash) {
-        console.error('Login error: passwordHash missing for user', dbUser.username);
-        return { success: false, error: 'Account data is corrupted.' };
-      }
+      if (!passwordHash) return { success: false, error: 'Account data is corrupted.' };
 
       const match = await bcrypt.compare(password, passwordHash);
-      if (!match) return { success: false, error: 'Invalid username or password' };
 
+      if (!match) {
+        const attempts = (dbUser.failedAttempts ?? 0) + 1;
+        const MAX_ATTEMPTS = 5;
+        const updateData: Record<string, unknown> = { failedAttempts: attempts };
+        if (attempts >= MAX_ATTEMPTS) {
+          const lockUntil = new Date(Date.now() + 30 * 60 * 1000);
+          updateData.lockedUntil = lockUntil;
+          await db.users.update(userId, updateData as Partial<User>);
+          await db.auditLogs.add({ id: crypto.randomUUID(), userId, username: dbUser.username, action: 'ACCOUNT_LOCKED', timestamp: new Date() });
+          return { success: false, error: 'Too many failed attempts. Account locked for 30 minutes.' };
+        }
+        await db.users.update(userId, updateData as Partial<User>);
+        return { success: false, error: `Invalid username or password. ${MAX_ATTEMPTS - attempts} attempt(s) remaining.` };
+      }
+
+      const sessionExpiry = new Date(Date.now() + 8 * 60 * 60 * 1000);
       const authUser: AuthUser = {
         id: userId,
         username: dbUser.username,
@@ -132,28 +141,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: dbUser.createdAt ?? new Date(),
       };
 
-      try {
-        await db.users.update(userId, { lastLoginAt: new Date() });
-      } catch (e) { console.warn('Could not update lastLoginAt:', e); }
+      await db.users.update(userId, { lastLoginAt: new Date(), failedAttempts: 0, lockedUntil: undefined } as Partial<User>);
 
-      try {
-        await db.auditLogs.add({
-          id: crypto.randomUUID(),
-          userId,
-          username: dbUser.username,
-          action: 'LOGIN',
-          timestamp: new Date(),
-        });
-      } catch (e) { console.warn('Could not write login audit log:', e); }
+      await db.auditLogs.add({
+        id: crypto.randomUUID(),
+        userId,
+        username: dbUser.username,
+        action: 'LOGIN',
+        timestamp: new Date(),
+      }).catch(() => {});
 
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(authUser));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...authUser, _expiry: sessionExpiry.toISOString() }));
       setUser(authUser);
 
-      pullSupabaseToLocal().catch(err => console.error('Login sync error:', err));
+      pullSupabaseToLocal().catch(err => console.error(err));
 
       return { success: true };
     } catch (err) {
-      console.error('Login error:', err);
       return { success: false, error: `Login failed: ${err instanceof Error ? err.message : String(err)}` };
     }
   }, []);
@@ -172,13 +176,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    let timeout: NodeJS.Timeout;
+    const resetTimer = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        logout();
+      }, 30 * 60 * 1000);
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetTimer));
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeout);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [user, logout]);
+
   const hasPermission = useCallback((permission: Permission): boolean => {
     if (!user) return false;
     const userPerms = rolePermissions[user.role] || [];
-    if (userPerms.includes('*')) return true; // Wildcard for Super Admin
+    if (userPerms.includes('*')) return true;
     return userPerms.includes(permission);
   }, [user, rolePermissions]);
-
 
   if (isLoading) {
     return (
@@ -204,12 +228,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-}
-
-if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>)['db'] = db;
-}

@@ -10,40 +10,35 @@ export interface AppSettings {
   taxRate: number;
   fiscalYearStart: string;
   maintenanceMode: boolean;
-
   skuPattern: string;
   autoBarcode: boolean;
   lowStockThreshold: number;
   expiryAlertDays: number;
   autoReorderEnabled: boolean;
-
   mfaRequired: boolean;
   sessionTimeoutMinutes: number;
   passwordComplexity: 'low' | 'medium' | 'high';
   ipWhitelisting: boolean;
-
   emailEnabled: boolean;
   smsEnabled: boolean;
   whatsappEnabled: boolean;
   lowStockAlerts: boolean;
   expiryAlerts: boolean;
-
   warehouseHierarchyEnabled: boolean;
   stockTransferApprovalRequired: boolean;
-
   employeeMonitoringEnabled: boolean;
   shiftSchedulingEnabled: boolean;
   defaultWorkHours: number;
-
   aiForecastingEnabled: boolean;
   autoBackupCloud: boolean;
   smartReorderEnabled: boolean;
-
   apiAccessEnabled: boolean;
   webhookUrl?: string;
-
   backupIntervalHours: number;
   autoSyncCloud: boolean;
+  accountingMode: 'accrual' | 'cash';
+  profitCalculation: 'margin' | 'markup';
+  autoReorderThreshold: number;
 }
 
 const defaults: AppSettings = {
@@ -89,7 +84,9 @@ export const getSettings = (): AppSettings => {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) return { ...defaults, ...JSON.parse(raw) };
-  } catch {}
+  } catch (e) {
+    console.error(e);
+  }
   return defaults;
 };
 

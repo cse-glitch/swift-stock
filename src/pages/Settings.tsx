@@ -48,7 +48,7 @@ export default function Settings() {
     });
   };
 
-  const update = (key: keyof AppSettings, value: any) => {
+  const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
@@ -250,7 +250,7 @@ export default function Settings() {
                   <div className="flex items-center justify-between p-5 rounded-2xl bg-destructive/5 border border-destructive/10">
                     <div className="space-y-0.5">
                       <Label className="text-base">Mandatory 2FA</Label>
-                      <p className="text-xs text-muted-foreground text-destructive/70">Force all management staff to use 2FA verification.</p>
+                      <p className="text-xs text-destructive/70">Force all management staff to use 2FA verification.</p>
                     </div>
                     <Switch checked={settings.mfaRequired} onCheckedChange={v => update('mfaRequired', v)} />
                   </div>
@@ -261,7 +261,7 @@ export default function Settings() {
                     </div>
                     <div className="space-y-2">
                       <Label>Password Policy</Label>
-                      <Select value={settings.passwordComplexity} onValueChange={v => update('passwordComplexity', v)}>
+                      <Select value={settings.passwordComplexity} onValueChange={v => update('passwordComplexity', v as AppSettings['passwordComplexity'])}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="low">Standard (6 chars)</SelectItem>
@@ -365,7 +365,7 @@ export default function Settings() {
                   <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/30 border border-border/50">
                     <div className="space-y-0.5">
                       <Label className="text-base">Employee Activity Monitoring</Label>
-                      <p className="text-xs text-muted-foreground text-destructive">Logs detailed UI interactions for audit and performance review.</p>
+                      <p className="text-xs text-destructive">Logs detailed UI interactions for audit and performance review.</p>
                     </div>
                     <Switch checked={settings.employeeMonitoringEnabled} onCheckedChange={v => update('employeeMonitoringEnabled', v)} />
                   </div>
@@ -588,7 +588,7 @@ export default function Settings() {
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label>Accounting Method</Label>
-                      <Select value={settings.accountingMode} onValueChange={v => update('accountingMode', v)}>
+                      <Select value={settings.accountingMode} onValueChange={v => update('accountingMode', v as AppSettings['accountingMode'])}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="accrual">Accrual Accounting (Standard)</SelectItem>
@@ -598,7 +598,7 @@ export default function Settings() {
                     </div>
                     <div className="space-y-2">
                       <Label>Profit Calculation</Label>
-                      <Select value={settings.profitCalculation} onValueChange={v => update('profitCalculation', v)}>
+                      <Select value={settings.profitCalculation} onValueChange={v => update('profitCalculation', v as AppSettings['profitCalculation'])}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="margin">Margin % (Price - Cost) / Price</SelectItem>

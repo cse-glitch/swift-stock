@@ -275,6 +275,8 @@ export interface User {
   lastLoginAt?: Date;
   twoFactorEnabled: boolean;
   twoFactorSecret?: string;
+  failedAttempts?: number;
+  lockedUntil?: Date;
 }
 
 export interface AuditLog {

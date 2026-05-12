@@ -7,7 +7,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
 import { BusinessSwitcher } from "@/components/BusinessSwitcher";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/use-auth";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,

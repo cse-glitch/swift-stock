@@ -1,8 +1,8 @@
 import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import bcrypt from "bcryptjs";
-import { db, type UserRole, type User as DBUser } from "@/lib/db";
-import { useAuth } from "@/contexts/AuthContext";
+import { db, type UserRole, type User as DBUser, type AuditLog, type RolePermission } from "@/lib/db";
+import { useAuth } from '@/contexts/use-auth';
 import { writeAuditLog } from "@/lib/auth-utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -248,7 +248,7 @@ export default function TeamPage() {
             key={i} 
             className="border-none shadow-md bg-card/50 backdrop-blur-sm cursor-pointer hover:bg-card/80 hover:scale-[1.02] transition-all active:scale-95 group"
             onClick={() => {
-              setActiveStatsType(stat.id as any);
+              setActiveStatsType(stat.id as StatsDetailDialogProps['type']);
               setStatsDialogOpen(true);
             }}
           >
@@ -525,8 +525,8 @@ interface StatsDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   type: 'total' | 'admins' | 'active' | 'logs' | null;
   users: DBUser[];
-  logs: any[];
-  dbRolePermissions: any[];
+  logs: AuditLog[];
+  dbRolePermissions: RolePermission[];
 }
 
 function StatsDetailDialog({ open, onOpenChange, type, users, logs, dbRolePermissions }: StatsDetailDialogProps) {
@@ -537,27 +537,31 @@ function StatsDetailDialog({ open, onOpenChange, type, users, logs, dbRolePermis
     if (!type) return [];
     
     switch(type) {
-      case 'total':
+      case 'total': {
         return users.filter(u => 
           (roleFilter === 'all' || u.role === roleFilter) &&
           (u.displayName.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase()))
         );
-      case 'admins':
+      }
+      case 'admins': {
         return users.filter(u => 
           ['admin', 'super_admin'].includes(u.role) &&
           (u.displayName.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase()))
         );
-      case 'active':
+      }
+      case 'active': {
         const today = new Date().toDateString();
         return users.filter(u => 
           u.lastLoginAt && new Date(u.lastLoginAt).toDateString() === today &&
           (u.displayName.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase()))
         );
-      case 'logs':
+      }
+      case 'logs': {
         return logs.filter(l => 
           l.username.toLowerCase().includes(search.toLowerCase()) || 
           l.action.toLowerCase().includes(search.toLowerCase())
         );
+      }
       default: return [];
     }
   }, [type, users, logs, search, roleFilter]);
