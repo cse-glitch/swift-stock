@@ -21,8 +21,8 @@ export type BusinessType = 'general' | 'fashion' | 'lubricants' | 'properties' |
 export type ProductType = 'physical' | 'service' | 'listing';
 export type ProductStatus = 'active' | 'draft' | 'archived';
 export type ListingAvailability = 'available' | 'sold' | 'rented' | 'pending';
-export type InventoryAction = 'add' | 'remove' | 'adjust';
-export type UserRole = 'admin' | 'manager' | 'staff';
+export type InventoryAction = 'add' | 'remove' | 'adjust' | 'transfer';
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'inventory_manager' | 'sales_manager' | 'accountant' | 'cashier' | 'warehouse_staff' | 'staff';
 
 export interface Business {
   id: string;
@@ -33,6 +33,18 @@ export interface Business {
   icon: string;        // Lucide icon name
   isActive: boolean;
   createdAt: Date;
+  // Enterprise fields
+  logo?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  taxNumber?: string;
+  currency?: string;
+  language?: string;
+  timezone?: string;
+  invoiceTemplate?: string;
+  smtpConfig?: { host: string; port: number; user: string; pass: string; from: string };
+  smsConfig?: { provider: string; apiKey: string; senderId: string };
 }
 
 export interface Category {
@@ -46,6 +58,7 @@ export interface Product {
   id: string;
   businessId: string;
   categoryId?: string;
+  brandId?: string;
   name: string;
   sku: string;
   type: ProductType;
@@ -68,12 +81,35 @@ export interface Variant {
   productId: string;
   name: string;
   sku: string;
+  barcode?: string;
+  qrcode?: string;
   attributes: Record<string, string | number>;
   price?: number;
-  stock: number;
+  stock: number; // Total stock across all warehouses
   lowStockThreshold: number;
   weight?: number;
   dimensions?: { l: number; w: number; h: number };
+}
+
+export interface Warehouse {
+  id: string;
+  businessId: string;
+  name: string;
+  location: string;
+  capacity?: number;
+  managerName?: string;
+  managerPhone?: string;
+  primaryProducts?: string;
+  isActive: boolean;
+  isMain: boolean;
+}
+
+export interface WarehouseStock {
+  id: string;
+  warehouseId: string;
+  variantId: string;
+  quantity: number;
+  lastUpdated: Date;
 }
 
 export interface InventoryLog {
@@ -81,11 +117,117 @@ export interface InventoryLog {
   productId: string;
   variantId?: string;
   businessId: string;
+  warehouseId?: string;
   type: InventoryAction;
   quantity: number;
   reason: string;
   note?: string;
   timestamp: Date;
+}
+
+export interface StockTransfer {
+  id: string;
+  businessId: string;
+  fromWarehouseId: string;
+  toWarehouseId: string;
+  variantId: string;
+  quantity: number;
+  status: 'pending' | 'approved' | 'shipped' | 'received' | 'cancelled';
+  requestedBy: string;
+  approvedBy?: string;
+  timestamp: Date;
+}
+
+export interface Supplier {
+  id: string;
+  businessId: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  category: string;
+  paymentTerms: string;
+  creditLimit: number;
+  isActive: boolean;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  businessId: string;
+  supplierId: string;
+  status: 'draft' | 'pending' | 'ordered' | 'received' | 'cancelled';
+  totalAmount: number;
+  taxAmount: number;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PurchaseItem {
+  id: string;
+  purchaseOrderId: string;
+  productId: string;
+  variantId: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface Expense {
+  id: string;
+  businessId: string;
+  categoryId: string;
+  amount: number;
+  date: Date;
+  description: string;
+  paymentMethod: string;
+  reference?: string;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  businessId: string;
+  name: string;
+}
+
+export interface Department {
+  id: string;
+  businessId: string;
+  name: string;
+}
+
+export interface EmployeeDetail {
+  id: string;
+  userId: string;
+  businessId: string;
+  departmentId?: string;
+  designation: string;
+  salary: number;
+  joinDate: Date;
+  shiftStart?: string;
+  shiftEnd?: string;
+  status: 'active' | 'on_leave' | 'terminated';
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  businessId?: string;
+  type: 'stock_alert' | 'expiry_alert' | 'payment_due' | 'approval_request' | 'system';
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: Date;
+}
+
+export interface ApiKey {
+  id: string;
+  businessId: string;
+  name: string;
+  key: string;
+  permissions: string[];
+  lastUsedAt?: Date;
+  createdAt: Date;
 }
 
 export interface PropertyListing {
@@ -116,24 +258,30 @@ export interface Order {
   customerName: string;
   customerNumber: string;
   price: number;
+  discount?: number;
+  tax?: number;
+  totalPrice: number;
   location: string;
   status: 'pending' | 'completed' | 'cancelled';
+  paymentMethod: string;
   timestamp: Date;
   note?: string;
 }
 
 export interface User {
-  id?: string;
+  id: string;
   username: string;
   passwordHash: string;
   displayName: string;
   role: UserRole;
   createdAt: Date;
   lastLoginAt?: Date;
+  twoFactorEnabled: boolean;
+  twoFactorSecret?: string;
 }
 
 export interface AuditLog {
-  id?: string;
+  id: string;
   userId?: string;
   username: string;
   action: string;
@@ -144,7 +292,7 @@ export interface AuditLog {
 }
 
 export interface RolePermission {
-  id?: string;
+  id: string;
   role: UserRole;
   permissions: string[];
 }
@@ -154,7 +302,19 @@ class InventoryDB extends Dexie {
   categories!: Table<Category>;
   products!: Table<Product>;
   variants!: Table<Variant>;
+  warehouses!: Table<Warehouse>;
+  warehouseStock!: Table<WarehouseStock>;
   inventoryLog!: Table<InventoryLog>;
+  stockTransfers!: Table<StockTransfer>;
+  suppliers!: Table<Supplier>;
+  purchaseOrders!: Table<PurchaseOrder>;
+  purchaseItems!: Table<PurchaseItem>;
+  expenses!: Table<Expense>;
+  expenseCategories!: Table<ExpenseCategory>;
+  departments!: Table<Department>;
+  employeeDetails!: Table<EmployeeDetail>;
+  notifications!: Table<Notification>;
+  apiKeys!: Table<ApiKey>;
   propertyListings!: Table<PropertyListing>;
   services!: Table<Service>;
   orders!: Table<Order>;
@@ -250,9 +410,6 @@ class InventoryDB extends Dexie {
       services: 'id, productId',
       orders: 'id, businessId, productId, customerName, customerNumber, status, timestamp, [businessId+status]',
     });
-    // v10: DROP tables whose primary key must change (++id → id).
-    // IndexedDB does not allow altering a primary key in-place.
-    // seedAdminIfEmpty + seedRolesIfEmpty will repopulate them in v11.
     this.version(10).stores({
       users: null,
       auditLogs: null,
@@ -263,16 +420,38 @@ class InventoryDB extends Dexie {
       auditLogs: 'id, userId, action, entityType, timestamp',
       rolePermissions: 'id, &role',
     });
+    this.version(12).stores({
+      warehouses: 'id, businessId, name, isActive',
+      warehouseStock: 'id, warehouseId, variantId, [warehouseId+variantId]',
+      stockTransfers: 'id, businessId, fromWarehouseId, toWarehouseId, variantId, status, timestamp',
+      suppliers: 'id, businessId, name, email, phone, category, isActive',
+      purchaseOrders: 'id, businessId, supplierId, status, createdAt',
+      purchaseItems: 'id, purchaseOrderId, productId, variantId',
+      expenses: 'id, businessId, categoryId, date',
+      expenseCategories: 'id, businessId, name',
+      departments: 'id, businessId, name',
+      employeeDetails: 'id, userId, businessId, departmentId, status',
+      notifications: 'id, userId, businessId, type, isRead, createdAt',
+      apiKeys: 'id, businessId, &key',
+    });
+
+    this.version(13).stores({
+      stockTransfers: 'id, businessId, sourceWarehouseId, targetWarehouseId, variantId, quantity, status, createdAt',
+    });
 
     // --- Mutation Hooks for Auto-Sync ---
     const tables = [
       'businesses', 'categories', 'products', 'variants', 
-      'inventoryLog', 'propertyListings', 'services', 
+      'warehouses', 'warehouseStock', 'inventoryLog', 'stockTransfers',
+      'suppliers', 'purchaseOrders', 'purchaseItems',
+      'expenses', 'expenseCategories', 'departments', 'employeeDetails',
+      'notifications', 'apiKeys',
+      'propertyListings', 'services', 
       'orders', 'users', 'auditLogs', 'rolePermissions'
     ];
 
     tables.forEach(tableName => {
-      const table = (this as unknown as Record<string, { hook?: (event: string, cb: () => void) => void }>)[tableName];
+      const table = this.table(tableName);
       if (table && typeof table.hook === 'function') {
         table.hook('creating', () => dbEvents.notify());
         table.hook('updating', () => dbEvents.notify());
@@ -285,41 +464,79 @@ class InventoryDB extends Dexie {
 export const db = new InventoryDB();
 
 export async function seedRolesIfEmpty() {
-  const count = await db.rolePermissions.count();
-  if (count > 0) return;
-
-  await db.rolePermissions.bulkAdd([
+  const defaultRoles: RolePermission[] = [
     {
-      id: crypto.randomUUID(),
+      id: 'role-super-admin',
+      role: 'super_admin',
+      permissions: ['*']
+    },
+    {
+      id: 'role-admin',
       role: 'admin',
       permissions: [
         'products.create', 'products.edit', 'products.delete',
         'orders.create', 'orders.edit', 'orders.delete',
-        'inventory.add', 'inventory.remove',
+        'inventory.add', 'inventory.remove', 'inventory.transfer',
         'businesses.manage', 'users.manage', 'settings.manage',
-        'analytics.view', 'export.data',
+        'analytics.view', 'export.data', 'suppliers.manage', 'suppliers.view',
+        'warehouses.manage', 'warehouses.view', 'accounting.view'
       ]
     },
     {
-      id: crypto.randomUUID(),
+      id: 'role-manager',
       role: 'manager',
       permissions: [
         'products.create', 'products.edit',
         'orders.create', 'orders.edit',
-        'inventory.add', 'inventory.remove',
-        'analytics.view', 'export.data',
+        'inventory.add', 'inventory.remove', 'inventory.transfer',
+        'analytics.view', 'export.data', 'suppliers.manage',
+        'warehouses.manage', 'warehouses.view', 'suppliers.view'
       ]
     },
     {
-      id: crypto.randomUUID(),
+      id: 'role-inventory-manager',
+      role: 'inventory_manager',
+      permissions: ['products.create', 'products.edit', 'inventory.add', 'inventory.remove', 'inventory.transfer', 'warehouses.manage', 'warehouses.view']
+    },
+    {
+      id: 'role-sales-manager',
+      role: 'sales_manager',
+      permissions: ['orders.create', 'orders.edit', 'analytics.view']
+    },
+    {
+      id: 'role-accountant',
+      role: 'accountant',
+      permissions: ['accounting.view', 'accounting.manage', 'analytics.view']
+    },
+    {
+      id: 'role-cashier',
+      role: 'cashier',
+      permissions: ['orders.create']
+    },
+    {
+      id: 'role-warehouse-staff',
+      role: 'warehouse_staff',
+      permissions: ['inventory.add', 'inventory.remove', 'warehouses.view']
+    },
+    {
+      id: 'role-staff',
       role: 'staff',
-      permissions: [
-        'products.create',
-        'orders.create',
-        'inventory.add',
-      ]
+      permissions: ['products.create', 'orders.create', 'inventory.add']
     }
-  ]);
+  ];
+
+  for (const r of defaultRoles) {
+    const existing = await db.rolePermissions.where('role').equals(r.role).first();
+    if (!existing) {
+      await db.rolePermissions.add(r);
+    } else {
+      // Update with latest permissions if missing
+      const newPerms = [...new Set([...existing.permissions, ...r.permissions])];
+      if (newPerms.length !== existing.permissions.length) {
+        await db.rolePermissions.update(existing.id, { permissions: newPerms });
+      }
+    }
+  }
 }
 
 export async function seedBusinesses() {
@@ -329,7 +546,7 @@ export async function seedBusinesses() {
     return;
   }
 
-  await db.businesses.bulkAdd([
+  const businesses: Business[] = [
     { id: generateId(), name: 'SAMAN Kenakata', slug: 'kenakata', type: 'general', color: '230 65% 52%', icon: 'ShoppingBag', isActive: true, createdAt: new Date() },
     { id: generateId(), name: 'Saman Pink', slug: 'pink', type: 'fashion', color: '330 70% 60%', icon: 'Shirt', isActive: true, createdAt: new Date() },
     { id: generateId(), name: 'Saman Blue', slug: 'blue', type: 'fashion', color: '210 75% 55%', icon: 'Shirt', isActive: true, createdAt: new Date() },
@@ -337,7 +554,21 @@ export async function seedBusinesses() {
     { id: generateId(), name: 'SAMAN Properties', slug: 'properties', type: 'properties', color: '160 50% 45%', icon: 'Building2', isActive: true, createdAt: new Date() },
     { id: generateId(), name: 'SAMAN Agro & Food', slug: 'agro', type: 'agro', color: '120 50% 40%', icon: 'Leaf', isActive: true, createdAt: new Date() },
     { id: generateId(), name: 'SAMAN Work Terminal', slug: 'terminal', type: 'services', color: '270 55% 55%', icon: 'Briefcase', isActive: true, createdAt: new Date() },
-  ]);
+  ];
+
+  await db.businesses.bulkAdd(businesses);
+
+  // Seed default warehouses for each business
+  for (const biz of businesses) {
+    await db.warehouses.add({
+      id: generateId(),
+      businessId: biz.id,
+      name: 'Main Warehouse',
+      location: 'Default Location',
+      isActive: true,
+      isMain: true
+    });
+  }
 
   await seedSampleData();
 }
@@ -351,18 +582,32 @@ async function seedSampleData() {
 
   for (const biz of businesses) {
     const catId = generateId();
-    await db.categories.add({ id: catId, businessId: biz.id!, name: 'Default Category' });
+    await db.categories.add({ id: catId, businessId: biz.id, name: 'Default Category' });
     const pId = generateId();
     await db.products.add({
       id: pId,
-      businessId: biz.id!, categoryId: catId, name: `Sample Product ${biz.name}`, sku: `${biz.slug.toUpperCase()}-001`,
+      businessId: biz.id, categoryId: catId, name: `Sample Product ${biz.name}`, sku: `${biz.slug.toUpperCase()}-001`,
       type: 'physical', basePrice: 1000, currency: 'BDT', tags: ['sample'],
       attributes: {}, status: 'active', isSeasonal: false, expiryTracking: false, createdAt: now, updatedAt: now
     });
+    
+    const vId = generateId();
     await db.variants.add({
-      id: generateId(),
+      id: vId,
       productId: pId, name: 'Standard', sku: `${biz.slug.toUpperCase()}-001-STD`,
       attributes: {}, stock: 50, lowStockThreshold: 5
     });
+
+    // Link stock to main warehouse
+    const mainWarehouse = await db.warehouses.where('businessId').equals(biz.id).and(w => w.isMain).first();
+    if (mainWarehouse) {
+      await db.warehouseStock.add({
+        id: generateId(),
+        warehouseId: mainWarehouse.id,
+        variantId: vId,
+        quantity: 50,
+        lastUpdated: now
+      });
+    }
   }
 }

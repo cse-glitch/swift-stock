@@ -29,6 +29,10 @@ import BackupRestore from "./pages/BackupRestore";
 import AuditLogs from "./pages/AuditLogs";
 import NotFound from "./pages/NotFound";
 import { useAutoSync } from "@/hooks/use-auto-sync";
+import Warehouses from "./pages/Warehouses";
+import Suppliers from "./pages/Suppliers";
+import Accounting from "./pages/Accounting";
+import { Toaster as ToasterSonner } from "@/components/ui/sonner";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +44,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
+      <ToasterSonner />
       <HashRouter>
         <AuthProvider>
           <BusinessProvider>
@@ -61,6 +65,9 @@ const App = () => {
                         <Route path="/products" element={<Products />} />
                         <Route path="/properties" element={<Properties />} />
                         <Route path="/services" element={<ServicesPage />} />
+                        <Route path="/warehouses" element={<ProtectedRoute permission="warehouses.view"><Warehouses /></ProtectedRoute>} />
+                        <Route path="/suppliers" element={<ProtectedRoute permission="suppliers.manage"><Suppliers /></ProtectedRoute>} />
+                        <Route path="/accounting" element={<ProtectedRoute permission="accounting.view"><Accounting /></ProtectedRoute>} />
                         <Route path="/add" element={<ProtectedRoute permission="inventory.add"><AddStock /></ProtectedRoute>} />
                         <Route path="/remove" element={<ProtectedRoute permission="inventory.remove"><RemoveStock /></ProtectedRoute>} />
                         <Route path="/analytics" element={<ProtectedRoute permission="analytics.view"><Analytics /></ProtectedRoute>} />
@@ -87,5 +94,6 @@ const App = () => {
   </QueryClientProvider>
 );
 };
+
 
 export default App;

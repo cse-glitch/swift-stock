@@ -35,7 +35,7 @@ const AddStock = () => {
   const { businesses, activeBusinessId } = useBusiness();
   const activeBusinesses = businesses.filter(b => b.isActive);
 
-  const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(activeBusinessId);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(activeBusinessId);
   const bizId = selectedBusinessId ?? activeBusinessId;
   const selectedBusiness = businesses.find(b => b.id === bizId);
 
@@ -45,7 +45,7 @@ const AddStock = () => {
 
   const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
   const [search, setSearch] = useState("");
-  const [quantities, setQuantities] = useState<Map<number, number>>(new Map());
+  const [quantities, setQuantities] = useState<Map<string, number>>(new Map());
   const [note, setNote] = useState("");
   
   // File Upload State
@@ -72,7 +72,7 @@ const AddStock = () => {
     );
   }, [products, variants, search]);
 
-  const setQty = (variantId: number, qty: number) => {
+  const setQty = (variantId: string, qty: number) => {
     setQuantities(prev => {
       const next = new Map(prev);
       if (qty <= 0) next.delete(variantId);
@@ -416,8 +416,8 @@ const AddStock = () => {
       <div className="flex gap-3 items-start">
         <div className="flex-1">
           <Select
-            value={bizId?.toString() ?? "all"}
-            onValueChange={v => setSelectedBusinessId(v === "all" ? null : Number(v))}
+            value={bizId || "all"}
+            onValueChange={v => setSelectedBusinessId(v === "all" ? null : v)}
           >
             <SelectTrigger>
               <SelectValue placeholder="All Businesses" />

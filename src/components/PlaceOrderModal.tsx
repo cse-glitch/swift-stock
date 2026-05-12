@@ -48,8 +48,8 @@ export const PlaceOrderModal: React.FC<PlaceOrderModalProps> = ({ trigger }) => 
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1); // 1: Product, 2: Customer, 3: Summary
-  const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [customPrice, setCustomPrice] = useState<string>('');
@@ -120,7 +120,7 @@ export const PlaceOrderModal: React.FC<PlaceOrderModalProps> = ({ trigger }) => 
         {/* Business */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground font-medium">Select Business</Label>
-          <Select value={selectedBusinessId?.toString() || ""} onValueChange={v => setSelectedBusinessId(Number(v))}>
+          <Select value={selectedBusinessId || ""} onValueChange={v => setSelectedBusinessId(v)}>
             <SelectTrigger className="h-12 border-muted-foreground/20 bg-background/50 focus:ring-primary transition-all">
               {selectedBusiness ? (
                 <div className="flex items-center gap-2">
@@ -535,7 +535,11 @@ export const PlaceOrderModal: React.FC<PlaceOrderModalProps> = ({ trigger }) => 
             )}
           </DialogTrigger>
 
-          <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto custom-scrollbar p-0 gap-0 border-none rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+          <DialogContent 
+            onPointerDownOutside={(e) => e.preventDefault()} 
+            onEscapeKeyDown={(e) => e.preventDefault()}
+            className="max-w-4xl max-h-[92vh] overflow-y-auto custom-scrollbar p-0 gap-0 border-none rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300"
+          >
             <div className="grid grid-cols-1 md:grid-cols-5 h-full">
               {/* Sidebar / Progress */}
               <div className="col-span-2 bg-muted/30 border-r p-8 space-y-8 flex flex-col">
@@ -620,7 +624,7 @@ export const PlaceOrderModal: React.FC<PlaceOrderModalProps> = ({ trigger }) => 
     }
 
     return (
-      <Drawer open={open} onOpenChange={v => { setOpen(v); if (!v) reset(); }}>
+      <Drawer dismissible={false} open={open} onOpenChange={v => { setOpen(v); if (!v) reset(); }}>
         <DrawerTrigger asChild>
           {trigger || (
             <Button variant="outline" size="sm" className="gap-2 font-bold active:scale-95 transition-all">

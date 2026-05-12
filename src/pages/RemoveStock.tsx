@@ -19,7 +19,7 @@ const RemoveStock = () => {
   const { businesses, activeBusinessId } = useBusiness();
   const activeBusinesses = businesses.filter(b => b.isActive);
 
-  const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(activeBusinessId);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(activeBusinessId);
   const bizId = selectedBusinessId ?? activeBusinessId;
 
   const products = useLiveQuery(() =>
@@ -30,7 +30,7 @@ const RemoveStock = () => {
   const [search, setSearch] = useState("");
   const [reason, setReason] = useState<string>("");
   const [note, setNote] = useState("");
-  const [removals, setRemovals] = useState<Map<number, number>>(new Map());
+  const [removals, setRemovals] = useState<Map<string, number>>(new Map());
   const { toast } = useToast();
 
   const stockItems = useMemo(() => {
@@ -50,7 +50,7 @@ const RemoveStock = () => {
     );
   }, [products, variants, search]);
 
-  const setRemoveQty = (variantId: number, qty: number) => {
+  const setRemoveQty = (variantId: string, qty: number) => {
     setRemovals(prev => {
       const next = new Map(prev);
       if (qty <= 0) next.delete(variantId);
@@ -129,8 +129,8 @@ const RemoveStock = () => {
 
       {/* Business filter */}
       <Select
-        value={bizId?.toString() ?? "all"}
-        onValueChange={v => setSelectedBusinessId(v === "all" ? null : Number(v))}
+        value={bizId || "all"}
+        onValueChange={v => setSelectedBusinessId(v === "all" ? null : v)}
       >
         <SelectTrigger>
           <SelectValue placeholder="All Businesses" />

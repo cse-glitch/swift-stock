@@ -11,6 +11,7 @@ export interface AuthUser {
 
 // ── Permission model ──────────────────────────────────────
 export type Permission =
+  | '*' // Super Admin wildcard
   | 'products.create'
   | 'products.edit'
   | 'products.delete'
@@ -19,11 +20,17 @@ export type Permission =
   | 'orders.delete'
   | 'inventory.add'
   | 'inventory.remove'
+  | 'inventory.transfer'
   | 'businesses.manage'
   | 'users.manage'
   | 'settings.manage'
   | 'analytics.view'
-  | 'export.data';
+  | 'export.data'
+  | 'suppliers.manage'
+  | 'warehouses.manage'
+  | 'accounting.view'
+  | 'accounting.manage'
+  | 'notifications.manage';
 
 // ── Session storage key ───────────────────────────────────
 export const SESSION_KEY = 'saman_auth_session';
@@ -51,14 +58,28 @@ export async function writeAuditLog(
 // ── Seed the first admin user if no users exist ───────────
 export async function seedAdminIfEmpty() {
   try {
-    console.log('Auth: Ensuring admin user exists...');
+    console.log('Auth: Ensuring admin users exist...');
 
     // Explicitly open the database to ensure it's ready and upgraded
     await db.open();
 
-    const existing = await db.users.where('username').equals('admin').first();
+    const existingSuper = await db.users.where('username').equals('superadmin').first();
+    if (!existingSuper) {
+      console.log('Auth: Super Admin not found, creating default...');
+      const hash = await bcrypt.hash('super123', 10);
+      await db.users.add({
+        id: crypto.randomUUID(),
+        username: 'superadmin',
+        passwordHash: hash,
+        displayName: 'Super Administrator',
+        role: 'super_admin',
+        createdAt: new Date(),
+        twoFactorEnabled: false
+      });
+    }
 
-    if (!existing) {
+    const existingAdmin = await db.users.where('username').equals('admin').first();
+    if (!existingAdmin) {
       console.log('Auth: Admin not found, creating default...');
       const hash = await bcrypt.hash('admin123', 10);
       await db.users.add({
@@ -68,12 +89,11 @@ export async function seedAdminIfEmpty() {
         displayName: 'Administrator',
         role: 'admin',
         createdAt: new Date(),
+        twoFactorEnabled: false
       });
-      console.log('Auth: Admin user created successfully. Hash:', hash.substring(0, 10) + '...');
-    } else {
-      console.log('Auth: Admin user already exists with ID:', existing.id);
     }
   } catch (err) {
     console.error('Auth: Critical error during seeding:', err);
   }
 }
+

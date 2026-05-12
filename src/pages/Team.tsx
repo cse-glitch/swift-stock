@@ -17,7 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Users, Plus, Pencil, Trash2, ShieldCheck, Shield, User as UserIcon,
   Activity, Key, Mail, CheckCircle2, AlertCircle, Clock, Search,
-  Filter, MoreHorizontal, UserPlus, Fingerprint, ShieldAlert
+  Filter, MoreHorizontal, UserPlus, Fingerprint, ShieldAlert,
+  BoxesIcon, ShoppingCart, Banknote, Building2
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -31,9 +32,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const ROLE_CONFIG: Record<UserRole, { label: string; icon: typeof Shield; color: string; bg: string; border: string }> = {
+  super_admin: { label: "Super Admin", icon: ShieldCheck, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-purple-500/20" },
   admin: { label: "Administrator", icon: ShieldCheck, color: "text-primary", bg: "bg-primary/10", border: "border-primary/20" },
-  manager: { label: "Manager", icon: Shield, color: "text-warning", bg: "bg-warning/10", border: "border-warning/20" },
-  staff: { label: "Team Staff", icon: UserIcon, color: "text-muted-foreground", bg: "bg-muted", border: "border-border" },
+  manager: { label: "General Manager", icon: Shield, color: "text-warning", bg: "bg-warning/10", border: "border-warning/20" },
+  inventory_manager: { label: "Inventory Lead", icon: BoxesIcon, color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+  sales_manager: { label: "Sales Lead", icon: ShoppingCart, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+  accountant: { label: "Accountant", icon: Banknote, color: "text-cyan-500", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
+  cashier: { label: "Cashier", icon: Users, color: "text-pink-500", bg: "bg-pink-500/10", border: "border-pink-500/20" },
+  warehouse_staff: { label: "Warehouse Op", icon: Building2, color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/20" },
+  staff: { label: "Field Staff", icon: UserIcon, color: "text-muted-foreground", bg: "bg-muted", border: "border-border" },
 };
 
 interface UserFormData {
@@ -47,15 +54,20 @@ const defaultForm: UserFormData = { username: "", displayName: "", password: "",
 
 const DISPLAY_PERMISSIONS = [
   { label: "View Dashboard & Stats", perm: "analytics.view" },
-  { label: "Add/Remove Inventory", perm: "inventory.add" },
+  { label: "Add/Remove Stock", perm: "inventory.add" },
+  { label: "Stock Transfers", perm: "inventory.transfer" },
   { label: "Create Products", perm: "products.create" },
   { label: "Edit/Delete Products", perm: "products.edit" },
   { label: "Process Sales Orders", perm: "orders.create" },
-  { label: "View Analytics Reports", perm: "analytics.view" },
+  { label: "Financial Reports", perm: "accounting.view" },
+  { label: "Manage Expenses", perm: "accounting.manage" },
+  { label: "Manage Suppliers", perm: "suppliers.manage" },
+  { label: "Warehouse Controls", perm: "warehouses.manage" },
   { label: "Manage Team Members", perm: "users.manage" },
-  { label: "System Settings & Backup", perm: "settings.manage" },
-  { label: "View Audit Logs", perm: "users.manage" },
+  { label: "System Settings", perm: "settings.manage" },
+  { label: "Manage Notifications", perm: "notifications.manage" },
 ];
+
 
 export default function TeamPage() {
   const { user: me, hasPermission } = useAuth();
@@ -144,6 +156,7 @@ export default function TeamPage() {
           passwordHash: hash,
           role: form.role,
           createdAt: new Date(),
+          twoFactorEnabled: false
         });
         await writeAuditLog(me, "CREATE_USER", "user", String(id), { username: form.username });
         toast({ title: "Member added" });
@@ -310,8 +323,14 @@ export default function TeamPage() {
                   <thead>
                     <tr className="border-b text-muted-foreground font-medium">
                       <th className="text-left py-3">Capability</th>
-                      <th className="text-center py-3">Administrator</th>
-                      <th className="text-center py-3">Manager</th>
+                      <th className="text-center py-3">Super</th>
+                      <th className="text-center py-3">Admin</th>
+                      <th className="text-center py-3">GM</th>
+                      <th className="text-center py-3">Inv</th>
+                      <th className="text-center py-3">Sales</th>
+                      <th className="text-center py-3">Acc</th>
+                      <th className="text-center py-3">Cash</th>
+                      <th className="text-center py-3">Whse</th>
                       <th className="text-center py-3">Staff</th>
                     </tr>
                   </thead>
@@ -319,7 +338,8 @@ export default function TeamPage() {
                     {DISPLAY_PERMISSIONS.map((item, idx) => (
                       <tr key={idx} className="hover:bg-muted/30 transition-colors">
                         <td className="py-3 font-medium">{item.label}</td>
-                        {(["admin", "manager", "staff"] as UserRole[]).map((role) => {
+                        {(["super_admin", "admin", "manager", "inventory_manager", "sales_manager", "accountant", "cashier", "warehouse_staff", "staff"] as UserRole[]).map((role) => {
+
                           const roleObj = dbRolePermissions.find(p => p.role === role);
                           const isAllowed = permissionChanges[role]
                             ? permissionChanges[role].includes(item.perm)
@@ -390,10 +410,17 @@ export default function TeamPage() {
               <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v as UserRole }))}>
                 <SelectTrigger className="bg-muted/50 h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin (Full Access)</SelectItem>
-                  <SelectItem value="manager">Manager (Inventory/Orders)</SelectItem>
-                  <SelectItem value="staff">Staff (Operational)</SelectItem>
+                  <SelectItem value="super_admin">Super Admin (System Owner)</SelectItem>
+                  <SelectItem value="admin">Admin (All Modules)</SelectItem>
+                  <SelectItem value="manager">General Manager</SelectItem>
+                  <SelectItem value="inventory_manager">Inventory Manager</SelectItem>
+                  <SelectItem value="sales_manager">Sales Manager</SelectItem>
+                  <SelectItem value="accountant">Accountant</SelectItem>
+                  <SelectItem value="cashier">Cashier</SelectItem>
+                  <SelectItem value="warehouse_staff">Warehouse Staff</SelectItem>
+                  <SelectItem value="staff">Field Staff</SelectItem>
                 </SelectContent>
+
               </Select>
             </div>
             <div className="space-y-2">

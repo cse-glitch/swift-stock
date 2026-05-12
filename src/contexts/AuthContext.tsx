@@ -25,7 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [rolePermissions, setRolePermissions] = useState<Record<UserRole, string[]>>({
-    admin: [], manager: [], staff: []
+    super_admin: ['*'],
+    admin: [],
+    manager: [],
+    inventory_manager: [],
+    sales_manager: [],
+    accountant: [],
+    cashier: [],
+    warehouse_staff: [],
+    staff: []
   });
 
   // Restore session and seed admin on mount
@@ -40,14 +48,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Load initial permissions from DB
         const perms = await db.rolePermissions.toArray();
-        const permMap: Record<UserRole, string[]> = { admin: [], manager: [], staff: [] };
+        const permMap: Record<UserRole, string[]> = {
+          super_admin: ['*'],
+          admin: [],
+          manager: [],
+          inventory_manager: [],
+          sales_manager: [],
+          accountant: [],
+          cashier: [],
+          warehouse_staff: [],
+          staff: []
+        };
         perms.forEach(p => {
           permMap[p.role] = p.permissions;
         });
         setRolePermissions(permMap);
 
-        // Sync from cloud with a 5-second timeout so a missing/slow connection
-        // never blocks the loading screen.
+        // Sync from cloud with a 5-second timeout
         try {
           console.log('AuthProvider: Syncing accounts from cloud...');
           const timeout = new Promise<void>(resolve => setTimeout(resolve, 5000));
@@ -55,13 +72,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           // Refresh permissions map after pull
           const updatedPerms = await db.rolePermissions.toArray();
-          const updatedMap: Record<UserRole, string[]> = { admin: [], manager: [], staff: [] };
+          const updatedMap: Record<UserRole, string[]> = {
+            super_admin: ['*'],
+            admin: [],
+            manager: [],
+            inventory_manager: [],
+            sales_manager: [],
+            accountant: [],
+            cashier: [],
+            warehouse_staff: [],
+            staff: []
+          };
           updatedPerms.forEach(p => {
             updatedMap[p.role] = p.permissions;
           });
           setRolePermissions(updatedMap);
         } catch (syncErr) {
-          console.error('AuthProvider: Initial cloud sync failed (non-blocking):', syncErr);
+          console.error('AuthProvider: Initial cloud sync failed:', syncErr);
         }
 
         const raw = sessionStorage.getItem(SESSION_KEY);
@@ -90,16 +117,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const dbUser = await db.users.where('username').equals(normalizedUsername).first();
       if (!dbUser) return { success: false, error: 'Invalid username or password' };
 
-      // Handle both camelCase (new) and snake_case (old IndexedDB records) field names
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = dbUser as any;
-      const passwordHash: string = dbUser.passwordHash ?? raw.password_hash;
-      const displayName: string = dbUser.displayName ?? raw.display_name ?? dbUser.username;
-      const userId: string = String(dbUser.id ?? raw.id);
+      const passwordHash: string = dbUser.passwordHash;
+      const displayName: string = dbUser.displayName ?? dbUser.username;
+      const userId: string = String(dbUser.id);
 
       if (!passwordHash) {
         console.error('Login error: passwordHash missing for user', dbUser.username);
-        return { success: false, error: 'Account data is corrupted. Please contact admin.' };
+        return { success: false, error: 'Account data is corrupted.' };
       }
 
       const match = await bcrypt.compare(password, passwordHash);
@@ -113,9 +137,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: dbUser.createdAt ?? new Date(),
       };
 
-      // Non-critical steps — failures must not block login
       try {
-        await db.users.update(userId as string & IDBValidKey, { lastLoginAt: new Date() });
+        await db.users.update(userId, { lastLoginAt: new Date() });
       } catch (e) { console.warn('Could not update lastLoginAt:', e); }
 
       try {
@@ -131,7 +154,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(authUser));
       setUser(authUser);
 
-      // Perform initial pull after login
       pullSupabaseToLocal().catch(err => console.error('Login sync error:', err));
 
       return { success: true };
@@ -158,8 +180,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hasPermission = useCallback((permission: Permission): boolean => {
     if (!user) return false;
     const userPerms = rolePermissions[user.role] || [];
+    if (userPerms.includes('*')) return true; // Wildcard for Super Admin
     return userPerms.includes(permission);
   }, [user, rolePermissions]);
+
 
   if (isLoading) {
     return (

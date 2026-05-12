@@ -89,8 +89,8 @@ const OrdersPage = () => {
   };
 
   // ── New Order State ──
-  const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(null);
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [customPrice, setCustomPrice] = useState<string>('');
@@ -124,7 +124,7 @@ const OrdersPage = () => {
   // ── History Filter State ──
   const [historySearch, setHistorySearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Order['status']>('all');
-  const [businessFilter, setBusinessFilter] = useState<number | 'all'>('all');
+  const [businessFilter, setBusinessFilter] = useState<string | 'all'>('all');
 
   const orders = useLiveQuery(() => 
     activeBusinessId 
@@ -204,7 +204,7 @@ const OrdersPage = () => {
     }
   };
 
-  const updateOrderStatus = useCallback(async (orderId: number, status: Order['status']) => {
+  const updateOrderStatus = useCallback(async (orderId: string, status: Order['status']) => {
     try {
       await db.orders.update(orderId, { status });
       toast.success(`Order marked as ${status}`);
@@ -430,8 +430,8 @@ const OrdersPage = () => {
                       <Store className="h-4 w-4 text-primary" />
                       Select Business
                     </Label>
-                    <Select value={selectedBusinessId?.toString() || ""} onValueChange={(v) => {
-                      setSelectedBusinessId(Number(v));
+                    <Select value={selectedBusinessId || ""} onValueChange={(v) => {
+                      setSelectedBusinessId(v);
                       setSelectedProductId(null);
                       setQuantity(1);
                     }}>
