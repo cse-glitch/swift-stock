@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ShoppingCart, Package, Minus, Plus, Store, Search, Check, ChevronDown, ChevronRight, ChevronLeft, MapPin, User, Info, Phone, Mail } from 'lucide-react';
@@ -213,62 +214,72 @@ export const PlaceOrderModal: React.FC<PlaceOrderModalProps> = ({ trigger }) => 
       {/* Product Details Card */}
       {selectedProduct ? (
         <div className={cn(
-          "flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-xl bg-muted/20 transition-all duration-300",
-          "hover:bg-muted/30"
+          "p-4 border rounded-2xl bg-muted/20 transition-all duration-300",
+          "hover:bg-muted/30 border-primary/10 shadow-inner"
         )}>
-          <div className="flex items-center gap-4 w-full">
-            <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-              <Package className="h-7 w-7 text-primary/60" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-foreground">{selectedProduct.name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">{selectedProduct.description || selectedProduct.sku}</p>
-              <div className="mt-2 flex items-center sm:hidden">
-                <span className="text-sm font-bold text-muted-foreground mr-1">৳</span>
-                <Input 
-                  type="number" 
-                  value={customPrice} 
-                  onChange={(e) => setCustomPrice(e.target.value)} 
-                  className="w-20 h-7 text-sm font-bold px-2 py-0"
-                />
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Product Header: Icon + Info */}
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-sm">
+                <Package className="h-7 w-7 text-primary/70" />
               </div>
-            </div>
-            <div className="hidden sm:flex items-center shrink-0">
-              <span className="text-sm font-bold text-muted-foreground mr-1">৳</span>
-              <Input 
-                type="number" 
-                value={customPrice} 
-                onChange={(e) => setCustomPrice(e.target.value)} 
-                className="w-24 h-9 text-base font-bold px-2 py-1"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between w-full sm:w-auto gap-4 border-t sm:border-t-0 pt-3 sm:pt-0">
-            {/* Qty Control */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Quantity</span>
-              <div className="flex items-center border rounded-lg overflow-hidden bg-background shadow-sm h-9">
-                <button
-                  className="h-full w-9 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40"
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                  disabled={quantity <= 1}
-                >
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
-                <span className="w-8 text-center text-sm font-bold select-none">{quantity}</span>
-                <button
-                  className="h-full w-9 flex items-center justify-center hover:bg-muted transition-colors"
-                  onClick={() => setQuantity(q => q + 1)}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
+              <div className="min-w-0">
+                <h4 className="font-bold text-sm text-foreground leading-tight truncate">{selectedProduct.name}</h4>
+                <p className="text-[11px] text-muted-foreground mt-1 font-mono uppercase tracking-tighter truncate">
+                  {selectedProduct.sku}
+                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <Badge variant="secondary" className="text-[9px] px-1.5 h-4 bg-primary/5 text-primary border-primary/10 uppercase">
+                    In Stock
+                  </Badge>
+                </div>
               </div>
             </div>
 
-            <div className="text-right shrink-0">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Subtotal</p>
-              <p className="text-base font-black text-primary italic">৳{subtotal.toLocaleString()}</p>
+            {/* Controls Section: Price, Qty, Total */}
+            <div className="flex flex-wrap items-center gap-6 pt-4 lg:pt-0 border-t lg:border-t-0 border-muted-foreground/10">
+              {/* Unit Price Input */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Unit Price</span>
+                <div className="relative group">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground group-focus-within:text-primary transition-colors">৳</span>
+                  <Input 
+                    type="number" 
+                    value={customPrice} 
+                    onChange={(e) => setCustomPrice(e.target.value)} 
+                    className="w-28 h-10 pl-7 font-black text-sm bg-background border-muted-foreground/20 rounded-xl focus:ring-primary shadow-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Quantity Selector */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Quantity</span>
+                <div className="flex items-center border rounded-xl overflow-hidden bg-background shadow-sm h-10 border-muted-foreground/20">
+                  <button
+                    className="h-full w-10 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-30"
+                    onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="w-10 text-center text-sm font-black select-none border-x border-muted/50">{quantity}</span>
+                  <button
+                    className="h-full w-10 flex items-center justify-center hover:bg-muted transition-colors"
+                    onClick={() => setQuantity(q => q + 1)}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Total Subtotal */}
+              <div className="flex flex-col gap-1 text-right lg:min-w-[100px]">
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">Subtotal</span>
+                <p className="text-lg font-black text-primary italic leading-none pt-1 tabular-nums">
+                  ৳{subtotal.toLocaleString()}
+                </p>
+              </div>
             </div>
           </div>
         </div>
