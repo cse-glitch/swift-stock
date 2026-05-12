@@ -332,60 +332,105 @@ export default function TeamPage() {
               )}
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-muted-foreground font-medium">
-                      <th className="text-left py-3">Capability</th>
-                      <th className="text-center py-3">Super</th>
-                      <th className="text-center py-3">Admin</th>
-                      <th className="text-center py-3">GM</th>
-                      <th className="text-center py-3">Inv</th>
-                      <th className="text-center py-3">Sales</th>
-                      <th className="text-center py-3">Acc</th>
-                      <th className="text-center py-3">Cash</th>
-                      <th className="text-center py-3">Whse</th>
-                      <th className="text-center py-3">Staff</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {dbRolePermissions.length === 0 ? (
-                      Array.from({ length: 5 }).map((_, i) => (
-                        <tr key={i}>
-                          <td className="py-4"><Skeleton className="h-4 w-32" /></td>
-                          {Array.from({ length: 9 }).map((_, j) => (
-                            <td key={j} className="py-4"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></td>
-                          ))}
-                        </tr>
-                      ))
-                    ) : (
-                      DISPLAY_PERMISSIONS.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-muted/30 transition-colors">
-                          <td className="py-3 font-medium">{item.label}</td>
-                          {(["super_admin", "admin", "manager", "inventory_manager", "sales_manager", "accountant", "cashier", "warehouse_staff", "staff"] as UserRole[]).map((role) => {
-                            const roleObj = dbRolePermissions.find(p => p.role === role);
-                            const isAllowed = permissionChanges[role]
-                              ? permissionChanges[role].includes(item.perm)
-                              : (roleObj?.permissions.includes(item.perm) || false);
-                            
-                            return (
-                              <td key={role} className="text-center py-3">
-                                <div className="flex items-center justify-center">
-                                  <Switch 
-                                    checked={isAllowed} 
-                                    onCheckedChange={() => handleTogglePermission(role, item.perm)}
-                                    disabled={me?.role !== 'admin' || role === 'super_admin'}
-                                    className="data-[state=checked]:bg-emerald-500 scale-90"
-                                  />
-                                </div>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+              <div className="space-y-4">
+                {/* Mobile View: Role-by-Role Toggles */}
+                <div className="md:hidden space-y-4">
+                  <div className="bg-muted/30 p-4 rounded-2xl border border-dashed">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">Select Role to Configure</Label>
+                    <Select value={roleFilter === 'all' ? 'admin' : roleFilter} onValueChange={setRoleFilter}>
+                      <SelectTrigger className="h-12 bg-background border-muted-foreground/20 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(ROLE_CONFIG).map(r => (
+                          <SelectItem key={r} value={r}>{ROLE_CONFIG[r as UserRole].label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-3">
+                    {DISPLAY_PERMISSIONS.map((item, idx) => {
+                      const role = (roleFilter === 'all' ? 'admin' : roleFilter) as UserRole;
+                      const roleObj = dbRolePermissions.find(p => p.role === role);
+                      const isAllowed = permissionChanges[role]
+                        ? permissionChanges[role].includes(item.perm)
+                        : (roleObj?.permissions.includes(item.perm) || false);
+
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-card/30 border border-muted/20">
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold">{item.label}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-tight">{ROLE_CONFIG[role].label} Access</p>
+                          </div>
+                          <Switch 
+                            checked={isAllowed} 
+                            onCheckedChange={() => handleTogglePermission(role, item.perm)}
+                            disabled={me?.role !== 'admin' || role === 'super_admin'}
+                            className="data-[state=checked]:bg-emerald-500 scale-110"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Desktop View: Full Matrix Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-muted-foreground font-medium">
+                        <th className="text-left py-3">Capability</th>
+                        <th className="text-center py-3">Super</th>
+                        <th className="text-center py-3">Admin</th>
+                        <th className="text-center py-3">GM</th>
+                        <th className="text-center py-3">Inv</th>
+                        <th className="text-center py-3">Sales</th>
+                        <th className="text-center py-3">Acc</th>
+                        <th className="text-center py-3">Cash</th>
+                        <th className="text-center py-3">Whse</th>
+                        <th className="text-center py-3">Staff</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {dbRolePermissions.length === 0 ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                          <tr key={i}>
+                            <td className="py-4"><Skeleton className="h-4 w-32" /></td>
+                            {Array.from({ length: 9 }).map((_, j) => (
+                              <td key={j} className="py-4"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></td>
+                            ))}
+                          </tr>
+                        ))
+                      ) : (
+                        DISPLAY_PERMISSIONS.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                            <td className="py-3 font-medium">{item.label}</td>
+                            {(["super_admin", "admin", "manager", "inventory_manager", "sales_manager", "accountant", "cashier", "warehouse_staff", "staff"] as UserRole[]).map((role) => {
+                              const roleObj = dbRolePermissions.find(p => p.role === role);
+                              const isAllowed = permissionChanges[role]
+                                ? permissionChanges[role].includes(item.perm)
+                                : (roleObj?.permissions.includes(item.perm) || false);
+                              
+                              return (
+                                <td key={role} className="text-center py-3">
+                                  <div className="flex items-center justify-center">
+                                    <Switch 
+                                      checked={isAllowed} 
+                                      onCheckedChange={() => handleTogglePermission(role, item.perm)}
+                                      disabled={me?.role !== 'admin' || role === 'super_admin'}
+                                      className="data-[state=checked]:bg-emerald-500 scale-90"
+                                    />
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </CardContent>
           </Card>
