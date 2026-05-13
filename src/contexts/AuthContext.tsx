@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import bcrypt from 'bcryptjs';
-import { db, type UserRole, type User, seedRolesIfEmpty } from '@/lib/db';
+import { db, type UserRole, type User, seedRolesIfEmpty, initializeDatabase } from '@/lib/db';
 import SwiftStockLoader from '@/components/SwiftStockLoader';
 import { pullSupabaseToLocal } from '@/lib/sync';
 import { 
@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       try {
+        await initializeDatabase();
         await seedRolesIfEmpty();
         await seedAdminIfEmpty();
 

@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { db, type UserRole } from '@/lib/db';
+import { db, type UserRole, initializeDatabase } from '@/lib/db';
 
 export interface AuthUser {
   id: string;
@@ -56,7 +56,7 @@ export async function seedAdminIfEmpty() {
   try {
     console.log('Auth: Ensuring admin users exist...');
 
-    await db.open();
+    await initializeDatabase();
 
     const existingSuper = await db.users.where('username').equals('superadmin').first();
     if (!existingSuper) {

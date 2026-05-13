@@ -234,8 +234,8 @@ export default function Warehouses() {
           const biz = businesses.find(b => b.id === w.businessId);
 
           return (
-            <Card key={w.id} className="group overflow-hidden border-none shadow-xl bg-card/50 backdrop-blur-md transition-all hover:-translate-y-1">
-              <div className="absolute top-0 left-0 w-1 h-full bg-primary/50 group-hover:w-2 transition-all" />
+            <Card key={w.id} className="group overflow-hidden border-none shadow-xl bg-card/50 backdrop-blur-md">
+              <div className="absolute top-0 left-0 w-1 h-full bg-primary/50" />
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
@@ -248,10 +248,10 @@ export default function Warehouses() {
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100" onClick={() => openEdit(w)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(w)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={async () => {
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={async () => {
                       if (confirm('Delete this warehouse?')) {
                         await db.warehouses.delete(w.id);
                         toast.success('Warehouse removed');

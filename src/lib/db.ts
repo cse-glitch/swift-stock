@@ -461,6 +461,33 @@ class InventoryDB extends Dexie {
 
 export const db = new InventoryDB();
 
+let isInitializing = false;
+let initPromise: Promise<void> | null = null;
+
+export async function initializeDatabase() {
+  if (initPromise) return initPromise;
+  
+  initPromise = (async () => {
+    try {
+      await db.open();
+    } catch (err: any) {
+      if (err.name === 'UpgradeError') {
+        console.warn('Database schema changed, resetting local IndexedDB...', err);
+        await db.delete();
+        await db.open();
+        // Seed default data immediately after reset
+        await seedRolesIfEmpty();
+        await seedBusinesses();
+      } else {
+        console.error('Failed to open database:', err);
+        throw err;
+      }
+    }
+  })();
+
+  return initPromise;
+}
+
 export async function seedRolesIfEmpty() {
   const defaultRoles: RolePermission[] = [
     {
