@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import bcrypt from 'bcryptjs';
 import { db, type UserRole, type User, seedRolesIfEmpty, initializeDatabase } from '@/lib/db';
 import SwiftStockLoader from '@/components/SwiftStockLoader';
-import { pullSupabaseToLocal } from '@/lib/sync';
 import { 
   type AuthUser, 
   type Permission, 
@@ -49,30 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           permMap[p.role] = p.permissions;
         });
         setRolePermissions(permMap);
-
-        try {
-          const timeout = new Promise<void>(resolve => setTimeout(resolve, 5000));
-          await Promise.race([pullSupabaseToLocal(), timeout]);
-
-          const updatedPerms = await db.rolePermissions.toArray();
-          const updatedMap: Record<UserRole, string[]> = {
-            super_admin: ['*'],
-            admin: [],
-            manager: [],
-            inventory_manager: [],
-            sales_manager: [],
-            accountant: [],
-            cashier: [],
-            warehouse_staff: [],
-            staff: []
-          };
-          updatedPerms.forEach(p => {
-            updatedMap[p.role] = p.permissions;
-          });
-          setRolePermissions(updatedMap);
-        } catch (syncErr) {
-          console.error(syncErr);
-        }
 
         const raw = sessionStorage.getItem(SESSION_KEY);
         if (raw) {
@@ -154,8 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...authUser, _expiry: sessionExpiry.toISOString() }));
       setUser(authUser);
-
-      pullSupabaseToLocal().catch(err => console.error(err));
 
       return { success: true };
     } catch (err) {
