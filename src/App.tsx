@@ -28,6 +28,7 @@ import TeamPage from "./pages/Team";
 import BackupRestore from "./pages/BackupRestore";
 import AuditLogs from "./pages/AuditLogs";
 import NotFound from "./pages/NotFound";
+import { useAutoSync } from "@/hooks/use-auto-sync";
 import Warehouses from "./pages/Warehouses";
 import Suppliers from "./pages/Suppliers";
 import Accounting from "./pages/Accounting";
@@ -36,6 +37,7 @@ import { Toaster as ToasterSonner } from "@/components/ui/sonner";
 const queryClient = new QueryClient();
 
 const App = () => {
+  useAutoSync();
 
   return (
     <QueryClientProvider client={queryClient}>

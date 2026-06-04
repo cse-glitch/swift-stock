@@ -186,6 +186,13 @@ export default function Settings() {
                       </div>
                       <Switch checked={settings.maintenanceMode} onCheckedChange={v => update('maintenanceMode', v)} />
                     </div>
+                    <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/30 border border-border/50">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Auto-Sync Cloud</Label>
+                        <p className="text-xs text-muted-foreground">Keep local data synchronized with Supabase clusters.</p>
+                      </div>
+                      <Switch checked={settings.autoSyncCloud} onCheckedChange={v => update('autoSyncCloud', v)} />
+                    </div>
                   </CardContent>
                 </Card>
               </section>
