@@ -43,6 +43,7 @@ const systemNav = [
   { title: "Team", url: "/team", icon: ShieldCheck },
   { title: "History", url: "/history", icon: History },
   { title: "Audit Logs", url: "/audit-logs", icon: ScrollText },
+  { title: "Utilities", url: "/utilities", icon: Wrench },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
