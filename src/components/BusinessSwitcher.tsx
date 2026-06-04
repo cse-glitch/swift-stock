@@ -36,7 +36,7 @@ export function BusinessSwitcher() {
       value={activeBusinessId?.toString() ?? 'all'}
       onValueChange={(v) => setActiveBusinessId(v === 'all' ? null : v)}
     >
-      <SelectTrigger className="w-full bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground text-xs h-9">
+      <SelectTrigger className="w-full border-0 bg-transparent text-sidebar-foreground text-xs h-9 shadow-none focus:ring-0 focus:ring-offset-0">
         <SelectValue placeholder="All Businesses" />
       </SelectTrigger>
       <SelectContent>

@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { db, type UserRole, initializeDatabase } from '@/lib/db';
+import { db, type User, type UserRole, initializeDatabase } from '@/lib/db';
 
 export interface AuthUser {
   id: string;
@@ -52,40 +52,42 @@ export async function writeAuditLog(
   });
 }
 
+const DEFAULT_ACCOUNTS = [
+  { username: 'superadmin', password: 'super123', displayName: 'Super Administrator', role: 'super_admin' as const },
+  { username: 'admin', password: 'admin123', displayName: 'Administrator', role: 'admin' as const },
+];
+
 export async function seedAdminIfEmpty() {
   try {
     console.log('Auth: Ensuring admin users exist...');
 
     await initializeDatabase();
 
-    const existingSuper = await db.users.where('username').equals('superadmin').first();
-    if (!existingSuper) {
-      console.log('Auth: Super Admin not found, creating default...');
-      const hash = await bcrypt.hash('super123', 10);
-      await db.users.add({
-        id: crypto.randomUUID(),
-        username: 'superadmin',
-        passwordHash: hash,
-        displayName: 'Super Administrator',
-        role: 'super_admin',
-        createdAt: new Date(),
-        twoFactorEnabled: false
-      });
-    }
+    for (const account of DEFAULT_ACCOUNTS) {
+      const existing = await db.users.where('username').equals(account.username).first();
+      if (!existing) {
+        console.log(`Auth: ${account.username} not found, creating default...`);
+        const hash = await bcrypt.hash(account.password, 10);
+        await db.users.add({
+          id: crypto.randomUUID(),
+          username: account.username,
+          passwordHash: hash,
+          displayName: account.displayName,
+          role: account.role,
+          createdAt: new Date(),
+          twoFactorEnabled: false,
+        });
+        continue;
+      }
 
-    const existingAdmin = await db.users.where('username').equals('admin').first();
-    if (!existingAdmin) {
-      console.log('Auth: Admin not found, creating default...');
-      const hash = await bcrypt.hash('admin123', 10);
-      await db.users.add({
-        id: crypto.randomUUID(),
-        username: 'admin',
-        passwordHash: hash,
-        displayName: 'Administrator',
-        role: 'admin',
-        createdAt: new Date(),
-        twoFactorEnabled: false
-      });
+      const legacyHash = (existing as User & { password_hash?: string }).password_hash;
+      if (!existing.passwordHash && !legacyHash) {
+        console.log(`Auth: Repairing missing password for ${account.username}...`);
+        const hash = await bcrypt.hash(account.password, 10);
+        await db.users.update(existing.id, { passwordHash: hash });
+      } else if (!existing.passwordHash && legacyHash) {
+        await db.users.update(existing.id, { passwordHash: legacyHash });
+      }
     }
   } catch (err) {
     console.error('Auth: Critical error during seeding:', err);

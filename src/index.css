@@ -157,6 +157,21 @@
   [data-sidebar="content"]::-webkit-scrollbar {
     display: none; /* Chrome, Safari, and Opera */
   }
+
+  /* Mobile drawer — dashboard dark palette (Android / md breakpoint) */
+  [data-mobile="true"][data-sidebar="sidebar"] {
+    --sidebar-background: 225 25% 8%;
+    --sidebar-foreground: 220 15% 92%;
+    --sidebar-primary: 230 65% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 22% 14%;
+    --sidebar-accent-foreground: 220 15% 92%;
+    --sidebar-border: 225 18% 22%;
+    --sidebar-ring: 230 65% 60%;
+    background-image:
+      radial-gradient(ellipse 120% 80% at 100% -20%, hsl(230 65% 52% / 0.14), transparent 55%),
+      radial-gradient(ellipse 80% 50% at -10% 100%, hsl(160 50% 45% / 0.08), transparent 50%);
+  }
 }
 
 /* ── Page entry animation ── */

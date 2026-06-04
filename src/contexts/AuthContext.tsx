@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const timeout = new Promise<void>(resolve => setTimeout(resolve, 5000));
           await Promise.race([pullSupabaseToLocal(), timeout]);
+          await seedAdminIfEmpty();
 
           const updatedPerms = await db.rolePermissions.toArray();
           const updatedMap: Record<UserRole, string[]> = {
@@ -110,11 +111,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { success: false, error: `Account locked. Try again in ${remaining} minute(s).` };
       }
 
-      const passwordHash: string = dbUser.passwordHash;
+      const legacyHash = (dbUser as User & { password_hash?: string }).password_hash;
+      const passwordHash: string = dbUser.passwordHash || legacyHash || '';
       const displayName: string = dbUser.displayName ?? dbUser.username;
       const userId: string = String(dbUser.id);
 
-      if (!passwordHash) return { success: false, error: 'Account data is corrupted.' };
+      if (!passwordHash) {
+        return {
+          success: false,
+          error: 'This account has no password set. Ask an admin to reset it in Team settings.',
+        };
+      }
+
+      if (!dbUser.passwordHash && legacyHash) {
+        await db.users.update(userId, { passwordHash: legacyHash }).catch(() => {});
+      }
 
       const match = await bcrypt.compare(password, passwordHash);
 

@@ -1,5 +1,58 @@
-import { db } from '@/lib/db';
+import { db, type User, type UserRole } from '@/lib/db';
 import { supabase, isSupabaseConfigured } from './supabase';
+
+type SupabaseUserRow = {
+  id?: string;
+  username?: string;
+  display_name?: string;
+  displayName?: string;
+  role?: string;
+  password_hash?: string;
+  passwordHash?: string;
+  created_at?: string;
+  createdAt?: string;
+  last_login_at?: string;
+  lastLoginAt?: string;
+};
+
+/** Map Supabase user rows to Dexie schema and keep local password hashes when remote omits them. */
+async function pullUsersToLocal(rows: SupabaseUserRow[]) {
+  const localUsers = await db.users.toArray();
+  const localByUsername = new Map(localUsers.map((u) => [u.username.toLowerCase(), u]));
+
+  const mapped: User[] = rows
+    .filter((row) => row.username)
+    .map((row) => {
+      const username = row.username!.trim().toLowerCase();
+      const local = localByUsername.get(username);
+      const passwordHash =
+        row.password_hash ?? row.passwordHash ?? local?.passwordHash ?? '';
+
+      return {
+        id: row.id ?? local?.id ?? crypto.randomUUID(),
+        username,
+        displayName: row.display_name ?? row.displayName ?? local?.displayName ?? username,
+        role: (row.role ?? local?.role ?? 'staff') as UserRole,
+        passwordHash,
+        createdAt: row.created_at
+          ? new Date(row.created_at)
+          : row.createdAt
+            ? new Date(row.createdAt)
+            : (local?.createdAt ?? new Date()),
+        lastLoginAt: row.last_login_at
+          ? new Date(row.last_login_at)
+          : row.lastLoginAt
+            ? new Date(row.lastLoginAt)
+            : local?.lastLoginAt,
+        twoFactorEnabled: local?.twoFactorEnabled ?? false,
+        twoFactorSecret: local?.twoFactorSecret,
+        failedAttempts: local?.failedAttempts,
+        lockedUntil: local?.lockedUntil,
+      };
+    });
+
+  await db.users.bulkPut(mapped);
+}
 
 /**
  * This utility handles pushing local Dexie data to Supabase 
@@ -156,6 +209,10 @@ export async function pullSupabaseToLocal() {
         continue;
       }
       if (data && data.length > 0) {
+        if (tableName === 'users') {
+          await pullUsersToLocal(data as SupabaseUserRow[]);
+          continue;
+        }
         const store = (db as any)[dbTable];
         if (store) {
           await store.clear();
