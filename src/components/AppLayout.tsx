@@ -16,6 +16,7 @@ import { User, Settings, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/use-auth";
 import { MobileNav } from "@/components/MobileNav";
+import { useBusiness } from "@/contexts/BusinessContext";
 
 const ROLE_LABEL: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   admin: { label: 'Admin', variant: 'default' },
@@ -26,6 +27,7 @@ const ROLE_LABEL: Record<string, { label: string; variant: 'default' | 'secondar
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { activeBusiness } = useBusiness();
 
   const initials = user?.displayName
     ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -39,66 +41,80 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <header className="h-14 flex items-center border-b px-3 sm:px-4 bg-card/80 backdrop-blur-md shrink-0 sticky top-0 z-30 shadow-sm transition-all duration-200">
-            <SidebarTrigger className="mr-3 shrink-0" />
-            <div className="flex-1 min-w-0" />
-            <div className="flex items-center gap-2 sm:gap-3">
-              <LowStockAlert />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="relative h-9 rounded-full px-2 gap-2 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <Avatar className="h-7 w-7 border border-border/50">
-                      <AvatarImage src="/logo.svg" alt="Profile" className="p-0.5 object-contain bg-white" />
-                      <AvatarFallback className="text-xs font-bold">{initials}</AvatarFallback>
-                    </Avatar>
-                    <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
-                      {user?.displayName}
-                    </span>
-                    <Badge variant={roleInfo.variant} className="hidden sm:flex text-[10px] h-4 px-1.5">
-                      {roleInfo.label}
-                    </Badge>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-semibold leading-none">{user?.displayName}</p>
-                      <p className="text-xs leading-none text-muted-foreground">@{user?.username}</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer w-full flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>My Profile</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  {user?.role === 'admin' && (
+            {/* Desktop Header */}
+            <div className="hidden md:flex items-center w-full">
+              <SidebarTrigger className="mr-3 shrink-0" />
+              <div className="flex-1 min-w-0" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <LowStockAlert />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="relative h-9 rounded-full px-2 gap-2 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <Avatar className="h-7 w-7 border border-border/50">
+                        <AvatarImage src="/logo.svg" alt="Profile" className="p-0.5 object-contain bg-white" />
+                        <AvatarFallback className="text-xs font-bold">{initials}</AvatarFallback>
+                      </Avatar>
+                      <span className="hidden sm:block text-sm font-medium max-w-[120px] truncate">
+                        {user?.displayName}
+                      </span>
+                      <Badge variant={roleInfo.variant} className="hidden sm:flex text-[10px] h-4 px-1.5">
+                        {roleInfo.label}
+                      </Badge>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-semibold leading-none">{user?.displayName}</p>
+                        <p className="text-xs leading-none text-muted-foreground">@{user?.username}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link to="/team" className="cursor-pointer w-full flex items-center">
-                        <ShieldCheck className="mr-2 h-4 w-4" />
-                        <span>Users & Roles</span>
+                      <Link to="/profile" className="cursor-pointer w-full flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>My Profile</span>
                       </Link>
                     </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem asChild>
-                    <Link to="/settings" className="cursor-pointer w-full flex items-center">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive cursor-pointer"
-                    onClick={logout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sign Out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {user?.role === 'admin' && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/team" className="cursor-pointer w-full flex items-center">
+                          <ShieldCheck className="mr-2 h-4 w-4" />
+                          <span>Users & Roles</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem asChild>
+                      <Link to="/settings" className="cursor-pointer w-full flex items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive cursor-pointer"
+                      onClick={logout}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign Out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            {/* Mobile Header (matching user's screenshot layout) */}
+            <div className="flex md:hidden items-center justify-between w-full">
+              <SidebarTrigger className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-muted text-foreground" />
+              <span className="font-bold text-base truncate max-w-[200px] text-foreground">
+                {activeBusiness?.name || "Swift Stock"}
+              </span>
+              <div className="flex items-center">
+                <LowStockAlert />
+              </div>
             </div>
           </header>
           <main
