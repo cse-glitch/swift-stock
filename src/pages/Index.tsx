@@ -37,7 +37,7 @@ const generateSparkData = (seed: number) => {
   }));
 };
 
-const Sparkline = ({ data, color }: { data: any[], color: string }) => (
+const Sparkline = ({ data, color }: { data: { value: number }[], color: string }) => (
   <div className="h-[40px] w-full mt-2">
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data}>
@@ -71,19 +71,29 @@ const Dashboard = () => {
     setSelectedBusiness(b);
     setIsDetailOpen(true);
   };
-  const products = useLiveQuery(() =>
+  const rawProducts = useLiveQuery(() =>
     activeBusinessId
       ? db.products.where('businessId').equals(activeBusinessId).toArray()
       : db.products.toArray()
-    , [activeBusinessId]) ?? [];
+    , [activeBusinessId]);
+  const products = useMemo(() => rawProducts ?? [], [rawProducts]);
 
-  const variants = useLiveQuery(() => db.variants.toArray(), []) ?? [];
-  const propertyListings = useLiveQuery(() => db.propertyListings.toArray(), []) ?? [];
-  const services = useLiveQuery(() => db.services.toArray(), []) ?? [];
-  const logs = useLiveQuery(() => db.inventoryLog.toArray(), []) ?? [];
-  const recentLogs = useLiveQuery(
+  const rawVariants = useLiveQuery(() => db.variants.toArray(), []);
+  const variants = useMemo(() => rawVariants ?? [], [rawVariants]);
+
+  const rawPropertyListings = useLiveQuery(() => db.propertyListings.toArray(), []);
+  const propertyListings = useMemo(() => rawPropertyListings ?? [], [rawPropertyListings]);
+
+  const rawServices = useLiveQuery(() => db.services.toArray(), []);
+  const services = useMemo(() => rawServices ?? [], [rawServices]);
+
+  const rawLogs = useLiveQuery(() => db.inventoryLog.toArray(), []);
+  const logs = useMemo(() => rawLogs ?? [], [rawLogs]);
+
+  const rawRecentLogs = useLiveQuery(
     () => db.inventoryLog.orderBy('timestamp').reverse().limit(10).toArray(), []
-  ) ?? [];
+  );
+  const recentLogs = useMemo(() => rawRecentLogs ?? [], [rawRecentLogs]);
 
   // Mobile dashboard states & queries
   const [isExpenseOpen, setIsExpenseOpen] = useState(false);
@@ -91,26 +101,29 @@ const Dashboard = () => {
   const [expenseDescription, setExpenseDescription] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('general');
 
-  const expenses = useLiveQuery(
+  const rawExpenses = useLiveQuery(
     () => activeBusinessId 
       ? db.expenses.where('businessId').equals(activeBusinessId).toArray()
       : db.expenses.toArray(),
     [activeBusinessId]
-  ) ?? [];
+  );
+  const expenses = useMemo(() => rawExpenses ?? [], [rawExpenses]);
 
-  const orders = useLiveQuery(
+  const rawOrders = useLiveQuery(
     () => activeBusinessId 
       ? db.orders.where('businessId').equals(activeBusinessId).toArray()
       : db.orders.toArray(),
     [activeBusinessId]
-  ) ?? [];
+  );
+  const orders = useMemo(() => rawOrders ?? [], [rawOrders]);
 
-  const recentOrders = useLiveQuery(
+  const rawRecentOrders = useLiveQuery(
     () => activeBusinessId
       ? db.orders.where('businessId').equals(activeBusinessId).reverse().limit(3).toArray()
       : db.orders.orderBy('timestamp').reverse().limit(3).toArray(),
     [activeBusinessId]
-  ) ?? [];
+  );
+  const recentOrders = useMemo(() => rawRecentOrders ?? [], [rawRecentOrders]);
 
   const mobileStats = useMemo(() => {
     const totalIncome = orders.reduce((sum, o) => sum + o.totalPrice, 0);
@@ -152,7 +165,7 @@ const Dashboard = () => {
   );
 
   const variantsByProduct = useMemo(() => {
-    const m = new Map<number, typeof variants>();
+    const m = new Map<string, typeof variants>();
     for (const v of variants) {
       const arr = m.get(v.productId) ?? [];
       arr.push(v);
@@ -162,7 +175,7 @@ const Dashboard = () => {
   }, [variants]);
 
   const productsByBusiness = useMemo(() => {
-    const m = new Map<number, typeof products>();
+    const m = new Map<string, typeof products>();
     for (const p of products) {
       const arr = m.get(p.businessId) ?? [];
       arr.push(p);
@@ -183,7 +196,7 @@ const Dashboard = () => {
   const variantMap = useMemo(() => new Map(variants.map(v => [v.id, v])), [variants]);
   const productMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
-  const calculateRevenue = useMemo(() => (bId?: number) => {
+  const calculateRevenue = useMemo(() => (bId?: string) => {
     const targetLogs = logs.filter(l =>
       (bId ? l.businessId === bId : true) && l.type === 'remove' && l.reason === 'Sold'
     );
