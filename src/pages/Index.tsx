@@ -538,6 +538,54 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Active Businesses List on Mobile */}
+        {!activeBusiness && (
+          <div className="space-y-3">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Active Businesses</h2>
+            <div className="space-y-2.5">
+              {activeBusinesses.map((b) => {
+                const Icon = iconMap[b.icon] ?? Store;
+                const bProducts = productsByBusiness.get(b.id!) ?? [];
+                const bVariants = bProducts.flatMap(p => variantsByProduct.get(p.id!) ?? []);
+                const bStock = bVariants.reduce((s, v) => s + v.stock, 0);
+                const bLow = bVariants.filter(v => v.stock > 0 && v.stock <= v.lowStockThreshold).length;
+
+                return (
+                  <div 
+                    key={b.id} 
+                    onClick={() => handleBusinessClick(b)}
+                    className="flex items-center justify-between p-3.5 bg-card border border-border/40 rounded-[24px] hover:bg-muted/30 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `hsl(${b.color} / 0.12)`, color: `hsl(${b.color})` }}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-foreground">{b.name}</p>
+                        <p className="text-xs text-muted-foreground font-medium">
+                          {bProducts.length} items • {bStock.toLocaleString()} stock
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <p className="text-sm font-black text-success">৳{calculateRevenue(b.id!).toLocaleString()}</p>
+                      {bLow > 0 && (
+                        <span className="text-[9px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                          <AlertTriangle className="h-2.5 w-2.5" />
+                          {bLow} low
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Recent Invoices */}
         <div className="space-y-3 pb-8">
           <div className="flex justify-between items-center">
