@@ -14,9 +14,14 @@ import {
   ShoppingBag, Shirt, Droplets, Building2, Leaf, Briefcase, Package,
   TrendingUp, AlertTriangle, BoxesIcon, Store, Activity,
   ArrowUpRight, ArrowDownRight, BarChart3, Clock, PlusCircle, MinusCircle,
-  ShoppingCart, TrendingDown, Receipt, Users, Settings
+  ShoppingCart, Receipt, Plus, Banknote, Users, Wrench
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 import {
   AreaChart, Area, ResponsiveContainer,
@@ -80,29 +85,66 @@ const Dashboard = () => {
     () => db.inventoryLog.orderBy('timestamp').reverse().limit(10).toArray(), []
   ) ?? [];
 
-  const rawExpenses = useLiveQuery(
+  // Mobile dashboard states & queries
+  const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseDescription, setExpenseDescription] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('general');
+
+  const expenses = useLiveQuery(
     () => activeBusinessId 
       ? db.expenses.where('businessId').equals(activeBusinessId).toArray()
       : db.expenses.toArray(),
     [activeBusinessId]
   ) ?? [];
 
-  const rawOrders = useLiveQuery(
+  const orders = useLiveQuery(
     () => activeBusinessId 
       ? db.orders.where('businessId').equals(activeBusinessId).toArray()
       : db.orders.toArray(),
     [activeBusinessId]
   ) ?? [];
 
-  const totalIncome = useMemo(() => rawOrders.reduce((sum, o) => sum + o.totalPrice, 0), [rawOrders]);
-  const totalExpenses = useMemo(() => rawExpenses.reduce((sum, e) => sum + e.amount, 0), [rawExpenses]);
-  const netProfit = useMemo(() => totalIncome - totalExpenses, [totalIncome, totalExpenses]);
+  const recentOrders = useLiveQuery(
+    () => activeBusinessId
+      ? db.orders.where('businessId').equals(activeBusinessId).reverse().limit(3).toArray()
+      : db.orders.orderBy('timestamp').reverse().limit(3).toArray(),
+    [activeBusinessId]
+  ) ?? [];
 
-  const recentOrders = useMemo(() => {
-    return [...rawOrders]
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 3);
-  }, [rawOrders]);
+  const mobileStats = useMemo(() => {
+    const totalIncome = orders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const netProfit = totalIncome - totalExpenses;
+    const invoicesCount = orders.length;
+    return { totalIncome, totalExpenses, netProfit, invoicesCount };
+  }, [orders, expenses]);
+
+  const handleSaveExpense = async () => {
+    if (!expenseAmount || !activeBusinessId) {
+      toast.error('Amount is required and a business must be active');
+      return;
+    }
+
+    try {
+      await db.expenses.add({
+        id: crypto.randomUUID(),
+        businessId: activeBusinessId,
+        categoryId: expenseCategory,
+        amount: parseFloat(expenseAmount),
+        date: new Date(),
+        description: expenseDescription,
+        paymentMethod: 'Cash',
+      });
+      toast.success('Expense recorded successfully');
+      setIsExpenseOpen(false);
+      setExpenseAmount('');
+      setExpenseDescription('');
+      setExpenseCategory('general');
+    } catch (err) {
+      toast.error('Failed to save expense');
+    }
+  };
 
   const activeBusinesses = useMemo(
     () => businesses.filter(b => b.isActive),
@@ -328,229 +370,214 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      
-      {/* Mobile-Only Premium Dashboard (matching user's screenshot layout) */}
+      {/* ============================================================ */}
+      {/* MOBILE DASHBOARD VIEW (md:hidden)                            */}
+      {/* ============================================================ */}
       <div className="md:hidden space-y-6 animate-page-enter">
-        
-        {/* Business Overview Section */}
+        {/* Business Overview */}
         <div className="space-y-3">
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Business Overview</h2>
+          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Business Overview</h2>
           <div className="grid grid-cols-2 gap-3">
+            {/* Card 1: Total Income */}
+            <Card className="bg-card border border-border/40 shadow-sm rounded-[24px] p-4 flex flex-col justify-between h-[105px]">
+              <div className="flex justify-between items-start">
+                <span className="text-[11px] font-bold text-muted-foreground">Total Income</span>
+                <TrendingUp className="h-4 w-4 text-emerald-500 bg-emerald-500/10 rounded-full p-0.5" />
+              </div>
+              <div>
+                <div className="text-[17px] font-black text-emerald-600">৳{mobileStats.totalIncome.toLocaleString()}</div>
+                <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">This Month</span>
+              </div>
+            </Card>
             
-            {/* Total Income */}
-            <div className="bg-card border border-border/40 p-4 rounded-3xl shadow-sm space-y-2 flex flex-col justify-between">
+            {/* Card 2: Total Expense */}
+            <Card className="bg-card border border-border/40 shadow-sm rounded-[24px] p-4 flex flex-col justify-between h-[105px]">
+              <div className="flex justify-between items-start">
+                <span className="text-[11px] font-bold text-muted-foreground">Total Expense</span>
+                <ArrowDownRight className="h-4 w-4 text-rose-500 bg-rose-500/10 rounded-full p-0.5" />
+              </div>
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Total Income</p>
-                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
-                  ৳{totalRevenue.toLocaleString()}
-                </p>
+                <div className="text-[17px] font-black text-rose-600">৳{mobileStats.totalExpenses.toLocaleString()}</div>
+                <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">This Month</span>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
-                <span>This Month</span>
-                <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-              </div>
-            </div>
+            </Card>
 
-            {/* Total Expense */}
-            <div className="bg-card border border-border/40 p-4 rounded-3xl shadow-sm space-y-2 flex flex-col justify-between">
+            {/* Card 3: Net Profit */}
+            <Card className="bg-card border border-border/40 shadow-sm rounded-[24px] p-4 flex flex-col justify-between h-[105px]">
+              <div className="flex justify-between items-start">
+                <span className="text-[11px] font-bold text-muted-foreground">Net Profit</span>
+                <TrendingUp className="h-4 w-4 text-blue-500 bg-blue-500/10 rounded-full p-0.5" />
+              </div>
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Total Expense</p>
-                <p className="text-lg font-black text-rose-600 dark:text-rose-400 mt-1 tabular-nums">
-                  ৳{totalExpenses.toLocaleString()}
-                </p>
+                <div className={cn("text-[17px] font-black", mobileStats.netProfit >= 0 ? "text-blue-600" : "text-rose-600")}>
+                  ৳{mobileStats.netProfit.toLocaleString()}
+                </div>
+                <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">This Month</span>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
-                <span>This Month</span>
-                <TrendingDown className="h-3.5 w-3.5 text-rose-500" />
-              </div>
-            </div>
+            </Card>
 
-            {/* Net Profit */}
-            <div className="bg-card border border-border/40 p-4 rounded-3xl shadow-sm space-y-2 flex flex-col justify-between">
+            {/* Card 4: Invoices */}
+            <Card className="bg-card border border-border/40 shadow-sm rounded-[24px] p-4 flex flex-col justify-between h-[105px]">
+              <div className="flex justify-between items-start">
+                <span className="text-[11px] font-bold text-muted-foreground">Invoices</span>
+                <Receipt className="h-4 w-4 text-purple-500 bg-purple-500/10 rounded-full p-0.5" />
+              </div>
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Net Profit</p>
-                <p className={cn("text-lg font-black mt-1 tabular-nums", (totalRevenue - totalExpenses) >= 0 ? "text-blue-600 dark:text-blue-400" : "text-destructive")}>
-                  ৳{(totalRevenue - totalExpenses).toLocaleString()}
-                </p>
+                <div className="text-[17px] font-black text-purple-600">{mobileStats.invoicesCount}</div>
+                <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">This Month</span>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
-                <span>This Month</span>
-                <Activity className="h-3.5 w-3.5 text-blue-500" />
-              </div>
-            </div>
-
-            {/* Invoices Count */}
-            <div className="bg-card border border-border/40 p-4 rounded-3xl shadow-sm space-y-2 flex flex-col justify-between">
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground">Invoices</p>
-                <p className="text-lg font-black text-purple-600 dark:text-purple-400 mt-1 tabular-nums">
-                  {rawOrders.length}
-                </p>
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
-                <span>Total Orders</span>
-                <Receipt className="h-3.5 w-3.5 text-purple-500" />
-              </div>
-            </div>
-
+            </Card>
           </div>
         </div>
 
-        {/* Quick Actions Section */}
+        {/* Quick Actions */}
         <div className="space-y-3">
-          <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quick Actions</h2>
-          <div className="bg-card border border-border/40 p-5 rounded-3xl shadow-sm grid grid-cols-4 gap-y-5 gap-x-2 text-center">
-            
-            {/* Create Invoice / Order */}
-            <PlaceOrderModal 
-              trigger={
-                <button className="flex flex-col items-center gap-1.5 focus:outline-none group mx-auto">
-                  <div className="h-11 w-11 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 group-active:scale-90 transition-transform">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Quick Actions</h2>
+          <div className="grid grid-cols-4 gap-y-4 gap-x-2">
+            {/* Action 1: Create Order */}
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <PlaceOrderModal
+                trigger={
+                  <button className="h-12 w-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
                     <ShoppingCart className="h-5 w-5" />
-                  </div>
-                  <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Create Invoice</span>
-                </button>
-              }
-            />
+                  </button>
+                }
+              />
+              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">New Order</span>
+            </div>
 
-            {/* Add Expense */}
-            <button 
-              onClick={() => navigate("/accounting")}
-              className="flex flex-col items-center gap-1.5 focus:outline-none group mx-auto"
-            >
-              <div className="h-11 w-11 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-600 group-active:scale-90 transition-transform">
-                <TrendingDown className="h-5 w-5" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Add Expense</span>
-            </button>
+            {/* Action 2: Add Expense */}
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <button 
+                onClick={() => setIsExpenseOpen(true)}
+                className="h-12 w-12 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Add Expense</span>
+            </div>
 
-            {/* Add Income (Stock) */}
-            <button 
-              onClick={() => navigate("/add")}
-              className="flex flex-col items-center gap-1.5 focus:outline-none group mx-auto"
-            >
-              <div className="h-11 w-11 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-600 group-active:scale-90 transition-transform">
+            {/* Action 3: Add Stock */}
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <button 
+                onClick={() => navigate('/add')}
+                className="h-12 w-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              >
                 <PlusCircle className="h-5 w-5" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Add Income</span>
-            </button>
+              </button>
+              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Add Stock</span>
+            </div>
 
-            {/* Team / Users */}
-            <button 
-              onClick={() => navigate("/team")}
-              className="flex flex-col items-center gap-1.5 focus:outline-none group mx-auto"
-            >
-              <div className="h-11 w-11 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-600 group-active:scale-90 transition-transform">
+            {/* Action 4: Suppliers */}
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <button 
+                onClick={() => navigate('/suppliers')}
+                className="h-12 w-12 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              >
                 <Users className="h-5 w-5" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Team</span>
-            </button>
+              </button>
+              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Suppliers</span>
+            </div>
 
-            {/* Products */}
-            <button 
-              onClick={() => navigate("/products")}
-              className="flex flex-col items-center gap-1.5 focus:outline-none group mx-auto"
-            >
-              <div className="h-11 w-11 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 group-active:scale-90 transition-transform">
-                <Package className="h-5 w-5" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Products</span>
-            </button>
+            {/* Action 5: Products */}
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <button 
+                onClick={() => navigate('/products')}
+                className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              >
+                <BoxesIcon className="h-5 w-5" />
+              </button>
+              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Products</span>
+            </div>
 
-            {/* Reports / Analytics */}
-            <button 
-              onClick={() => navigate("/analytics")}
-              className="flex flex-col items-center gap-1.5 focus:outline-none group mx-auto"
-            >
-              <div className="h-11 w-11 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-600 group-active:scale-90 transition-transform">
+            {/* Action 6: Reports */}
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <button 
+                onClick={() => navigate('/analytics')}
+                className="h-12 w-12 rounded-2xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              >
                 <BarChart3 className="h-5 w-5" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground leading-tight">Reports</span>
-            </button>
+              </button>
+              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Analytics</span>
+            </div>
 
-            {/* History */}
-            <button 
-              onClick={() => navigate("/history")}
-              className="flex flex-col items-center gap-1.5 focus:outline-none group mx-auto"
-            >
-              <div className="h-11 w-11 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-600 group-active:scale-90 transition-transform">
+            {/* Action 7: History */}
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <button 
+                onClick={() => navigate('/history')}
+                className="h-12 w-12 rounded-2xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              >
                 <Clock className="h-5 w-5" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground leading-tight">History</span>
-            </button>
+              </button>
+              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">History</span>
+            </div>
 
-            {/* More / Settings */}
-            <button 
-              onClick={() => navigate("/settings")}
-              className="flex flex-col items-center gap-1.5 focus:outline-none group mx-auto"
-            >
-              <div className="h-11 w-11 rounded-2xl bg-slate-500/10 flex items-center justify-center text-slate-600 group-active:scale-90 transition-transform">
-                <Settings className="h-5 w-5" />
-              </div>
-              <span className="text-[10px] font-semibold text-muted-foreground leading-tight">More</span>
-            </button>
-
+            {/* Action 8: More */}
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <button 
+                onClick={() => navigate('/utilities')}
+                className="h-12 w-12 rounded-2xl bg-slate-500/10 text-slate-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+              >
+                <Wrench className="h-5 w-5" />
+              </button>
+              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Utilities</span>
+            </div>
           </div>
         </div>
 
-        {/* Recent Invoices / Orders Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Recent Invoices</h2>
-            <button 
-              onClick={() => navigate("/orders")}
-              className="text-xs font-semibold text-primary hover:underline"
+        {/* Recent Invoices */}
+        <div className="space-y-3 pb-8">
+          <div className="flex justify-between items-center">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Recent Invoices</h2>
+            <Button 
+              variant="link" 
+              size="sm" 
+              onClick={() => navigate('/orders')} 
+              className="text-primary text-xs font-semibold px-0 h-auto"
             >
               See All
-            </button>
+            </Button>
           </div>
-          
-          <div className="bg-card border border-border/40 rounded-3xl shadow-sm overflow-hidden divide-y divide-border/30">
-            {recentOrders.map((o) => (
-              <div 
-                key={o.id}
-                onClick={() => navigate("/orders")}
-                className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors active:bg-muted/50 cursor-pointer"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
-                    <Receipt className="h-5 w-5" />
+          <div className="space-y-2.5">
+            {recentOrders.map((order) => {
+              const statusColor = order.status === 'completed' ? 'bg-emerald-500' : order.status === 'pending' ? 'bg-amber-500' : 'bg-rose-500';
+              const statusText = order.status === 'completed' ? 'Paid' : order.status === 'pending' ? 'Pending' : 'Cancelled';
+              const statusTextColor = order.status === 'completed' ? 'text-emerald-600' : order.status === 'pending' ? 'text-amber-600' : 'text-rose-600';
+              const statusBg = order.status === 'completed' ? 'bg-emerald-500/10' : order.status === 'pending' ? 'bg-amber-500/10' : 'bg-rose-500/10';
+              
+              return (
+                <div key={order.id} className="flex items-center justify-between p-3.5 bg-card border border-border/40 rounded-2xl hover:bg-muted/30 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", statusBg, statusTextColor)}>
+                      <Receipt className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">ORD-{order.id.slice(0, 8).toUpperCase()}</p>
+                      <p className="text-xs text-muted-foreground font-medium">{order.customerName || 'Walk-in Customer'}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-xs leading-none truncate">
-                      INV-{o.id.slice(0, 8).toUpperCase()}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-1 truncate">
-                      {o.customerName}
-                    </p>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-foreground">৳{order.totalPrice.toLocaleString()}</p>
+                    <div className="flex items-center gap-1.5 justify-end mt-1">
+                      <span className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
+                      <span className={cn("text-[10px] font-bold", statusTextColor)}>{statusText}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right shrink-0 space-y-1">
-                  <p className="font-bold text-xs tabular-nums">
-                    ৳{o.totalPrice.toLocaleString()}
-                  </p>
-                  <span className={cn(
-                    "inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider leading-none",
-                    o.status === "completed" ? "bg-emerald-500/10 text-emerald-600" :
-                    o.status === "pending" ? "bg-amber-500/10 text-amber-600" :
-                    "bg-rose-500/10 text-rose-600"
-                  )}>
-                    {o.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {recentOrders.length === 0 && (
-              <div className="p-8 text-center text-xs text-muted-foreground">
-                No invoices found
+              <div className="py-8 text-center text-muted-foreground text-xs bg-muted/20 rounded-2xl border border-dashed">
+                No recent orders found.
               </div>
             )}
           </div>
         </div>
-
       </div>
 
-      {/* Desktop-Only Original Dashboard */}
+      {/* ============================================================ */}
+      {/* DESKTOP DASHBOARD VIEW (hidden md:block)                     */}
+      {/* ============================================================ */}
       <div className="hidden md:block space-y-4 md:space-y-6">
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -867,7 +894,6 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
-
       </div>
 
       <BusinessDetailDialog
@@ -875,6 +901,53 @@ const Dashboard = () => {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
       />
+
+      {/* Quick Add Expense Modal */}
+      <Dialog open={isExpenseOpen} onOpenChange={setIsExpenseOpen}>
+        <DialogContent className="max-w-[90vw] sm:max-w-[425px] rounded-[32px] p-6 border-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black tracking-tight">Add Expense</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-3">
+            <div className="grid gap-2">
+              <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Amount (৳)</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={expenseAmount}
+                onChange={(e) => setExpenseAmount(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Description</Label>
+              <Input
+                placeholder="e.g., Office Rent, Utility, Coffee"
+                value={expenseDescription}
+                onChange={(e) => setExpenseDescription(e.target.value)}
+                className="rounded-2xl"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Category</Label>
+              <Select value={expenseCategory} onValueChange={setExpenseCategory}>
+                <SelectTrigger className="rounded-2xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="inventory">Inventory Purchase</SelectItem>
+                  <SelectItem value="rent">Rent & Utilities</SelectItem>
+                  <SelectItem value="salary">Staff Salaries</SelectItem>
+                  <SelectItem value="marketing">Marketing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setIsExpenseOpen(false)} className="rounded-2xl">Cancel</Button>
+            <Button onClick={handleSaveExpense} className="rounded-2xl">Save Transaction</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
