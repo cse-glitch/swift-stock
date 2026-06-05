@@ -460,118 +460,70 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <div className="space-y-3">
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-4 gap-3 justify-items-center">
             {/* Action 1: Create Order */}
             <PlaceOrderModal
               trigger={
-                <button className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm">
-                  <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                    <ShoppingCart className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-xs font-bold text-foreground block">New Order</span>
-                    <span className="text-[9px] text-muted-foreground font-medium block truncate">Place sale</span>
-                  </div>
+                <button className="h-12 w-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-emerald-500/10">
+                  <ShoppingCart className="h-5 w-5" />
                 </button>
               }
             />
 
             {/* Action 2: Add Expense */}
-            <button 
+            <button
               onClick={() => setIsExpenseOpen(true)}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="h-12 w-12 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-rose-500/10"
             >
-              <div className="h-9 w-9 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
-                <Plus className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-foreground block">Add Expense</span>
-                <span className="text-[9px] text-muted-foreground font-medium block truncate">Log cost</span>
-              </div>
+              <Plus className="h-5 w-5" />
             </button>
 
             {/* Action 3: Add Stock */}
-            <button 
+            <button
               onClick={() => navigate('/add')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="h-12 w-12 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-blue-500/10"
             >
-              <div className="h-9 w-9 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
-                <PlusCircle className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-foreground block">Add Stock</span>
-                <span className="text-[9px] text-muted-foreground font-medium block truncate">Restock items</span>
-              </div>
+              <PlusCircle className="h-5 w-5" />
             </button>
 
             {/* Action 4: Suppliers */}
-            <button 
+            <button
               onClick={() => navigate('/suppliers')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="h-12 w-12 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-purple-500/10"
             >
-              <div className="h-9 w-9 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
-                <Users className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-foreground block">Suppliers</span>
-                <span className="text-[9px] text-muted-foreground font-medium block truncate">Manage vendors</span>
-              </div>
+              <Users className="h-5 w-5" />
             </button>
 
             {/* Action 5: Products */}
-            <button 
+            <button
               onClick={() => navigate('/products')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="h-12 w-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-amber-500/10"
             >
-              <div className="h-9 w-9 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
-                <BoxesIcon className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-foreground block">Products</span>
-                <span className="text-[9px] text-muted-foreground font-medium block truncate">Catalog</span>
-              </div>
+              <BoxesIcon className="h-5 w-5" />
             </button>
 
-            {/* Action 6: Reports */}
-            <button 
+            {/* Action 6: Analytics */}
+            <button
               onClick={() => navigate('/analytics')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="h-12 w-12 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-cyan-500/10"
             >
-              <div className="h-9 w-9 rounded-lg bg-cyan-500/10 text-cyan-600 flex items-center justify-center shrink-0">
-                <BarChart3 className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-foreground block">Analytics</span>
-                <span className="text-[9px] text-muted-foreground font-medium block truncate">Reports</span>
-              </div>
+              <BarChart3 className="h-5 w-5" />
             </button>
 
             {/* Action 7: History */}
-            <button 
+            <button
               onClick={() => navigate('/history')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="h-12 w-12 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-yellow-500/10"
             >
-              <div className="h-9 w-9 rounded-lg bg-yellow-500/10 text-yellow-600 flex items-center justify-center shrink-0">
-                <Clock className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-foreground block">History</span>
-                <span className="text-[9px] text-muted-foreground font-medium block truncate">Logs</span>
-              </div>
+              <Clock className="h-5 w-5" />
             </button>
 
             {/* Action 8: Utilities */}
-            <button 
+            <button
               onClick={() => navigate('/utilities')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="h-12 w-12 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-slate-500/10"
             >
-              <div className="h-9 w-9 rounded-lg bg-slate-500/10 text-slate-600 flex items-center justify-center shrink-0">
-                <Wrench className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-bold text-foreground block">Utilities</span>
-                <span className="text-[9px] text-muted-foreground font-medium block truncate">Helper tools</span>
-              </div>
+              <Wrench className="h-5 w-5" />
             </button>
           </div>
         </div>
