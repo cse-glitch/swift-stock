@@ -149,7 +149,7 @@ export function BusinessDetailDialog({ business, open, onOpenChange }: BusinessD
       return (
         <div className="space-y-3 pb-6">
           {products.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground text-sm bg-muted/20 rounded-2xl border border-dashed">
+            <div className="py-12 text-center text-muted-foreground text-sm bg-muted/20 rounded-xl border border-dashed">
               No products found.
             </div>
           ) : (
@@ -162,10 +162,10 @@ export function BusinessDetailDialog({ business, open, onOpenChange }: BusinessD
               return (
                 <div
                   key={product.id}
-                  className="bg-card border rounded-2xl p-3 flex items-center gap-3 active:bg-muted/50 transition-colors"
+                  className="bg-card border rounded-xl p-3 flex items-center gap-3 active:bg-muted/50 transition-colors"
                 >
                   <div
-                    className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0"
+                    className="h-12 w-12 rounded-lg flex items-center justify-center shrink-0"
                     style={{ backgroundColor: `hsl(${business.color} / 0.1)`, color: `hsl(${business.color})` }}
                   >
                     <Boxes className="h-6 w-6" />
@@ -338,7 +338,7 @@ export function BusinessDetailDialog({ business, open, onOpenChange }: BusinessD
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-[90vh] rounded-t-[32px] border-none bg-background p-0 outline-none">
+        <DrawerContent className="h-[90vh] rounded-t-2xl border-none bg-background p-0 outline-none">
           {dialogHeaderContent}
           {dialogBodyContent}
         </DrawerContent>
@@ -348,7 +348,7 @@ export function BusinessDetailDialog({ business, open, onOpenChange }: BusinessD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 border-none shadow-2xl bg-background rounded-[24px]">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 border-none shadow-2xl bg-background rounded-xl">
         {dialogHeaderContent}
         {dialogBodyContent}
       </DialogContent>

@@ -76,24 +76,24 @@ export function LowStockAlert() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-2xl hover:bg-muted/80 transition-all border border-border/20 shadow-sm">
+        <Button variant="ghost" size="icon" className="relative h-10 w-10 rounded-lg hover:bg-muted/80 transition-all border border-border/20 shadow-sm">
           <Bell className="h-5 w-5 text-muted-foreground" />
           {count > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-lg bg-destructive text-[10px] font-black text-white shadow-lg shadow-destructive/20 animate-in zoom-in">
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded bg-destructive text-[10px] font-black text-white shadow-lg shadow-destructive/20 animate-in zoom-in">
               {count > 9 ? "9+" : count}
             </span>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
-        className="w-[340px] sm:w-[400px] p-0 shadow-2xl rounded-[32px] overflow-hidden border-none mt-2" 
+        className="w-[340px] sm:w-[400px] p-0 shadow-2xl rounded-xl overflow-hidden border-none mt-2" 
         align="end" 
         sideOffset={8}
       >
         <div className="bg-gradient-to-br from-card via-card to-primary/5 p-5 border-b border-border/10">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-warning/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
                 <AlertTriangle className="h-5 w-5 text-warning" />
               </div>
               <div>
@@ -106,7 +106,7 @@ export function LowStockAlert() {
                 variant="ghost" 
                 size="sm" 
                 onClick={handleClearAll}
-                className="h-8 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-destructive hover:bg-destructive/5 px-3 rounded-xl transition-colors"
+                className="h-8 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-destructive hover:bg-destructive/5 px-3 rounded-lg transition-colors"
               >
                 Clear All
               </Button>
@@ -117,7 +117,7 @@ export function LowStockAlert() {
         <div className="max-h-[480px] overflow-y-auto no-scrollbar">
           {count === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-              <div className="h-20 w-20 rounded-[32px] bg-muted/30 flex items-center justify-center mb-6 shadow-inner">
+              <div className="h-20 w-20 rounded-xl bg-muted/30 flex items-center justify-center mb-6 shadow-inner">
                 <Bell className="h-10 w-10 text-muted-foreground/20" />
               </div>
               <p className="text-base font-black tracking-tight text-foreground">No active alerts</p>
@@ -133,11 +133,11 @@ export function LowStockAlert() {
                   </div>
                   <div className="space-y-3">
                     {items.map(item => (
-                      <div key={item.variant.id} className="relative group rounded-[24px] p-4 bg-muted/20 border border-transparent hover:bg-muted/40 hover:border-border/30 transition-all">
+                      <div key={item.variant.id} className="relative group rounded-xl p-4 bg-muted/20 border border-transparent hover:bg-muted/40 hover:border-border/30 transition-all">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl hover:bg-destructive/10 hover:text-destructive"
+                          className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg hover:bg-destructive/10 hover:text-destructive"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -186,7 +186,7 @@ export function LowStockAlert() {
                             <Button
                               variant="secondary" 
                               size="sm" 
-                              className="h-10 px-4 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-sm hover:bg-primary hover:text-white transition-all shrink-0"
+                              className="h-10 px-4 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-sm hover:bg-primary hover:text-white transition-all shrink-0"
                               onClick={() => {
                                 navigate("/add");
                               }}
