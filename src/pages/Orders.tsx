@@ -313,102 +313,166 @@ const OrdersPage = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-0 sm:p-6 sm:pt-0">
+            <CardContent className="p-0">
               {filteredOrders.length === 0 ? (
                 <div className="py-20 text-center text-muted-foreground">
                   <ShoppingCart className="h-16 w-16 mx-auto mb-4 opacity-10" />
                   <p className="text-sm">{orders.length === 0 ? "No orders found." : "No orders match your filters."}</p>
                 </div>
               ) : (
-                <div className="rounded-xl border border-muted-foreground/10 bg-background/30 overflow-hidden shadow-inner">
-                  <Table>
-                    <TableHeader className="bg-muted/50">
-                      <TableRow className="hover:bg-muted/50 border-muted-foreground/10">
-                        <TableHead className="w-[100px] text-[11px] uppercase tracking-wider font-bold">Order ID</TableHead>
-                        <TableHead className="text-[11px] uppercase tracking-wider font-bold">Customer</TableHead>
-                        <TableHead className="text-[11px] uppercase tracking-wider font-bold">Product</TableHead>
-                        <TableHead className="text-[11px] uppercase tracking-wider font-bold">Business</TableHead>
-                        <TableHead className="text-[11px] uppercase tracking-wider font-bold">Price</TableHead>
-                        <TableHead className="text-[11px] uppercase tracking-wider font-bold">Status</TableHead>
-                        <TableHead className="text-right text-[11px] uppercase tracking-wider font-bold">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.map((order) => {
-                        const product  = productMap.get(order.productId);
-                        const business = businessMap.get(order.businessId);
-                        
-                        return (
-                          <TableRow key={order.id} className="hover:bg-muted/30 transition-colors border-muted-foreground/5">
-                            <TableCell className="font-mono text-[11px] font-bold text-muted-foreground">
-                              #{order.id?.toString().padStart(4, '0')}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-sm">{order.customerName}</span>
-                                <span className="text-[10px] text-muted-foreground font-medium">{order.customerNumber}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2.5">
-                                <div className="p-1.5 rounded-lg bg-primary/5 text-primary border border-primary/10">
-                                  <Package className="h-3.5 w-3.5" />
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-medium">{product?.name || 'Unknown Product'}</span>
-                                  <span className="text-[10px] text-muted-foreground font-mono">{product?.sku}</span>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant="outline" 
-                                className="text-[10px] font-bold h-5 px-2 border-none"
-                                style={{ 
-                                  color: business ? `hsl(${business.color})` : undefined,
-                                  backgroundColor: business ? `hsl(${business.color} / 0.1)` : undefined
-                                }}
-                              >
-                                {business?.name}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-bold text-sm">৳{order.price.toLocaleString()}</TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={
-                                  order.status === 'completed' ? 'success' : 
-                                  order.status === 'cancelled' ? 'destructive' : 'warning'
-                                }
-                                className="capitalize text-[10px] h-5 font-bold shadow-sm"
-                              >
+                <>
+                  {/* ── Mobile card list ── */}
+                  <div className="md:hidden divide-y divide-border/40">
+                    {filteredOrders.map((order) => {
+                      const product  = productMap.get(order.productId);
+                      const business = businessMap.get(order.businessId);
+                      const isCompleted = order.status === 'completed';
+                      const isCancelled = order.status === 'cancelled';
+                      const statusColor = isCompleted
+                        ? 'text-emerald-600 bg-emerald-500/10'
+                        : isCancelled
+                        ? 'text-rose-600 bg-rose-500/10'
+                        : 'text-amber-600 bg-amber-500/10';
+                      const dotColor = isCompleted ? 'bg-emerald-500' : isCancelled ? 'bg-rose-500' : 'bg-amber-500';
+
+                      return (
+                        <div key={order.id} className="flex items-center justify-between gap-3 px-4 py-3.5 hover:bg-muted/30 active:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", statusColor)}>
+                              <ShoppingCart className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-foreground truncate">
+                                {order.customerName || 'Walk-in'}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {product?.name || 'Unknown'} · {business?.name || '—'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <p className="text-sm font-black text-foreground">৳{order.price.toLocaleString()}</p>
+                            <div className="flex items-center gap-1">
+                              <span className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />
+                              <span className={cn("text-[10px] font-bold capitalize", isCompleted ? 'text-emerald-600' : isCancelled ? 'text-rose-600' : 'text-amber-600')}>
                                 {order.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/50 rounded-full">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => updateOrderStatus(order.id!, 'completed')} className="gap-2 py-2">
-                                    <Check className="h-4 w-4 text-success" />
-                                    Mark as Completed
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => updateOrderStatus(order.id!, 'cancelled')} className="text-destructive gap-2 py-2">
-                                    <Filter className="h-4 w-4" />
-                                    Cancel Order
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
+                              </span>
+                            </div>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 hover:bg-muted/50 rounded-full">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => updateOrderStatus(order.id!, 'completed')} className="gap-2 py-2">
+                                <Check className="h-4 w-4 text-emerald-500" />
+                                Mark as Completed
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => updateOrderStatus(order.id!, 'cancelled')} className="text-destructive gap-2 py-2">
+                                <Filter className="h-4 w-4" />
+                                Cancel Order
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Desktop table ── */}
+                  <div className="hidden md:block p-6 pt-0">
+                    <div className="rounded-xl border border-muted-foreground/10 bg-background/30 overflow-hidden shadow-inner">
+                      <Table>
+                        <TableHeader className="bg-muted/50">
+                          <TableRow className="hover:bg-muted/50 border-muted-foreground/10">
+                            <TableHead className="w-[100px] text-[11px] uppercase tracking-wider font-bold">Order ID</TableHead>
+                            <TableHead className="text-[11px] uppercase tracking-wider font-bold">Customer</TableHead>
+                            <TableHead className="text-[11px] uppercase tracking-wider font-bold">Product</TableHead>
+                            <TableHead className="text-[11px] uppercase tracking-wider font-bold">Business</TableHead>
+                            <TableHead className="text-[11px] uppercase tracking-wider font-bold">Price</TableHead>
+                            <TableHead className="text-[11px] uppercase tracking-wider font-bold">Status</TableHead>
+                            <TableHead className="text-right text-[11px] uppercase tracking-wider font-bold">Action</TableHead>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredOrders.map((order) => {
+                            const product  = productMap.get(order.productId);
+                            const business = businessMap.get(order.businessId);
+                            return (
+                              <TableRow key={order.id} className="hover:bg-muted/30 transition-colors border-muted-foreground/5">
+                                <TableCell className="font-mono text-[11px] font-bold text-muted-foreground">
+                                  #{order.id?.toString().padStart(4, '0')}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold text-sm">{order.customerName}</span>
+                                    <span className="text-[10px] text-muted-foreground font-medium">{order.customerNumber}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="p-1.5 rounded-lg bg-primary/5 text-primary border border-primary/10">
+                                      <Package className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">{product?.name || 'Unknown Product'}</span>
+                                      <span className="text-[10px] text-muted-foreground font-mono">{product?.sku}</span>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-bold h-5 px-2 border-none"
+                                    style={{
+                                      color: business ? `hsl(${business.color})` : undefined,
+                                      backgroundColor: business ? `hsl(${business.color} / 0.1)` : undefined
+                                    }}
+                                  >
+                                    {business?.name}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="font-bold text-sm">৳{order.price.toLocaleString()}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={
+                                      order.status === 'completed' ? 'success' :
+                                      order.status === 'cancelled' ? 'destructive' : 'warning'
+                                    }
+                                    className="capitalize text-[10px] h-5 font-bold shadow-sm"
+                                  >
+                                    {order.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/50 rounded-full">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48">
+                                      <DropdownMenuItem onClick={() => updateOrderStatus(order.id!, 'completed')} className="gap-2 py-2">
+                                        <Check className="h-4 w-4 text-success" />
+                                        Mark as Completed
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => updateOrderStatus(order.id!, 'cancelled')} className="text-destructive gap-2 py-2">
+                                        <Filter className="h-4 w-4" />
+                                        Cancel Order
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
