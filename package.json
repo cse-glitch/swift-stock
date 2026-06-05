@@ -34,8 +34,10 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.3.2",
+    "@capacitor/app": "^8.1.0",
     "@capacitor/cli": "^8.3.2",
     "@capacitor/core": "^8.3.2",
+    "@capacitor/dialog": "^8.0.1",
     "@hookform/resolvers": "^3.10.0",
     "@ionic/utils-terminal": "^2.3.5",
     "@radix-ui/react-accordion": "^1.2.11",

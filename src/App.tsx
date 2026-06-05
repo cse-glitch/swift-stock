@@ -7,6 +7,7 @@ import { BusinessProvider } from "@/contexts/BusinessContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { BackButtonHandler } from "@/components/BackButtonHandler";
 import { useEffect } from "react";
 import Login from "./pages/Login";
 import Index from "./pages/Index";
@@ -45,6 +46,7 @@ const App = () => {
       <Toaster />
       <ToasterSonner />
       <HashRouter>
+        <BackButtonHandler />
         <AuthProvider>
           <BusinessProvider>
             <Routes>
