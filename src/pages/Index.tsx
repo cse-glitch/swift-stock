@@ -406,7 +406,7 @@ const Dashboard = () => {
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Business Overview</h2>
           <div className="grid grid-cols-2 gap-3">
             {/* Card 1: Total Income */}
-            <Card className="bg-card border border-border/40 shadow-sm rounded-2xl p-4 flex flex-col justify-between h-[105px]">
+            <Card className="bg-card border border-border/40 shadow-sm rounded-xl p-4 flex flex-col justify-between h-[105px]">
               <div className="flex justify-between items-start">
                 <span className="text-[11px] font-bold text-muted-foreground">Total Income</span>
                 <TrendingUp className="h-4 w-4 text-emerald-500 bg-emerald-500/10 rounded-full p-0.5" />
@@ -418,7 +418,7 @@ const Dashboard = () => {
             </Card>
             
             {/* Card 2: Total Expense */}
-            <Card className="bg-card border border-border/40 shadow-sm rounded-2xl p-4 flex flex-col justify-between h-[105px]">
+            <Card className="bg-card border border-border/40 shadow-sm rounded-xl p-4 flex flex-col justify-between h-[105px]">
               <div className="flex justify-between items-start">
                 <span className="text-[11px] font-bold text-muted-foreground">Total Expense</span>
                 <ArrowDownRight className="h-4 w-4 text-rose-500 bg-rose-500/10 rounded-full p-0.5" />
@@ -430,7 +430,7 @@ const Dashboard = () => {
             </Card>
 
             {/* Card 3: Net Profit */}
-            <Card className="bg-card border border-border/40 shadow-sm rounded-2xl p-4 flex flex-col justify-between h-[105px]">
+            <Card className="bg-card border border-border/40 shadow-sm rounded-xl p-4 flex flex-col justify-between h-[105px]">
               <div className="flex justify-between items-start">
                 <span className="text-[11px] font-bold text-muted-foreground">Net Profit</span>
                 <TrendingUp className="h-4 w-4 text-blue-500 bg-blue-500/10 rounded-full p-0.5" />
@@ -444,7 +444,7 @@ const Dashboard = () => {
             </Card>
 
             {/* Card 4: Invoices */}
-            <Card className="bg-card border border-border/40 shadow-sm rounded-2xl p-4 flex flex-col justify-between h-[105px]">
+            <Card className="bg-card border border-border/40 shadow-sm rounded-xl p-4 flex flex-col justify-between h-[105px]">
               <div className="flex justify-between items-start">
                 <span className="text-[11px] font-bold text-muted-foreground">Invoices</span>
                 <Receipt className="h-4 w-4 text-purple-500 bg-purple-500/10 rounded-full p-0.5" />
@@ -464,8 +464,8 @@ const Dashboard = () => {
             {/* Action 1: Create Order */}
             <PlaceOrderModal
               trigger={
-                <button className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm">
-                  <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                <button className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm">
+                  <div className="h-9 w-9 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
                     <ShoppingCart className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
@@ -479,9 +479,9 @@ const Dashboard = () => {
             {/* Action 2: Add Expense */}
             <button 
               onClick={() => setIsExpenseOpen(true)}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
             >
-              <div className="h-9 w-9 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
                 <Plus className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -493,9 +493,9 @@ const Dashboard = () => {
             {/* Action 3: Add Stock */}
             <button 
               onClick={() => navigate('/add')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
             >
-              <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
                 <PlusCircle className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -507,9 +507,9 @@ const Dashboard = () => {
             {/* Action 4: Suppliers */}
             <button 
               onClick={() => navigate('/suppliers')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
             >
-              <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
                 <Users className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -521,9 +521,9 @@ const Dashboard = () => {
             {/* Action 5: Products */}
             <button 
               onClick={() => navigate('/products')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
             >
-              <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
                 <BoxesIcon className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -535,9 +535,9 @@ const Dashboard = () => {
             {/* Action 6: Reports */}
             <button 
               onClick={() => navigate('/analytics')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
             >
-              <div className="h-9 w-9 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-cyan-500/10 text-cyan-600 flex items-center justify-center shrink-0">
                 <BarChart3 className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -549,9 +549,9 @@ const Dashboard = () => {
             {/* Action 7: History */}
             <button 
               onClick={() => navigate('/history')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
             >
-              <div className="h-9 w-9 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-yellow-500/10 text-yellow-600 flex items-center justify-center shrink-0">
                 <Clock className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -563,9 +563,9 @@ const Dashboard = () => {
             {/* Action 8: Utilities */}
             <button 
               onClick={() => navigate('/utilities')}
-              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-lg hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
             >
-              <div className="h-9 w-9 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-slate-500/10 text-slate-600 flex items-center justify-center shrink-0">
                 <Wrench className="h-4 w-4" />
               </div>
               <div className="min-w-0">
@@ -592,7 +592,7 @@ const Dashboard = () => {
                   <div 
                     key={b.id} 
                     onClick={() => handleBusinessClick(b)}
-                    className="flex items-center justify-between p-3.5 bg-card border border-border/40 rounded-2xl hover:bg-muted/30 active:scale-[0.98] transition-all cursor-pointer"
+                    className="flex items-center justify-between p-3.5 bg-card border border-border/40 rounded-xl hover:bg-muted/30 active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       <div 
@@ -651,7 +651,7 @@ const Dashboard = () => {
               const dotColor = isCompleted ? 'bg-emerald-500' : isCancelled ? 'bg-rose-500' : 'bg-amber-500';
               
               return (
-                <div key={order.id} className="flex items-center justify-between p-3.5 bg-card border border-border/40 rounded-2xl hover:bg-muted/30 transition-all">
+                <div key={order.id} className="flex items-center justify-between p-3.5 bg-card border border-border/40 rounded-xl hover:bg-muted/30 transition-all">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", statusColor)}>
                       <Receipt className="h-5 w-5" />
@@ -1015,7 +1015,7 @@ const Dashboard = () => {
 
       {/* Quick Add Expense Modal */}
       <Dialog open={isExpenseOpen} onOpenChange={setIsExpenseOpen}>
-        <DialogContent className="max-w-[90vw] sm:max-w-[425px] rounded-2xl p-6 border-none shadow-2xl">
+        <DialogContent className="max-w-[90vw] sm:max-w-[425px] rounded-xl p-6 border-none shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-black tracking-tight">Add Expense</DialogTitle>
           </DialogHeader>
@@ -1027,7 +1027,7 @@ const Dashboard = () => {
                 placeholder="0.00"
                 value={expenseAmount}
                 onChange={(e) => setExpenseAmount(e.target.value)}
-                className="rounded-xl"
+                className="rounded-lg"
               />
             </div>
             <div className="grid gap-2">
@@ -1036,13 +1036,13 @@ const Dashboard = () => {
                 placeholder="e.g., Office Rent, Utility, Coffee"
                 value={expenseDescription}
                 onChange={(e) => setExpenseDescription(e.target.value)}
-                className="rounded-xl"
+                className="rounded-lg"
               />
             </div>
             <div className="grid gap-2">
               <Label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Category</Label>
               <Select value={expenseCategory} onValueChange={setExpenseCategory}>
-                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="rounded-lg"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="general">General</SelectItem>
                   <SelectItem value="inventory">Inventory Purchase</SelectItem>
@@ -1054,8 +1054,8 @@ const Dashboard = () => {
             </div>
           </div>
           <DialogFooter className="gap-2 pt-2">
-            <Button variant="ghost" onClick={() => setIsExpenseOpen(false)} className="rounded-xl">Cancel</Button>
-            <Button onClick={handleSaveExpense} className="rounded-xl">Save Transaction</Button>
+            <Button variant="ghost" onClick={() => setIsExpenseOpen(false)} className="rounded-lg">Cancel</Button>
+            <Button onClick={handleSaveExpense} className="rounded-lg">Save Transaction</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
