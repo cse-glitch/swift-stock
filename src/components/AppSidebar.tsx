@@ -21,16 +21,14 @@ type NavItem = { title: string; url: string; icon: React.ElementType };
 
 const mainNav: NavItem[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Products", url: "/products", icon: BoxesIcon },
   { title: "Orders", url: "/orders", icon: ShoppingCart },
-  { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Inventory Hub", url: "/inventory", icon: Package },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
 const logisticsNav: NavItem[] = [
   { title: "Warehouses", url: "/warehouses", icon: Building2 },
   { title: "Suppliers", url: "/suppliers", icon: Users },
-  { title: "Stock Ops", url: "/add", icon: PackagePlus },
 ];
 
 const financeNav: NavItem[] = [

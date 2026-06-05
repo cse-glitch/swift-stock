@@ -480,10 +480,10 @@ const Dashboard = () => {
 
             {/* Action 3: Add Stock */}
             <button
-              onClick={() => navigate('/add')}
+              onClick={() => navigate('/inventory?tab=stock')}
               className="h-12 w-12 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-blue-500/10"
             >
-              <PlusCircle className="h-5 w-5" />
+              <Package className="h-5 w-5" />
             </button>
 
             {/* Action 4: Suppliers */}
@@ -496,7 +496,7 @@ const Dashboard = () => {
 
             {/* Action 5: Products */}
             <button
-              onClick={() => navigate('/products')}
+              onClick={() => navigate('/inventory?tab=catalog')}
               className="h-12 w-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-amber-500/10"
             >
               <BoxesIcon className="h-5 w-5" />

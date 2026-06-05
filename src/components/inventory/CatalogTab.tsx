@@ -21,7 +21,7 @@ import { Plus, Search, BoxesIcon, AlertTriangle, Pencil, ShieldAlert } from 'luc
 import { toast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
 
-export default function Products() {
+export function CatalogTab() {
   const { businesses, activeBusiness, activeBusinessId, setActiveBusinessId } = useBusiness();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');

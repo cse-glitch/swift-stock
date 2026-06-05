@@ -11,14 +11,11 @@ import { BackButtonHandler } from "@/components/BackButtonHandler";
 import { useEffect } from "react";
 import Login from "./pages/Login";
 import Index from "./pages/Index";
-import AddStock from "./pages/AddStock";
-import RemoveStock from "./pages/RemoveStock";
 import History from "./pages/History";
 import Utilities from "./pages/Utilities";
 import Settings from "./pages/Settings";
 import Businesses from "./pages/Businesses";
 import Categories from "./pages/Categories";
-import Products from "./pages/Products";
 import Properties from "./pages/Properties";
 import ServicesPage from "./pages/Services";
 import Analytics from "./pages/Analytics";
@@ -63,14 +60,11 @@ const App = () => {
                         <Route path="/" element={<Index />} />
                         <Route path="/businesses" element={<ProtectedRoute permission="businesses.manage"><Businesses /></ProtectedRoute>} />
                         <Route path="/categories" element={<Categories />} />
-                        <Route path="/products" element={<Products />} />
                         <Route path="/properties" element={<Properties />} />
                         <Route path="/services" element={<ServicesPage />} />
-                        <Route path="/warehouses" element={<ProtectedRoute permission="warehouses.view"><Warehouses /></ProtectedRoute>} />
+                        <Route path="/warehouses" element={<ProtectedRoute permission="warehouses.manage"><Warehouses /></ProtectedRoute>} />
                         <Route path="/suppliers" element={<ProtectedRoute permission="suppliers.manage"><Suppliers /></ProtectedRoute>} />
                         <Route path="/accounting" element={<ProtectedRoute permission="accounting.view"><Accounting /></ProtectedRoute>} />
-                        <Route path="/add" element={<ProtectedRoute permission="inventory.add"><AddStock /></ProtectedRoute>} />
-                        <Route path="/remove" element={<ProtectedRoute permission="inventory.remove"><RemoveStock /></ProtectedRoute>} />
                         <Route path="/analytics" element={<ProtectedRoute permission="analytics.view"><Analytics /></ProtectedRoute>} />
                         <Route path="/inventory" element={<Inventory />} />
                         <Route path="/orders" element={<Orders />} />
