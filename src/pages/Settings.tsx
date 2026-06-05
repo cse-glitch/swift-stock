@@ -53,9 +53,9 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex flex-col gap-6 animate-page-enter">
+    <div className="min-h-[calc(100vh-8rem)] flex flex-col gap-6 animate-page-enter pb-20 md:pb-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card/30 p-6 rounded-3xl border border-border/50 backdrop-blur-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card/30 p-6 rounded-2xl border border-border/50 backdrop-blur-xl">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
             <Settings2 className="h-6 w-6" />
@@ -76,31 +76,31 @@ export default function Settings() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8 flex-1">
-        {/* Navigation Sidebar */}
-        <aside className="lg:w-72 space-y-2">
-          <div className="relative mb-4">
+        {/* Navigation Sidebar / Horizontal scroll on mobile */}
+        <aside className="lg:w-72 space-y-2 shrink-0">
+          <div className="relative mb-2 lg:mb-4">
             <Input 
               placeholder="Search settings..." 
-              className="bg-card/50 border-none pl-10 h-11 rounded-xl shadow-inner"
+              className="bg-card/50 border-none pl-10 h-10 lg:h-11 rounded-xl shadow-inner text-sm"
             />
-            <Terminal className="absolute left-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
+            <Terminal className="absolute left-3.5 top-3 lg:top-3.5 h-4 w-4 text-muted-foreground" />
           </div>
           
-          <nav className="space-y-1">
+          <nav className="flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0 scrollbar-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
                 onClick={() => setActiveSection(s.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group relative",
+                  "flex items-center gap-2 px-4 py-2 lg:py-3 rounded-full lg:rounded-xl text-xs lg:text-sm font-medium transition-all group shrink-0 relative whitespace-nowrap",
                   activeSection === s.id 
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 translate-x-1" 
-                    : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
+                    : "hover:bg-muted/50 bg-card/40 lg:bg-transparent text-muted-foreground hover:text-foreground border border-border/20 lg:border-none"
                 )}
               >
-                <s.icon className={cn("h-4 w-4 transition-transform group-hover:scale-110", activeSection === s.id ? "text-white" : "text-primary")} />
-                <span className="flex-1 text-left">{s.title}</span>
-                {activeSection === s.id && <div className="absolute left-0 w-1 h-6 bg-white rounded-full -translate-x-2" />}
+                <s.icon className={cn("h-3.5 w-3.5 lg:h-4 lg:w-4 transition-transform group-hover:scale-110", activeSection === s.id ? "text-white" : "text-primary")} />
+                <span>{s.title}</span>
+                {activeSection === s.id && <div className="hidden lg:block absolute left-0 w-1 h-6 bg-white rounded-full -translate-x-2" />}
               </button>
             ))}
           </nav>

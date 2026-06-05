@@ -115,70 +115,83 @@ const History = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 pb-20 md:pb-0">
+      {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Inventory History</h1>
-          <p className="text-muted-foreground">Track all stock movements across businesses</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Track all stock movements</p>
         </div>
-        <Button variant="outline" onClick={exportCSV} disabled={filtered.length === 0}>
-          <Download className="mr-2 h-4 w-4" /> Export CSV
+        <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0} className="gap-2 h-9">
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Export CSV</span>
         </Button>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search by product, SKU, or note..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-            </div>
-            <Select value={businessFilter} onValueChange={setBusinessFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Businesses</SelectItem>
-                {businesses.filter(b => b.isActive).map(b => (
-                  <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ACTION_TYPES.map(a => (
-                  <SelectItem key={a} value={a}>{a === "All" ? "All Actions" : a.charAt(0).toUpperCase() + a.slice(1)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={reasonFilter} onValueChange={setReasonFilter}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {REASONS.map(r => (
-                  <SelectItem key={r} value={r}>{r === "All" ? "All Reasons" : r}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-muted-foreground">Date:</span>
-            <DatePicker date={dateFrom} onSelect={setDateFrom} placeholder="From" />
-            <span className="text-muted-foreground">→</span>
-            <DatePicker date={dateTo} onSelect={setDateTo} placeholder="To" />
-            {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-auto">
-                <X className="mr-1 h-3 w-3" /> Clear
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* ── Filters ── */}
+      <div className="space-y-2.5">
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search product, SKU, or note…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 h-11 rounded-xl"
+          />
+        </div>
+
+        {/* Filter chips row — horizontal scroll on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+          <Select value={businessFilter} onValueChange={setBusinessFilter}>
+            <SelectTrigger className="h-8 rounded-full px-3 text-xs font-semibold whitespace-nowrap shrink-0 border-border/60 w-auto min-w-[120px]">
+              <SelectValue placeholder="Business" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All Businesses</SelectItem>
+              {businesses.filter(b => b.isActive).map(b => (
+                <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="h-8 rounded-full px-3 text-xs font-semibold whitespace-nowrap shrink-0 border-border/60 w-auto min-w-[100px]">
+              <SelectValue placeholder="Action" />
+            </SelectTrigger>
+            <SelectContent>
+              {ACTION_TYPES.map(a => (
+                <SelectItem key={a} value={a}>{a === "All" ? "All Actions" : a.charAt(0).toUpperCase() + a.slice(1)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={reasonFilter} onValueChange={setReasonFilter}>
+            <SelectTrigger className="h-8 rounded-full px-3 text-xs font-semibold whitespace-nowrap shrink-0 border-border/60 w-auto min-w-[110px]">
+              <SelectValue placeholder="Reason" />
+            </SelectTrigger>
+            <SelectContent>
+              {REASONS.map(r => (
+                <SelectItem key={r} value={r}>{r === "All" ? "All Reasons" : r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <DatePicker date={dateFrom} onSelect={setDateFrom} placeholder="From" />
+          <DatePicker date={dateTo} onSelect={setDateTo} placeholder="To" />
+
+          {hasFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="h-8 rounded-full px-3 text-xs shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <X className="mr-1 h-3 w-3" /> Clear
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Summary */}
       <div className="flex gap-4 text-sm text-muted-foreground">
@@ -187,71 +200,72 @@ const History = () => {
         <span>{totalMoved} total units moved</span>
       </div>
 
+      {/* Summary pill */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full font-medium">
+          {filtered.length} record{filtered.length !== 1 ? 's' : ''}
+        </span>
+        <span className="text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full font-medium">
+          {totalMoved} units moved
+        </span>
+      </div>
+
       {/* List - Desktop Table & Mobile Cards */}
-      <div className="space-y-4">
-        {/* Mobile View */}
-        <div className="grid gap-3 md:hidden">
+      <div className="space-y-3">
+        {/* ── Mobile list rows ── */}
+        <div className="md:hidden">
           {filtered.length === 0 ? (
-            <Card className="border-dashed py-12 text-center text-muted-foreground">
-              <HistoryIcon className="h-12 w-12 mx-auto mb-4 opacity-40" />
-              <p className="text-lg font-medium">No records found</p>
-            </Card>
+            <div className="py-12 text-center text-muted-foreground bg-muted/20 rounded-2xl border border-dashed">
+              <HistoryIcon className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-medium">No records found</p>
+              {hasFilters && <p className="text-xs mt-1">Try adjusting your filters</p>}
+            </div>
           ) : (
-            filtered.map((log) => {
-              const product = productMap.get(log.productId);
-              const variant = log.variantId ? variantMap.get(log.variantId) : undefined;
-              const business = businessMap.get(log.businessId);
-              return (
-                <Card key={log.id} className="overflow-hidden border-none shadow-md bg-card/50">
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                            {format(new Date(log.timestamp), "MMM d, h:mm a")}
-                          </span>
-                        </div>
-                        <p className="font-bold text-foreground truncate mt-0.5">{product?.name ?? "—"}</p>
-                        <p className="text-xs text-muted-foreground truncate">{variant?.name ?? "—"}</p>
-                      </div>
-                      <Badge 
-                        variant={log.type === "add" ? "default" : log.type === "remove" ? "destructive" : "secondary"}
-                        className="text-[10px] capitalize h-5 shrink-0"
-                      >
-                        {log.type}
-                      </Badge>
+            <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
+              {filtered.map((log) => {
+                const product  = productMap.get(log.productId);
+                const variant  = log.variantId ? variantMap.get(log.variantId) : undefined;
+                const business = businessMap.get(log.businessId);
+                const isAdd    = log.type === 'add';
+                const isRemove = log.type === 'remove';
+                return (
+                  <div key={log.id} className="flex items-center gap-3.5 px-4 py-3.5">
+                    {/* Type badge dot */}
+                    <div className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm",
+                      isAdd    ? 'bg-primary/10 text-primary' :
+                      isRemove ? 'bg-destructive/10 text-destructive' :
+                                 'bg-amber-500/10 text-amber-600'
+                    )}>
+                      {isAdd ? '+' : isRemove ? '−' : '±'}
                     </div>
 
-                    <div className="flex flex-col py-2 border-y border-border/50 gap-2">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Business</span>
-                        <span className="text-xs font-medium mt-1">{business?.name ?? "—"}</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Reason</span>
-                        <Badge variant="outline" className="w-fit text-[10px] mt-1 h-5 px-2 whitespace-nowrap">{log.reason}</Badge>
-                      </div>
+                    {/* Main info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">
+                        {product?.name ?? '—'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {variant?.name ? `${variant.name} · ` : ''}{business?.name ?? '—'} · {log.reason}
+                      </p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex flex-col flex-1 min-w-0 mr-4">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Note</span>
-                        <p className="text-xs italic text-muted-foreground truncate mt-1">{log.note || "No note added"}</p>
-                      </div>
-                      <div className="flex flex-col items-end shrink-0">
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Quantity</span>
-                        <div className={cn(
-                          "text-xl font-mono font-bold mt-0.5 flex items-center gap-1",
-                          log.type === "add" ? "text-primary" : log.type === "remove" ? "text-destructive" : ""
-                        )}>
-                          {log.type === "add" ? "+" : log.type === "remove" ? "-" : ""}{log.quantity}
-                        </div>
-                      </div>
+                    {/* Qty + date */}
+                    <div className="text-right shrink-0">
+                      <p className={cn(
+                        "text-sm font-black font-mono",
+                        isAdd ? 'text-primary' : isRemove ? 'text-destructive' : ''
+                      )}>
+                        {isAdd ? '+' : isRemove ? '-' : ''}{log.quantity}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {format(new Date(log.timestamp), 'MMM d, h:mm a')}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 

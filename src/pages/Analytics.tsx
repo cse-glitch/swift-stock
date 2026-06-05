@@ -287,43 +287,46 @@ const Analytics = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-5 pb-20 md:pb-0">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-muted-foreground">Business performance across all pages</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Business performance overview</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <Select
-            value={activeBusinessId?.toString() ?? "all"}
-            onValueChange={v => setActiveBusinessId(v === "all" ? null : v)}
-          >
-            <SelectTrigger className="w-full sm:w-[180px] bg-card/50">
-              <SelectValue placeholder="All Businesses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Businesses</SelectItem>
-              {activeBusinesses.map(b => (
-                <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={timeRange} onValueChange={v => setTimeRange(v as TimeRange)}>
-            <SelectTrigger className="w-[120px] bg-card/50">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="all">All time</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={exportData} className="gap-2 shrink-0">
-            <Download className="h-4 w-4" />
-            <span className="hidden lg:inline">Export CSV</span>
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={exportData} className="gap-2 h-9 shrink-0">
+          <Download className="h-4 w-4" />
+          <span className="hidden sm:inline">Export</span>
+        </Button>
+      </div>
+
+      {/* Filter chips row — horizontal scroll on mobile */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+        <Select
+          value={activeBusinessId?.toString() ?? "all"}
+          onValueChange={v => setActiveBusinessId(v === "all" ? null : v)}
+        >
+          <SelectTrigger className="h-8 rounded-full px-3 text-xs font-semibold whitespace-nowrap shrink-0 border-border/60 w-auto min-w-[130px]">
+            <SelectValue placeholder="All Businesses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Businesses</SelectItem>
+            {activeBusinesses.map(b => (
+              <SelectItem key={b.id} value={b.id!.toString()}>{b.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={timeRange} onValueChange={v => setTimeRange(v as TimeRange)}>
+          <SelectTrigger className="h-8 rounded-full px-3 text-xs font-semibold whitespace-nowrap shrink-0 border-border/60 w-auto min-w-[110px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7d">Last 7 days</SelectItem>
+            <SelectItem value="30d">Last 30 days</SelectItem>
+            <SelectItem value="90d">Last 90 days</SelectItem>
+            <SelectItem value="all">All time</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Summary Cards */}

@@ -69,7 +69,7 @@ export default function AuditLogs() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto pb-20 md:pb-0">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -88,13 +88,13 @@ export default function AuditLogs() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by user, action, or entity…"
-            className="pl-9"
+            className="pl-9 bg-card/40 border-border/60"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
           />
         </div>
         <Select value={filterAction} onValueChange={v => { setFilterAction(v); setPage(0); }}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-48 bg-card/40 border-border/60">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="All Actions" />
           </SelectTrigger>
@@ -109,7 +109,7 @@ export default function AuditLogs() {
 
       {/* Log entries */}
       {paged.length === 0 ? (
-        <Card>
+        <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <ScrollText className="h-10 w-10 mb-3 opacity-30" />
             <p className="font-medium">No audit logs found</p>
@@ -117,7 +117,7 @@ export default function AuditLogs() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-1.5">
+        <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
           {paged.map(log => {
             const cfg = getActionConfig(log.action);
             const Icon = cfg.icon;
@@ -125,32 +125,32 @@ export default function AuditLogs() {
             try { if (log.details) parsedDetails = JSON.parse(log.details); } catch {}
 
             return (
-              <div key={log.id} className="flex items-start gap-4 rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-colors">
+              <div key={log.id} className="flex items-start gap-3.5 px-4 py-3 active:bg-accent/40 transition-colors">
                 <div className={`mt-0.5 shrink-0 ${cfg.color}`}>
                   <Icon className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm">{cfg.label}</span>
+                    <span className="font-semibold text-sm">{cfg.label}</span>
                     {log.entityType && (
-                      <Badge variant="outline" className="text-[10px] h-4 px-1.5">
+                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
                         {log.entityType}
                         {log.entityId ? ` #${log.entityId}` : ""}
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                    <span className="font-mono bg-muted rounded px-1">@{log.username}</span>
+                    <span className="font-mono bg-muted/60 rounded px-1 text-[10px]">@{log.username}</span>
                     {parsedDetails && Object.keys(parsedDetails).length > 0 && (
-                      <span className="truncate max-w-sm">
+                      <span className="truncate max-w-sm text-[11px]">
                         {Object.entries(parsedDetails).map(([k, v]) => `${k}: ${v}`).join(" · ")}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="shrink-0 text-xs text-muted-foreground text-right">
-                  <p>{format(new Date(log.timestamp), "MMM d, yyyy")}</p>
-                  <p className="font-mono">{format(new Date(log.timestamp), "HH:mm:ss")}</p>
+                <div className="shrink-0 text-right text-[10px] text-muted-foreground">
+                  <p>{format(new Date(log.timestamp), "MMM d")}</p>
+                  <p className="font-mono mt-0.5">{format(new Date(log.timestamp), "HH:mm")}</p>
                 </div>
               </div>
             );

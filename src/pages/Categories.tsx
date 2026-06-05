@@ -102,7 +102,7 @@ export default function Categories() {
   }, {} as Record<number, Category[]>);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Categories</h1>
@@ -114,7 +114,7 @@ export default function Categories() {
       </div>
 
       {activeBusiness ? (
-        <Card>
+        <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <Layers className="h-5 w-5 text-primary" />
@@ -138,7 +138,7 @@ export default function Categories() {
           const bizCats = groupedByBusiness[biz.id!] ?? [];
           const bizTop = bizCats.filter(c => !c.parentId);
           return (
-            <Card key={biz.id}>
+            <Card key={biz.id} className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <div className="h-3 w-3 rounded-full" style={{ background: `hsl(${biz.color})` }} />
@@ -234,7 +234,7 @@ function CategoryTree({
                   <Badge variant="outline" className="text-xs">{children.length} sub</Badge>
                 )}
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(cat)}>
                   <Pencil className="h-3 w-3" />
                 </Button>

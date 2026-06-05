@@ -128,7 +128,8 @@ export default function BackupRestore() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+  return (
+    <div className="space-y-6 max-w-2xl mx-auto pb-20 md:pb-0">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <HardDrive className="h-6 w-6" /> Backup & Restore
@@ -137,7 +138,7 @@ export default function BackupRestore() {
       </div>
 
       {/* Current data summary */}
-      <Card>
+      <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
         <CardHeader>
           <CardTitle className="text-sm">Current Database</CardTitle>
           <CardDescription>Data that will be included in your backup</CardDescription>
@@ -171,7 +172,7 @@ export default function BackupRestore() {
       </Card>
 
       {/* Export */}
-      <Card>
+      <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="h-5 w-5 text-primary" />
@@ -190,7 +191,7 @@ export default function BackupRestore() {
       </Card>
 
       {/* Restore */}
-      <Card className="border-warning/30">
+      <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-warning/30 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5 text-warning" />
@@ -245,7 +246,7 @@ export default function BackupRestore() {
       </Card>
 
       {/* Auto-backup reminder */}
-      <Card className="bg-primary/5 border-primary/20">
+      <Card className="bg-primary/5 backdrop-blur-sm rounded-2xl border border-primary/20 shadow-sm">
         <CardContent className="pt-4 flex items-start gap-3">
           <RefreshCw className="h-5 w-5 text-primary mt-0.5 shrink-0" />
           <div className="text-sm">

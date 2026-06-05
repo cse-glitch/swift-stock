@@ -105,7 +105,7 @@ export default function Warehouses() {
   };
 
   return (
-    <div className="space-y-6 animate-page-enter">
+    <div className="space-y-6 animate-page-enter pb-20 md:pb-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Warehouse Management</h1>
@@ -113,7 +113,7 @@ export default function Warehouses() {
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 shadow-lg shadow-primary/20" onClick={() => {
+            <Button className="gap-2 shadow-lg shadow-primary/20 w-full md:w-auto" onClick={() => {
               setEditingWarehouse(null);
               setForm({ 
                 name: '', 
@@ -183,15 +183,52 @@ export default function Warehouses() {
                 <Input id="primaryProducts" value={form.primaryProducts} onChange={e => setForm(f => ({ ...f, primaryProducts: e.target.value }))} placeholder="e.g. Electronics, Raw Materials, Finished Goods" />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-              <Button onClick={handleSave}>{editingWarehouse ? 'Update' : 'Create'} Warehouse</Button>
+            <DialogFooter className="flex-row justify-between items-center gap-2">
+              {editingWarehouse ? (
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={async () => {
+                    if (confirm('Delete this warehouse?')) {
+                      await db.warehouses.delete(editingWarehouse.id);
+                      toast.success('Warehouse removed');
+                      setIsAddOpen(false);
+                      setEditingWarehouse(null);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </Button>
+              ) : <div />}
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                <Button onClick={handleSave}>{editingWarehouse ? 'Update' : 'Create'} Warehouse</Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Mobile Stats Grid */}
+      <div className="grid grid-cols-3 gap-3 md:hidden">
+        {[
+          { label: "Facilities", value: stats.total, icon: Building2, color: "text-blue-500", bg: "bg-blue-500/10" },
+          { label: "Main Hubs", value: stats.mainCount, icon: ShieldCheck, color: "text-amber-500", bg: "bg-amber-500/10" },
+          { label: "Live Stock", value: stats.stockCount, icon: Boxes, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+        ].map((stat, i) => (
+          <Card key={i} className="border border-border/40 shadow-sm rounded-xl p-3 bg-card/50 backdrop-blur-sm">
+            <div className="flex justify-between items-start">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase">{stat.label}</span>
+              <stat.icon className={cn("h-4 w-4 rounded-full p-0.5", stat.color, stat.bg)} />
+            </div>
+            <div className="text-lg font-black mt-1.5">{stat.value.toLocaleString()}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Desktop Stats Grid */}
+      <div className="hidden md:grid grid-cols-3 gap-4">
         <Card className="bg-card/50 backdrop-blur-sm border-primary/10">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -227,7 +264,64 @@ export default function Warehouses() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {/* Mobile view: Grouped list rows */}
+      <div className="md:hidden space-y-4">
+        {warehouses.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed rounded-xl opacity-50 bg-card/20">
+            <Building2 className="h-8 w-8 mb-2" />
+            <p className="text-sm font-medium">No warehouses defined yet</p>
+          </div>
+        ) : (
+          <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
+            {warehouses.map((w) => {
+              const warehouseStocks = allStocks.filter(s => s.warehouseId === w.id);
+              const stockValue = warehouseStocks.reduce((sum, s) => sum + s.quantity, 0);
+              const biz = businesses.find(b => b.id === w.businessId);
+
+              return (
+                <div key={w.id} className="p-4 flex flex-col gap-2.5 transition-colors active:bg-accent/40" onClick={() => openEdit(w)}>
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm truncate">{w.name}</span>
+                        {w.isMain && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/10 text-amber-500 border-amber-500/20 font-normal">Main</Badge>}
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 font-normal">{biz?.name || 'All Access'}</Badge>
+                      </div>
+                      <div className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" /> {w.location}
+                      </div>
+                    </div>
+                    
+                    <div className="text-right shrink-0">
+                      <span className="text-sm font-bold">{stockValue} <span className="text-[10px] font-normal text-muted-foreground">units</span></span>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        {w.capacity ? Math.round((stockValue / w.capacity) * 100) : 0}% cap
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 text-[11px] text-muted-foreground border-t border-border/20">
+                    <div className="truncate flex items-center gap-1.5 max-w-[70%]">
+                      {w.managerName && (
+                        <>
+                          <Users className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{w.managerName}</span>
+                        </>
+                      )}
+                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <StockTransferDialog sourceWarehouse={w} warehouses={warehouses} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop view */}
+      <div className="hidden md:grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {warehouses.map((w) => {
           const warehouseStocks = allStocks.filter(s => s.warehouseId === w.id);
           const stockValue = warehouseStocks.reduce((sum, s) => sum + s.quantity, 0);

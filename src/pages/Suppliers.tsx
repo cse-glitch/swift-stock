@@ -96,7 +96,7 @@ export default function Suppliers() {
   };
 
   return (
-    <div className="space-y-6 animate-page-enter">
+    <div className="space-y-6 animate-page-enter pb-20 md:pb-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Supplier Network</h1>
@@ -105,7 +105,7 @@ export default function Suppliers() {
         <div className="flex gap-2">
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 shadow-lg shadow-primary/20" onClick={() => {
+              <Button className="gap-2 shadow-lg shadow-primary/20 w-full md:w-auto" onClick={() => {
                 setEditingSupplier(null);
                 setForm({ name: '', email: '', phone: '', address: '', category: 'Wholesale', paymentTerms: 'Net 30', creditLimit: '0' });
               }}>
@@ -158,16 +158,54 @@ export default function Suppliers() {
                   </div>
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                <Button onClick={handleSave}>{editingSupplier ? 'Update' : 'Register'} Supplier</Button>
+              <DialogFooter className="flex-row justify-between items-center gap-2">
+                {editingSupplier ? (
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={async () => {
+                      if (confirm('Delete this supplier?')) {
+                        await db.suppliers.delete(editingSupplier.id);
+                        toast.success('Supplier removed');
+                        setIsAddOpen(false);
+                        setEditingSupplier(null);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                  </Button>
+                ) : <div />}
+                <div className="flex gap-2">
+                  <Button variant="ghost" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                  <Button onClick={handleSave}>{editingSupplier ? 'Update' : 'Register'} Supplier</Button>
+                </div>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Mobile Stats Grid */}
+      <div className="grid grid-cols-2 gap-3 md:hidden">
+        {[
+          { label: "Active Suppliers", value: suppliers.length, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
+          { label: "Pending Orders", value: 0, icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10" },
+          { label: "Total Credit Used", value: "$0", icon: CreditCard, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          { label: "Top Supplier", value: "N/A", icon: ShieldCheck, color: "text-purple-500", bg: "bg-purple-500/10" },
+        ].map((stat, i) => (
+          <Card key={i} className="border border-border/40 shadow-sm rounded-xl p-3 bg-card/50 backdrop-blur-sm">
+            <div className="flex justify-between items-start">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase">{stat.label}</span>
+              <stat.icon className={cn("h-4 w-4 rounded-full p-0.5", stat.color, stat.bg)} />
+            </div>
+            <div className="text-lg font-black mt-1.5">{stat.value}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Desktop Stats Grid */}
+      <div className="hidden md:grid grid-cols-4 gap-4">
         {[
           { label: "Active Suppliers", value: suppliers.length, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
           { label: "Pending Orders", value: 0, icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10" },
@@ -201,7 +239,43 @@ export default function Suppliers() {
         <Button variant="ghost" size="icon"><Filter className="h-4 w-4" /></Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Mobile View: Grouped List */}
+      <div className="md:hidden space-y-4">
+        {filteredSuppliers.length === 0 ? (
+          <div className="py-20 flex flex-col items-center justify-center border-2 border-dashed rounded-xl opacity-50 bg-card/20">
+            <Briefcase className="h-12 w-12 mb-4" />
+            <p className="text-lg font-medium">No suppliers found</p>
+          </div>
+        ) : (
+          <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
+            {filteredSuppliers.map((s) => (
+              <div key={s.id} className="flex items-center gap-3.5 px-4 py-3.5 active:bg-accent/40 transition-colors" onClick={() => openEdit(s)}>
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                  {s.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm truncate">{s.name}</span>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">{s.category}</Badge>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1.5">
+                    {s.phone && <span>{s.phone}</span>}
+                    {s.phone && s.email && <span className="text-border">•</span>}
+                    {s.email && <span>{s.email}</span>}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-mono font-bold">${s.creditLimit.toLocaleString()}</span>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{s.paymentTerms}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop View: Card Grid */}
+      <div className="hidden md:grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filteredSuppliers.map((s) => (
           <Card key={s.id} className="group overflow-hidden border-none shadow-lg bg-card/50 backdrop-blur-md transition-all hover:shadow-2xl hover:-translate-y-1">
             <CardHeader className="pb-3">

@@ -482,14 +482,14 @@ const Utilities = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6 pb-20 md:pb-0">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Utilities</h1>
         <p className="text-muted-foreground">Backup, import/export, bulk upload, and cloud sync</p>
       </div>
 
       {/* Cloud Sync Section */}
-      <Card className="border-primary/20 bg-primary/5 shadow-lg overflow-hidden">
+      <Card className="border-primary/20 bg-primary/5 shadow-lg overflow-hidden rounded-2xl backdrop-blur-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2 text-xl font-bold text-primary">
@@ -543,7 +543,7 @@ const Utilities = () => {
 
       {/* Backup & Export */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
+        <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base"><Database className="h-4 w-4" />JSON Backup</CardTitle>
             <CardDescription>Full database backup (all tables)</CardDescription>
@@ -582,7 +582,7 @@ const Utilities = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base"><FileDown className="h-4 w-4" />CSV Export</CardTitle>
             <CardDescription>Products with variants and stock levels</CardDescription>
@@ -596,7 +596,7 @@ const Utilities = () => {
       </div>
 
       {/* Bulk Import */}
-      <Card>
+      <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileSpreadsheet className="h-4 w-4" />
@@ -687,7 +687,7 @@ const Utilities = () => {
       </Card>
 
       {/* Label Printing */}
-      <Card>
+      <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><Printer className="h-4 w-4" />Label Printing</CardTitle>
           <CardDescription>Select a product and print labels for its variants</CardDescription>
@@ -730,7 +730,7 @@ const Utilities = () => {
         </CardContent>
       </Card>
       {/* Stock Reconciliation */}
-      <Card>
+      <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><Scale className="h-4 w-4" />Stock Reconciliation</CardTitle>
           <CardDescription>Enter physical counts to automatically correct stock levels</CardDescription>
@@ -798,7 +798,7 @@ const Utilities = () => {
       </Card>
 
       {/* Data Maintenance */}
-      <Card className="border-destructive/20 bg-destructive/5">
+      <Card className="border-destructive/20 bg-destructive/5 backdrop-blur-sm rounded-2xl border shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

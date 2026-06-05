@@ -123,26 +123,67 @@ export default function Inventory() {
   ], []);
 
   return (
-    <div className="space-y-6 pb-10">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-5 pb-20 md:pb-10">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-          <p className="text-muted-foreground">
-            Comprehensive view of stock levels {activeBusiness ? `for ${activeBusiness.name}` : 'across all businesses'}
+          <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {activeBusiness ? activeBusiness.name : 'All businesses'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate('/add')}>
-            Restock
+          <Button variant="outline" size="sm" className="gap-1.5 h-9" onClick={() => navigate('/add')}>
+            <PlusCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Restock</span>
           </Button>
-          <Button onClick={() => navigate('/remove')}>
-            Deduct Stock
+          <Button size="sm" className="gap-1.5 h-9" onClick={() => navigate('/remove')}>
+            <MinusCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Deduct</span>
           </Button>
         </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* ── Mobile 2×2 stat grid ── */}
+      <div className="grid grid-cols-2 gap-3 md:hidden">
+        <Card className="bg-card border border-border/40 shadow-sm rounded-xl p-4">
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] font-bold text-muted-foreground">Total Items</span>
+            <Package className="h-4 w-4 text-primary bg-primary/10 rounded-full p-0.5" />
+          </div>
+          <div className="text-[22px] font-black mt-2 text-foreground">{metrics.totalItems}</div>
+          <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Variants</span>
+        </Card>
+        <Card className="bg-card border border-amber-500/20 shadow-sm rounded-xl p-4">
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] font-bold text-amber-600">Low Stock</span>
+            <TrendingDown className="h-4 w-4 text-amber-500 bg-amber-500/10 rounded-full p-0.5" />
+          </div>
+          <div className="text-[22px] font-black mt-2 text-amber-600">{metrics.lowStockCount}</div>
+          <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Alert</span>
+        </Card>
+        <Card className="bg-card border border-destructive/20 shadow-sm rounded-xl p-4">
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] font-bold text-destructive">Out of Stock</span>
+            <AlertTriangle className="h-4 w-4 text-destructive bg-destructive/10 rounded-full p-0.5" />
+          </div>
+          <div className="text-[22px] font-black mt-2 text-destructive">{metrics.outOfStockCount}</div>
+          <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Empty</span>
+        </Card>
+        <Card className="bg-card border border-emerald-500/20 shadow-sm rounded-xl p-4">
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] font-bold text-emerald-700">Value</span>
+            <TrendingUp className="h-4 w-4 text-emerald-500 bg-emerald-500/10 rounded-full p-0.5" />
+          </div>
+          <div className="text-[18px] font-black mt-2 text-emerald-600 truncate">
+            ৳{metrics.totalValue.toLocaleString()}
+          </div>
+          <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Asset</span>
+        </Card>
+      </div>
+
+      {/* ── Desktop 4-col stat grid ── */}
+      <div className="hidden md:grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="bg-card/50 backdrop-blur-sm border-primary/10 shadow-md overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Items</CardTitle>
@@ -154,7 +195,6 @@ export default function Inventory() {
             <Sparkline data={sparkData[0]} color="#8b5cf6" />
           </CardContent>
         </Card>
-
         <Card className="bg-card/50 backdrop-blur-sm border-warning/20 shadow-md overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
@@ -166,7 +206,6 @@ export default function Inventory() {
             <Sparkline data={sparkData[1]} color="#f59e0b" />
           </CardContent>
         </Card>
-
         <Card className="bg-card/50 backdrop-blur-sm border-destructive/20 shadow-md overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
@@ -178,7 +217,6 @@ export default function Inventory() {
             <Sparkline data={sparkData[2]} color="#ef4444" />
           </CardContent>
         </Card>
-
         <Card className="bg-card/50 backdrop-blur-sm border-success/20 shadow-md overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
@@ -195,22 +233,23 @@ export default function Inventory() {
       </div>
 
       {/* Filters & Search */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="relative flex-1 max-w-md">
+      <div className="space-y-2.5">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search SKU or product name..."
-            className="pl-9 bg-card"
+            placeholder="Search SKU or product name…"
+            className="pl-9 h-11 rounded-xl"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-3">
+        {/* Chip-row filters — horizontal scroll on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
           <Select
             value={activeBusinessId?.toString() ?? "all"}
             onValueChange={v => setActiveBusinessId(v === "all" ? null : v)}
           >
-            <SelectTrigger className="w-[200px] bg-card">
+            <SelectTrigger className="h-8 rounded-full px-3 text-xs font-semibold whitespace-nowrap shrink-0 border-border/60 w-auto min-w-[130px]">
               <SelectValue placeholder="All Businesses" />
             </SelectTrigger>
             <SelectContent>
@@ -224,100 +263,62 @@ export default function Inventory() {
             variant={showLowStockOnly ? "destructive" : "outline"}
             size="sm"
             onClick={() => setShowLowStockOnly(!showLowStockOnly)}
-            className="gap-2"
+            className="h-8 rounded-full px-3 text-xs font-semibold gap-1.5 shrink-0"
           >
-            <AlertTriangle className="h-4 w-4" />
-            {showLowStockOnly ? "Showing Issues Only" : "Show All Stock"}
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {showLowStockOnly ? "Issues Only" : "All Stock"}
           </Button>
         </div>
       </div>
 
-      {/* Inventory List - Desktop Table & Mobile Cards */}
-      <div className="space-y-4">
-        {/* Mobile Card View */}
-        <div className="grid gap-3 md:hidden">
+      {/* Inventory List - Desktop Table & Mobile List */}
+      <div className="space-y-3">
+        {/* ── Mobile list rows ── */}
+        <div className="md:hidden">
           {inventoryData.length === 0 ? (
-            <Card className="border-dashed py-12 text-center text-muted-foreground">
-              <Boxes className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p className="text-lg font-medium">No inventory items found</p>
-            </Card>
+            <div className="py-12 text-center text-muted-foreground bg-muted/20 rounded-2xl border border-dashed">
+              <Boxes className="h-10 w-10 mx-auto mb-3 opacity-20" />
+              <p className="text-sm font-medium">No inventory items found</p>
+            </div>
           ) : (
-            inventoryData.map((item) => (
-              <Card key={item.id} className="overflow-hidden border-none shadow-md bg-card/50">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-foreground truncate">{item.productName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{item.name}</p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="whitespace-nowrap shrink-0 text-[10px] font-mono h-6"
-                    >
-                      {item.sku}
-                    </Badge>
+            <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
+              {inventoryData.map((item) => (
+                <div key={item.id} className="flex items-center gap-3.5 px-4 py-3.5">
+                  {/* Stock indicator pill */}
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm ${
+                    item.isOutOfStock ? 'bg-destructive/10 text-destructive' :
+                    item.isLowStock   ? 'bg-amber-500/10 text-amber-600' :
+                                       'bg-primary/10 text-primary'
+                  }`}>
+                    {item.stock}
                   </div>
 
-                  <div className="flex flex-col py-2 border-y border-border/50 gap-2">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Business & Category</span>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <Badge
-                          variant="outline"
-                          className="whitespace-nowrap text-[10px] h-5 px-2"
-                          style={{ borderColor: item.businessColor ? `hsl(${item.businessColor})` : undefined }}
-                        >
-                          {item.businessName}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground truncate">{item.categoryName}</span>
-                      </div>
-                    </div>
+                  {/* Name + meta */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground truncate">{item.productName}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {item.name} · <span className="font-mono">{item.sku}</span>
+                    </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Stock</span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`text-lg font-mono font-bold ${item.isOutOfStock ? 'text-destructive' :
-                            item.isLowStock ? 'text-warning' : 'text-foreground'
-                          }`}>
-                          {item.stock}
-                        </span>
-                        {item.isLowStock && <Badge variant="warning" className="h-4 text-[8px] px-1">LOW</Badge>}
-                        {item.isOutOfStock && <Badge variant="destructive" className="h-4 text-[8px] px-1">EMPTY</Badge>}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Value</span>
-                      <span className="text-lg font-mono font-bold text-foreground mt-0.5">
-                        ৳{item.value.toLocaleString(undefined, { minimumFractionDigits: 0 })}
-                      </span>
-                    </div>
+                  {/* Value + status */}
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-black text-foreground">
+                      ৳{item.value.toLocaleString()}
+                    </p>
+                    {item.isOutOfStock && (
+                      <span className="text-[10px] font-bold text-destructive">Empty</span>
+                    )}
+                    {item.isLowStock && !item.isOutOfStock && (
+                      <span className="text-[10px] font-bold text-amber-600">Low</span>
+                    )}
+                    {!item.isLowStock && !item.isOutOfStock && (
+                      <span className="text-[10px] text-muted-foreground">৳{item.price.toFixed(0)}/u</span>
+                    )}
                   </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1 h-8 text-xs gap-2"
-                      onClick={() => navigate('/add')}
-                    >
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      Add
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 h-8 text-xs gap-2"
-                      onClick={() => navigate('/remove')}
-                    >
-                      <MinusCircle className="h-3.5 w-3.5" />
-                      Deduct
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

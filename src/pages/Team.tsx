@@ -224,7 +224,7 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="space-y-6 animate-page-enter">
+    <div className="space-y-6 animate-page-enter pb-20 md:pb-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Team Management</h1>
@@ -281,7 +281,64 @@ export default function TeamPage() {
         </div>
 
         <TabsContent value="members" className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Mobile view: Grouped list rows */}
+          <div className="sm:hidden space-y-4">
+            {filteredUsers.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed rounded-xl opacity-50 bg-card/20">
+                <Users className="h-8 w-8 mb-2" />
+                <p className="text-sm font-medium">No members found</p>
+              </div>
+            ) : (
+              <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
+                {filteredUsers.map((u) => {
+                  const rc = ROLE_CONFIG[u.role];
+                  const RoleIcon = rc.icon;
+                  const isMe = u.id === me?.id;
+                  return (
+                    <div key={u.id} className={cn("p-4 flex items-center gap-3.5 transition-colors active:bg-accent/40", isMe && "bg-primary/5")} onClick={() => openEdit(u)}>
+                      <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center text-sm font-bold border border-border shadow-inner shrink-0">
+                        {u.displayName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-sm truncate">{u.displayName}</span>
+                          {isMe && <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5 font-normal">YOU</Badge>}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1.5">
+                          <span>@{u.username}</span>
+                          <span className="text-border">•</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{u.lastLoginAt ? format(new Date(u.lastLoginAt), "MMM d, HH:mm") : "New"}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                        <Badge className={cn("gap-1 py-0 px-2 text-[9px] font-normal border", rc.bg, rc.color, rc.border)}>
+                          <RoleIcon className="h-2.5 w-2.5" />
+                          {rc.label}
+                        </Badge>
+                        {me?.role === 'admin' && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => openEdit(u)}><Pencil className="mr-2 h-4 w-4" /> Edit Profile</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive" disabled={isMe} onClick={() => handleDelete(u.id as string, u.username)}><Trash2 className="mr-2 h-4 w-4" /> Remove</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredUsers.map((u) => {
               const rc = ROLE_CONFIG[u.role];
               const RoleIcon = rc.icon;
@@ -500,9 +557,26 @@ export default function TeamPage() {
               <div className="relative"><Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="password" placeholder={editingId ? "Leave blank to keep current" : "••••••••"} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="pl-10 bg-muted/50" /></div>
             </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="px-8 shadow-lg shadow-primary/20">{saving ? "Processing…" : editingId ? "Save Changes" : "Create Account"}</Button>
+          <DialogFooter className="flex-row justify-between items-center gap-2">
+            {editingId && editingId !== me?.id ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  if (confirm(`Remove this team member?`)) {
+                    handleDelete(editingId, form.username);
+                    setDialogOpen(false);
+                  }
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Remove
+              </Button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave} disabled={saving} className="px-8 shadow-lg shadow-primary/20">{saving ? "Processing…" : editingId ? "Save Changes" : "Create Account"}</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

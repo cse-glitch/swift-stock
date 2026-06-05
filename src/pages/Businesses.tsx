@@ -65,7 +65,7 @@ const BusinessManager = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Businesses</h1>
@@ -107,7 +107,47 @@ const BusinessManager = () => {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Mobile view (Grouped rows) */}
+      <div className="sm:hidden space-y-4">
+        {businesses.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed rounded-xl opacity-50 bg-card/20">
+            <Store className="h-8 w-8 mb-2" />
+            <p className="text-sm font-medium">No businesses found</p>
+          </div>
+        ) : (
+          <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
+            {businesses.map(b => {
+              const Icon = iconMap[b.icon] ?? Store;
+              return (
+                <div key={b.id} className={`flex items-center gap-3.5 px-4 py-3.5 transition-all ${!b.isActive ? 'opacity-50' : ''}`}>
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: `hsl(${b.color} / 0.15)`, color: `hsl(${b.color})` }}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0" onClick={() => openEdit(b)}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm truncate">{b.name}</span>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">{typeLabels[b.type]}</Badge>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground font-mono truncate mt-0.5">/{b.slug}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => openEdit(b)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Switch checked={b.isActive} onCheckedChange={() => toggleActive(b)} className="scale-90" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop view */}
+      <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {businesses.map(b => {
           const Icon = iconMap[b.icon] ?? Store;
           return (

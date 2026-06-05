@@ -134,79 +134,136 @@ export default function Properties() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Property Listings</h1>
           <p className="text-sm text-muted-foreground">Manage real estate — buy, sell, and rent</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)} className="w-full md:w-auto">
           <Plus className="mr-2 h-4 w-4" /> Add Listing
         </Button>
       </div>
 
       {listings.length === 0 ? (
-        <Card>
+        <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
           <CardContent className="py-12 text-center">
             <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">No property listings yet.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {listings.map(listing => {
-            const product = getProduct(listing);
-            return (
-              <Card key={listing.id} className="overflow-hidden">
-                <div className="h-2" style={{ background: propBiz ? `hsl(${propBiz.color})` : undefined }} />
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{product?.name ?? 'Unknown'}</CardTitle>
-                    <Badge className={`capitalize text-xs ${availabilityColors[listing.availability]}`}>
-                      {listing.availability}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {listing.location || 'No location'}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    {listing.bedrooms != null && (
-                      <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{listing.bedrooms}</span>
-                    )}
-                    {listing.bathrooms != null && (
-                      <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{listing.bathrooms}</span>
-                    )}
-                    {listing.area != null && (
-                      <span className="flex items-center gap-1"><Maximize className="h-3.5 w-3.5" />{listing.area} sqft</span>
-                    )}
-                  </div>
-                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-border/50">
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(listing)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(listing)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+        <>
+          {/* Mobile view: Grouped list rows */}
+          <div className="md:hidden space-y-4">
+            <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
+              {listings.map(listing => {
+                const product = getProduct(listing);
+                return (
+                  <div key={listing.id} className="p-4 flex flex-col gap-2 transition-colors active:bg-accent/40" onClick={() => handleEdit(listing)}>
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm truncate">{product?.name ?? 'Unknown'}</span>
+                          <Badge className={cn("capitalize text-[9px] px-1.5 py-0 h-4 font-normal", availabilityColors[listing.availability])}>
+                            {listing.availability}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> {listing.location || 'No location'}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {product?.basePrice && (
+                          <span className="text-sm font-bold font-mono">৳{product.basePrice.toLocaleString()}</span>
+                        )}
+                        <div className="text-[9px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wider">{listing.listingType}</div>
+                      </div>
                     </div>
-                    {product?.basePrice && (
-                      <span className="font-mono font-semibold text-foreground">৳{product.basePrice.toLocaleString()}</span>
-                    )}
+
+                    <div className="flex items-center justify-between pt-1 text-[11px] text-muted-foreground border-t border-border/20">
+                      <div className="flex gap-3">
+                        {listing.bedrooms != null && (
+                          <span className="flex items-center gap-1"><BedDouble className="h-3 w-3" />{listing.bedrooms} bed</span>
+                        )}
+                        {listing.bathrooms != null && (
+                          <span className="flex items-center gap-1"><Bath className="h-3 w-3" />{listing.bathrooms} bath</span>
+                        )}
+                        {listing.area != null && (
+                          <span className="flex items-center gap-1"><Maximize className="h-3 w-3" />{listing.area} sqft</span>
+                        )}
+                      </div>
+                      <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => handleEdit(listing)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(listing)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden md:grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {listings.map(listing => {
+              const product = getProduct(listing);
+              return (
+                <Card key={listing.id} className="overflow-hidden bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
+                  <div className="h-2" style={{ background: propBiz ? `hsl(${propBiz.color})` : undefined }} />
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{product?.name ?? 'Unknown'}</CardTitle>
+                      <Badge className={`capitalize text-xs ${availabilityColors[listing.availability]}`}>
+                        {listing.availability}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {listing.location || 'No location'}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-4 text-sm text-muted-foreground">
+                      {listing.bedrooms != null && (
+                        <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{listing.bedrooms}</span>
+                      )}
+                      {listing.bathrooms != null && (
+                        <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{listing.bathrooms}</span>
+                      )}
+                      {listing.area != null && (
+                        <span className="flex items-center gap-1"><Maximize className="h-3.5 w-3.5" />{listing.area} sqft</span>
+                      )}
+                    </div>
+                    <div className="mt-4 flex items-center justify-between pt-3 border-t border-border/50">
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(listing)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(listing)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {product?.basePrice && (
+                        <span className="font-mono font-semibold text-foreground">৳{product.basePrice.toLocaleString()}</span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Property Listing</DialogTitle>
+            <DialogTitle>{editingListing ? 'Edit Property Listing' : 'New Property Listing'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -245,9 +302,24 @@ export default function Properties() {
             </div>
             <div><Label>Price (৳)</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="0" /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editingListing ? 'Update Listing' : 'Create Listing'}</Button>
+          <DialogFooter className="flex-row justify-between items-center gap-2">
+            {editingListing ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  handleDelete(editingListing);
+                  setDialogOpen(false);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </Button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave}>{editingListing ? 'Update Listing' : 'Create Listing'}</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

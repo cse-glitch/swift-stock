@@ -121,89 +121,162 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Services</h1>
           <p className="text-sm text-muted-foreground">Manage workspace rentals and service offerings</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)} className="w-full md:w-auto">
           <Plus className="mr-2 h-4 w-4" /> Add Service
         </Button>
       </div>
 
       {services.length === 0 ? (
-        <Card>
+        <Card className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm">
           <CardContent className="py-12 text-center">
             <Briefcase className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">No services yet. Add your first offering.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {services.map(svc => {
-            const product = getProduct(svc);
-            const utilization = svc.capacity ? Math.round((svc.currentBookings / svc.capacity) * 100) : null;
-            return (
-              <Card key={svc.id}>
-                <div className="h-2" style={{ background: svcBiz ? `hsl(${svcBiz.color})` : undefined }} />
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{product?.name ?? 'Unknown'}</CardTitle>
-                    <Badge variant={product?.status === 'active' ? 'default' : 'secondary'} className="text-xs capitalize">
-                      {product?.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    {svc.duration && (
-                      <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{svc.duration}</span>
-                    )}
-                    {svc.capacity != null && (
-                      <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{svc.currentBookings}/{svc.capacity}</span>
-                    )}
-                  </div>
-
-                  {utilization !== null && (
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-muted-foreground">Utilization</span>
-                        <span className="font-mono">{utilization}%</span>
+        <>
+          {/* Mobile view: Grouped list rows */}
+          <div className="md:hidden space-y-4">
+            <div className="bg-card/60 backdrop-blur-sm rounded-2xl overflow-hidden border border-border/30 shadow-sm divide-y divide-border/40">
+              {services.map(svc => {
+                const product = getProduct(svc);
+                const utilization = svc.capacity ? Math.round((svc.currentBookings / svc.capacity) * 100) : null;
+                return (
+                  <div key={svc.id} className="p-4 flex flex-col gap-2 transition-colors active:bg-accent/40" onClick={() => handleEdit(svc)}>
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm truncate">{product?.name ?? 'Unknown'}</span>
+                          <Badge variant={product?.status === 'active' ? 'default' : 'secondary'} className="text-[9px] px-1.5 py-0 h-4 font-normal capitalize">
+                            {product?.status}
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate mt-0.5 flex items-center gap-1.5">
+                          {svc.duration && (
+                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{svc.duration}</span>
+                          )}
+                          {svc.capacity != null && (
+                            <>
+                              <span className="text-border">•</span>
+                              <span className="flex items-center gap-1"><Users className="h-3 w-3" />{svc.currentBookings}/{svc.capacity} booking</span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="h-1.5 rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${Math.min(utilization, 100)}%` }}
-                        />
+                      <div className="text-right shrink-0">
+                        {product?.basePrice && (
+                          <span className="text-sm font-bold font-mono">৳{product.basePrice.toLocaleString()}</span>
+                        )}
+                        {utilization !== null && (
+                          <div className="text-[10px] font-medium text-muted-foreground mt-0.5">{utilization}% util</div>
+                        )}
                       </div>
                     </div>
-                  )}
 
-                  <div className="flex gap-1 flex-wrap">
-                    {svc.availableDays.map(day => (
-                      <Badge key={day} variant="outline" className="text-[10px] px-1.5">{day}</Badge>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(svc)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(svc)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {product?.basePrice && (
-                      <p className="font-mono font-semibold text-foreground">৳{product.basePrice.toLocaleString()}</p>
+                    {utilization !== null && (
+                      <div className="mt-1">
+                        <div className="h-1 rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${Math.min(utilization, 100)}%` }}
+                          />
+                        </div>
+                      </div>
                     )}
+
+                    <div className="flex items-center justify-between pt-1 border-t border-border/20">
+                      <div className="flex gap-1.5 flex-wrap">
+                        {svc.availableDays.map(day => (
+                          <Badge key={day} variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-normal">{day}</Badge>
+                        ))}
+                      </div>
+                      <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => handleEdit(svc)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(svc)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Desktop view */}
+          <div className="hidden md:grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {services.map(svc => {
+              const product = getProduct(svc);
+              const utilization = svc.capacity ? Math.round((svc.currentBookings / svc.capacity) * 100) : null;
+              return (
+                <Card key={svc.id} className="bg-card/60 backdrop-blur-sm rounded-2xl border border-border/30 shadow-sm overflow-hidden">
+                  <div className="h-2" style={{ background: svcBiz ? `hsl(${svcBiz.color})` : undefined }} />
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{product?.name ?? 'Unknown'}</CardTitle>
+                      <Badge variant={product?.status === 'active' ? 'default' : 'secondary'} className="text-xs capitalize">
+                        {product?.status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex gap-4 text-sm text-muted-foreground">
+                      {svc.duration && (
+                        <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{svc.duration}</span>
+                      )}
+                      {svc.capacity != null && (
+                        <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{svc.currentBookings}/{svc.capacity}</span>
+                      )}
+                    </div>
+
+                    {utilization !== null && (
+                      <div>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="text-muted-foreground">Utilization</span>
+                          <span className="font-mono">{utilization}%</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${Math.min(utilization, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-1 flex-wrap">
+                      {svc.availableDays.map(day => (
+                        <Badge key={day} variant="outline" className="text-[10px] px-1.5">{day}</Badge>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(svc)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(svc)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {product?.basePrice && (
+                        <p className="font-mono font-semibold text-foreground">৳{product.basePrice.toLocaleString()}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setEditingService(null); }}>
@@ -239,9 +312,24 @@ export default function ServicesPage() {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editingService ? 'Update Service' : 'Create Service'}</Button>
+          <DialogFooter className="flex-row justify-between items-center gap-2">
+            {editingService ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  handleDelete(editingService);
+                  setDialogOpen(false);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </Button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleSave}>{editingService ? 'Update Service' : 'Create Service'}</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
