@@ -32,7 +32,7 @@ export function MobileNav() {
                   trigger={
                     <button
                       className={cn(
-                        "h-[52px] w-[52px] rounded-2xl",
+                        "h-[52px] w-[52px] rounded-xl",
                         "bg-primary text-primary-foreground",
                         "flex items-center justify-center",
                         "shadow-lg shadow-primary/30",
@@ -86,7 +86,7 @@ export function MobileNav() {
                   {/* Icon wrapper with subtle active bg */}
                   <span
                     className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-xl",
+                      "flex h-9 w-9 items-center justify-center rounded-lg",
                       "transition-all duration-200",
                       isActive ? "bg-primary/10" : "bg-transparent",
                     )}
