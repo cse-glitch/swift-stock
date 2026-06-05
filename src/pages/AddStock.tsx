@@ -39,11 +39,13 @@ const AddStock = () => {
   const bizId = selectedBusinessId ?? activeBusinessId;
   const selectedBusiness = businesses.find(b => b.id === bizId);
 
-  const products = useLiveQuery(() =>
+  const productsResult = useLiveQuery(() =>
     bizId ? db.products.where('businessId').equals(bizId).toArray() : db.products.toArray()
-  , [bizId]) ?? [];
+  , [bizId]);
+  const products = useMemo(() => productsResult ?? [], [productsResult]);
 
-  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
+  const variantsResult = useLiveQuery(() => db.variants.toArray());
+  const variants = useMemo(() => variantsResult ?? [], [variantsResult]);
   const [search, setSearch] = useState("");
   const [quantities, setQuantities] = useState<Map<string, number>>(new Map());
   const [note, setNote] = useState("");
@@ -165,7 +167,7 @@ const AddStock = () => {
           Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
-            complete: (results) => resolve(results.data),
+            complete: (results) => resolve(results.data as Record<string, unknown>[]),
             error: (error) => reject(error),
           });
         });
@@ -281,7 +283,7 @@ const AddStock = () => {
           const standardCols = getTemplateColumns(selectedBusiness.type).map(c => c.toLowerCase().trim());
           Object.keys(row).forEach(k => {
              if (!standardCols.includes(k.toLowerCase().trim())) {
-                attributes[k] = row[k];
+                attributes[k] = row[k] as string | number;
              }
           });
 
@@ -315,19 +317,19 @@ const AddStock = () => {
              
              const vAttr: Record<string, string | number> = {};
              if (selectedBusiness.type === 'fashion') {
-               if(getVal('Material')) vAttr.material = getVal('Material');
-               if(getVal('Color')) vAttr.color = getVal('Color');
-               if(getVal('Size')) vAttr.size = getVal('Size');
+               if(getVal('Material')) vAttr.material = getVal('Material') as string;
+               if(getVal('Color')) vAttr.color = getVal('Color') as string;
+               if(getVal('Size')) vAttr.size = getVal('Size') as string;
              } else if (selectedBusiness.type === 'lubricants') {
-               if(getVal('Grade')) vAttr.grade = getVal('Grade');
-               if(getVal('Volume')) vAttr.volume = getVal('Volume');
+               if(getVal('Grade')) vAttr.grade = getVal('Grade') as string;
+               if(getVal('Volume')) vAttr.volume = getVal('Volume') as string;
              } else if (selectedBusiness.type === 'agro') {
-               if(getVal('Origin')) vAttr.origin = getVal('Origin');
-               if(getVal('Weight')) vAttr.weight = getVal('Weight');
+               if(getVal('Origin')) vAttr.origin = getVal('Origin') as string;
+               if(getVal('Weight')) vAttr.weight = getVal('Weight') as string;
              } else {
-               if(getVal('Brand')) vAttr.brand = getVal('Brand');
-               if(getVal('Material')) vAttr.material = getVal('Material');
-               if(getVal('Color')) vAttr.color = getVal('Color');
+               if(getVal('Brand')) vAttr.brand = getVal('Brand') as string;
+               if(getVal('Material')) vAttr.material = getVal('Material') as string;
+               if(getVal('Color')) vAttr.color = getVal('Color') as string;
              }
              Object.keys(attributes).forEach(k => vAttr[k] = attributes[k]);
 

@@ -80,7 +80,7 @@ export async function pushLocalToSupabase() {
     const cats = await db.categories.toArray();
     if (cats.length > 0) {
       const { error } = await supabase.from('categories').upsert(cats.map(c => ({
-        id: c.id, business_id: c.businessId, name: c.name, description: c.description,
+        id: c.id, business_id: c.businessId, name: c.name, parent_id: c.parentId,
       })));
       if (error) console.error('Sync push categories:', error.message);
     }
@@ -111,10 +111,12 @@ export async function pushLocalToSupabase() {
     const orders = await db.orders.toArray();
     if (orders.length > 0) {
       const { error } = await supabase.from('orders').upsert(orders.map(o => ({
-        id: o.id, business_id: o.businessId, order_number: o.orderNumber,
-        customer_name: o.customerName, customer_phone: o.customerPhone,
-        status: o.status, total: o.total, notes: o.notes,
-        created_at: o.createdAt, updated_at: o.updatedAt,
+        id: o.id, business_id: o.businessId, product_id: o.productId,
+        variant_id: o.variantId, customer_name: o.customerName,
+        customer_number: o.customerNumber, price: o.price, discount: o.discount,
+        tax: o.tax, total_price: o.totalPrice, location: o.location,
+        status: o.status, payment_method: o.paymentMethod, timestamp: o.timestamp,
+        note: o.note,
       })));
       if (error) console.error('Sync push orders:', error.message);
     }
@@ -151,7 +153,9 @@ export async function pushLocalToSupabase() {
     if (warehouses.length > 0) {
       const { error } = await supabase.from('warehouses').upsert(warehouses.map(w => ({
         id: w.id, business_id: w.businessId, name: w.name,
-        location: w.location, is_default: w.isDefault,
+        location: w.location, capacity: w.capacity, manager_name: w.managerName,
+        manager_phone: w.managerPhone, primary_products: w.primaryProducts,
+        is_active: w.isActive, is_main: w.isMain,
       })));
       if (error) console.error('Sync push warehouses:', error.message);
     }
@@ -167,9 +171,10 @@ export async function pushLocalToSupabase() {
     const transfers = await db.stockTransfers.toArray();
     if (transfers.length > 0) {
       await supabase.from('stock_transfers').upsert(transfers.map(t => ({
-        id: t.id, from_warehouse_id: t.fromWarehouseId, to_warehouse_id: t.toWarehouseId,
-        variant_id: t.variantId, quantity: t.quantity, status: t.status,
-        notes: t.notes, created_at: t.createdAt,
+        id: t.id, business_id: t.businessId, from_warehouse_id: t.fromWarehouseId,
+        to_warehouse_id: t.toWarehouseId, variant_id: t.variantId, quantity: t.quantity,
+        status: t.status, requested_by: t.requestedBy, approved_by: t.approvedBy,
+        timestamp: t.timestamp,
       })));
     }
 
@@ -179,6 +184,85 @@ export async function pushLocalToSupabase() {
     throw err;
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function mapSupabaseRowToLocal(tableName: string, d: any) {
+  if (tableName === 'businesses') {
+    return {
+      id: d.id, name: d.name, slug: d.slug, currency: d.currency,
+      address: d.address, phone: d.phone, email: d.email,
+      createdAt: d.created_at ? new Date(d.created_at) : new Date(),
+    };
+  }
+  if (tableName === 'categories') {
+    return {
+      id: d.id, businessId: d.business_id, name: d.name, parentId: d.parent_id,
+    };
+  }
+  if (tableName === 'products') {
+    return {
+      id: d.id, businessId: d.business_id, categoryId: d.category_id,
+      name: d.name, sku: d.sku, description: d.description,
+      type: d.type, basePrice: d.base_price, currency: d.currency,
+      tags: d.tags, status: d.status, attributes: d.attributes,
+      isSeasonal: d.is_seasonal, expiryTracking: d.expiry_tracking,
+      createdAt: d.created_at ? new Date(d.created_at) : new Date(),
+      updatedAt: d.updated_at ? new Date(d.updated_at) : new Date(),
+    };
+  }
+  if (tableName === 'variants') {
+    return {
+      id: d.id, productId: d.product_id, name: d.name, sku: d.sku,
+      attributes: d.attributes, price: d.price, stock: d.stock,
+      lowStockThreshold: d.low_stock_threshold,
+    };
+  }
+  if (tableName === 'orders') {
+    return {
+      id: d.id, businessId: d.business_id, productId: d.product_id,
+      variantId: d.variant_id, customerName: d.customer_name,
+      customerNumber: d.customer_number, price: d.price, discount: d.discount,
+      tax: d.tax, totalPrice: d.total_price, location: d.location,
+      status: d.status, paymentMethod: d.payment_method, timestamp: d.timestamp ? new Date(d.timestamp) : new Date(),
+      note: d.note,
+    };
+  }
+  if (tableName === 'inventory_log') {
+    return {
+      id: d.id, businessId: d.business_id, productId: d.product_id,
+      variantId: d.variant_id, type: d.type, quantity: d.quantity,
+      reason: d.reason, note: d.note, timestamp: d.timestamp ? new Date(d.timestamp) : new Date(),
+    };
+  }
+  if (tableName === 'role_permissions') {
+    return {
+      id: d.id, role: d.role, permissions: d.permissions,
+    };
+  }
+  if (tableName === 'warehouses') {
+    return {
+      id: d.id, businessId: d.business_id, name: d.name,
+      location: d.location, capacity: d.capacity, managerName: d.manager_name,
+      managerPhone: d.manager_phone, primaryProducts: d.primary_products,
+      isActive: d.is_active, isMain: d.is_main,
+    };
+  }
+  if (tableName === 'warehouse_stock') {
+    return {
+      id: d.id, warehouseId: d.warehouse_id, variantId: d.variant_id, quantity: d.quantity,
+    };
+  }
+  if (tableName === 'stock_transfers') {
+    return {
+      id: d.id, businessId: d.business_id, fromWarehouseId: d.from_warehouse_id,
+      toWarehouseId: d.to_warehouse_id, variantId: d.variant_id, quantity: d.quantity,
+      status: d.status, requestedBy: d.requested_by, approvedBy: d.approved_by,
+      timestamp: d.timestamp ? new Date(d.timestamp) : new Date(),
+    };
+  }
+  return d;
+}
+
 
 export async function pullSupabaseToLocal() {
   if (!isSupabaseConfigured) {
@@ -213,10 +297,14 @@ export async function pullSupabaseToLocal() {
           await pullUsersToLocal(data as SupabaseUserRow[]);
           continue;
         }
+
+        const mappedData = data.map(d => mapSupabaseRowToLocal(tableName, d));
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const store = (db as any)[dbTable];
         if (store) {
           await store.clear();
-          await store.bulkPut(data);
+          await store.bulkPut(mappedData);
         }
       }
     }
