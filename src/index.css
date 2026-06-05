@@ -176,8 +176,15 @@
 
 /* ── Page entry animation ── */
 @layer utilities {
-  .page-enter {
+  /* Used via class="page-enter" or class="animate-page-enter" */
+  .page-enter,
+  .animate-page-enter {
     animation: pageEnter var(--duration-slow) var(--ease-out-expo) both;
+  }
+
+  /* Safe-area bottom padding (Android/iOS notch support) */
+  .pb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   /* Staggered card reveal */

@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   LayoutDashboard, PackagePlus, History, Settings, Wrench,
   Package, Store, Layers, BoxesIcon, Building2, Briefcase,
   BarChart3, ShoppingCart, Users, Banknote, ScrollText, ShieldCheck,
-  ChevronDown,
+  ChevronDown, LogOut, User,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { cn } from "@/lib/utils";
@@ -225,7 +226,7 @@ function NavGroup({
 /* ─── AppSidebar ─── */
 export function AppSidebar() {
   const { state, setOpenMobile } = useSidebar();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isMobile = useIsMobile();
   const collapsed = state === "collapsed";
 
@@ -251,6 +252,15 @@ export function AppSidebar() {
     { label: "Manage",     items: manageNav },
     { label: "System",     items: systemNav },
   ];
+
+  const initials = user?.displayName
+    ? user.displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "U";
+
+  const handleLogout = () => {
+    setOpenMobile(false);
+    logout();
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -278,19 +288,6 @@ export function AppSidebar() {
             <div className="mt-3 rounded-2xl border border-sidebar-border/40 bg-sidebar-accent/40 p-0.5">
               <BusinessSwitcher />
             </div>
-            {user && (
-              <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-sidebar-border/40 bg-sidebar-accent/30 px-3 py-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-xs font-bold text-primary">
-                  {user.displayName
-                    ? user.displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
-                    : "U"}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-sidebar-foreground">{user.displayName}</p>
-                  <p className="truncate text-[10px] text-sidebar-foreground/50">@{user.username}</p>
-                </div>
-              </div>
-            )}
           </>
         ) : (
           <>
@@ -325,7 +322,7 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
 
-      <SidebarContent className={cn(isMobile ? "gap-1.5 py-3 pb-6" : "gap-0")}>
+      <SidebarContent className={cn(isMobile ? "gap-1.5 py-3" : "gap-0")}>
         {isMobile ? (
           /* ── Mobile: render all sections as accordion, no separators ── */
           groups.map(({ label, items }) => (
@@ -358,6 +355,45 @@ export function AppSidebar() {
           ))
         )}
       </SidebarContent>
+
+      {/* ── Mobile: sticky profile + logout footer ── */}
+      {isMobile && (
+        <div className="sticky bottom-0 z-10 border-t border-sidebar-border/40 bg-sidebar-background/95 backdrop-blur-md px-3 py-3 pb-safe-bottom">
+          {/* Profile row */}
+          <Link
+            to="/profile"
+            onClick={() => setOpenMobile(false)}
+            className="flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all duration-200 hover:bg-sidebar-accent/60 active:scale-[0.98] group"
+          >
+            {/* Avatar */}
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-sm font-black text-primary ring-2 ring-primary/20 transition-all group-hover:ring-primary/40">
+              {initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-sidebar-foreground leading-tight">
+                {user?.displayName ?? "User"}
+              </p>
+              <p className="truncate text-[10px] text-sidebar-foreground/50 font-medium">
+                @{user?.username} · <span className="capitalize">{user?.role?.replace(/_/g, " ")}</span>
+              </p>
+            </div>
+            <User className="h-4 w-4 shrink-0 text-sidebar-foreground/40 group-hover:text-sidebar-foreground/70 transition-colors" />
+          </Link>
+
+          {/* Logout button */}
+          <button
+            onClick={handleLogout}
+            className="mt-1.5 flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all duration-200 hover:bg-rose-500/10 active:scale-[0.98] group"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 transition-all group-hover:bg-rose-500/20">
+              <LogOut className="h-5 w-5 text-rose-400 group-hover:text-rose-500 transition-colors" />
+            </div>
+            <span className="text-sm font-bold text-rose-400 group-hover:text-rose-500 transition-colors">
+              Sign Out
+            </span>
+          </button>
+        </div>
+      )}
     </Sidebar>
   );
 }
