@@ -126,10 +126,23 @@ const Dashboard = () => {
   const recentOrders = useMemo(() => rawRecentOrders ?? [], [rawRecentOrders]);
 
   const mobileStats = useMemo(() => {
-    const totalIncome = orders.reduce((sum, o) => sum + o.totalPrice, 0);
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const thisMonthOrders = orders.filter(o => {
+      const orderDate = new Date(o.timestamp);
+      return orderDate >= startOfMonth;
+    });
+
+    const thisMonthExpenses = expenses.filter(e => {
+      const expenseDate = new Date(e.date);
+      return expenseDate >= startOfMonth;
+    });
+
+    const totalIncome = thisMonthOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const totalExpenses = thisMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
     const netProfit = totalIncome - totalExpenses;
-    const invoicesCount = orders.length;
+    const invoicesCount = thisMonthOrders.length;
     return { totalIncome, totalExpenses, netProfit, invoicesCount };
   }, [orders, expenses]);
 
@@ -195,6 +208,7 @@ const Dashboard = () => {
 
   const variantMap = useMemo(() => new Map(variants.map(v => [v.id, v])), [variants]);
   const productMap = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
+  const businessMap = useMemo(() => new Map(businesses.map(b => [b.id, b])), [businesses]);
 
   const calculateRevenue = useMemo(() => (bId?: string) => {
     const targetLogs = logs.filter(l =>
@@ -446,95 +460,119 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <div className="space-y-3">
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Quick Actions</h2>
-          <div className="grid grid-cols-4 gap-y-4 gap-x-2">
+          <div className="grid grid-cols-2 gap-3">
             {/* Action 1: Create Order */}
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <PlaceOrderModal
-                trigger={
-                  <button className="h-12 w-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
-                    <ShoppingCart className="h-5 w-5" />
-                  </button>
-                }
-              />
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">New Order</span>
-            </div>
+            <PlaceOrderModal
+              trigger={
+                <button className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-[20px] hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm">
+                  <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                    <ShoppingCart className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-foreground block">New Order</span>
+                    <span className="text-[9px] text-muted-foreground font-medium block truncate">Place sale</span>
+                  </div>
+                </button>
+              }
+            />
 
             {/* Action 2: Add Expense */}
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <button 
-                onClick={() => setIsExpenseOpen(true)}
-                className="h-12 w-12 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Add Expense</span>
-            </div>
+            <button 
+              onClick={() => setIsExpenseOpen(true)}
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-[20px] hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+            >
+              <div className="h-9 w-9 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <Plus className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-foreground block">Add Expense</span>
+                <span className="text-[9px] text-muted-foreground font-medium block truncate">Log cost</span>
+              </div>
+            </button>
 
             {/* Action 3: Add Stock */}
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <button 
-                onClick={() => navigate('/add')}
-                className="h-12 w-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-              >
-                <PlusCircle className="h-5 w-5" />
-              </button>
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Add Stock</span>
-            </div>
+            <button 
+              onClick={() => navigate('/add')}
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-[20px] hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+            >
+              <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+                <PlusCircle className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-foreground block">Add Stock</span>
+                <span className="text-[9px] text-muted-foreground font-medium block truncate">Restock items</span>
+              </div>
+            </button>
 
             {/* Action 4: Suppliers */}
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <button 
-                onClick={() => navigate('/suppliers')}
-                className="h-12 w-12 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-              >
-                <Users className="h-5 w-5" />
-              </button>
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Suppliers</span>
-            </div>
+            <button 
+              onClick={() => navigate('/suppliers')}
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-[20px] hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+            >
+              <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center shrink-0">
+                <Users className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-foreground block">Suppliers</span>
+                <span className="text-[9px] text-muted-foreground font-medium block truncate">Manage vendors</span>
+              </div>
+            </button>
 
             {/* Action 5: Products */}
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <button 
-                onClick={() => navigate('/products')}
-                className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-              >
-                <BoxesIcon className="h-5 w-5" />
-              </button>
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Products</span>
-            </div>
+            <button 
+              onClick={() => navigate('/products')}
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-[20px] hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+            >
+              <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                <BoxesIcon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-foreground block">Products</span>
+                <span className="text-[9px] text-muted-foreground font-medium block truncate">Catalog</span>
+              </div>
+            </button>
 
             {/* Action 6: Reports */}
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <button 
-                onClick={() => navigate('/analytics')}
-                className="h-12 w-12 rounded-2xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-              >
-                <BarChart3 className="h-5 w-5" />
-              </button>
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Analytics</span>
-            </div>
+            <button 
+              onClick={() => navigate('/analytics')}
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-[20px] hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+            >
+              <div className="h-9 w-9 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center shrink-0">
+                <BarChart3 className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-foreground block">Analytics</span>
+                <span className="text-[9px] text-muted-foreground font-medium block truncate">Reports</span>
+              </div>
+            </button>
 
             {/* Action 7: History */}
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <button 
-                onClick={() => navigate('/history')}
-                className="h-12 w-12 rounded-2xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-              >
-                <Clock className="h-5 w-5" />
-              </button>
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">History</span>
-            </div>
+            <button 
+              onClick={() => navigate('/history')}
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-[20px] hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+            >
+              <div className="h-9 w-9 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center shrink-0">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-foreground block">History</span>
+                <span className="text-[9px] text-muted-foreground font-medium block truncate">Logs</span>
+              </div>
+            </button>
 
-            {/* Action 8: More */}
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              <button 
-                onClick={() => navigate('/utilities')}
-                className="h-12 w-12 rounded-2xl bg-slate-500/10 text-slate-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-              >
-                <Wrench className="h-5 w-5" />
-              </button>
-              <span className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight">Utilities</span>
-            </div>
+            {/* Action 8: Utilities */}
+            <button 
+              onClick={() => navigate('/utilities')}
+              className="flex items-center gap-3 p-3 bg-card border border-border/40 rounded-[20px] hover:bg-muted/30 active:scale-[0.98] transition-all text-left w-full shadow-sm"
+            >
+              <div className="h-9 w-9 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center shrink-0">
+                <Wrench className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-foreground block">Utilities</span>
+                <span className="text-[9px] text-muted-foreground font-medium block truncate">Helper tools</span>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -601,27 +639,39 @@ const Dashboard = () => {
           </div>
           <div className="space-y-2.5">
             {recentOrders.map((order) => {
-              const statusColor = order.status === 'completed' ? 'bg-emerald-500' : order.status === 'pending' ? 'bg-amber-500' : 'bg-rose-500';
-              const statusText = order.status === 'completed' ? 'Paid' : order.status === 'pending' ? 'Pending' : 'Cancelled';
-              const statusTextColor = order.status === 'completed' ? 'text-emerald-600' : order.status === 'pending' ? 'text-amber-600' : 'text-rose-600';
-              const statusBg = order.status === 'completed' ? 'bg-emerald-500/10' : order.status === 'pending' ? 'bg-amber-500/10' : 'bg-rose-500/10';
+              const product = productMap.get(order.productId);
+              const business = businessMap.get(order.businessId);
+              const isCompleted = order.status === 'completed';
+              const isCancelled = order.status === 'cancelled';
+              const statusColor = isCompleted
+                ? 'text-emerald-600 bg-emerald-500/10'
+                : isCancelled
+                ? 'text-rose-600 bg-rose-500/10'
+                : 'text-amber-600 bg-amber-500/10';
+              const dotColor = isCompleted ? 'bg-emerald-500' : isCancelled ? 'bg-rose-500' : 'bg-amber-500';
               
               return (
-                <div key={order.id} className="flex items-center justify-between p-3.5 bg-card border border-border/40 rounded-2xl hover:bg-muted/30 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", statusBg, statusTextColor)}>
+                <div key={order.id} className="flex items-center justify-between p-3.5 bg-card border border-border/40 rounded-[24px] hover:bg-muted/30 transition-all">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", statusColor)}>
                       <Receipt className="h-5 w-5" />
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">ORD-{order.id.slice(0, 8).toUpperCase()}</p>
-                      <p className="text-xs text-muted-foreground font-medium">{order.customerName || 'Walk-in Customer'}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">
+                        {order.customerName || 'Walk-in'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {product?.name || 'Unknown Product'} · {business?.name || '—'}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <p className="text-sm font-black text-foreground">৳{order.totalPrice.toLocaleString()}</p>
-                    <div className="flex items-center gap-1.5 justify-end mt-1">
-                      <span className={cn("h-1.5 w-1.5 rounded-full", statusColor)} />
-                      <span className={cn("text-[10px] font-bold", statusTextColor)}>{statusText}</span>
+                    <div className="flex items-center gap-1 mt-1 justify-end">
+                      <span className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />
+                      <span className={cn("text-[10px] font-bold capitalize", isCompleted ? 'text-emerald-600' : isCancelled ? 'text-rose-600' : 'text-amber-600')}>
+                        {order.status}
+                      </span>
                     </div>
                   </div>
                 </div>
