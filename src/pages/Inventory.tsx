@@ -22,7 +22,7 @@ const generateSparkData = (seed: number) => {
   }));
 };
 
-const Sparkline = ({ data, color }: { data: any[], color: string }) => (
+const Sparkline = ({ data, color }: { data: { value: number }[], color: string }) => (
   <div className="h-[40px] w-full mt-2">
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data}>
@@ -52,17 +52,20 @@ export default function Inventory() {
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const navigate = useNavigate();
 
-  const products = useLiveQuery(
+  const rawProducts = useLiveQuery(
     () => activeBusinessId
       ? db.products.where('businessId').equals(activeBusinessId).toArray()
       : db.products.toArray(),
     [activeBusinessId]
-  ) ?? [];
+  );
 
-  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
-  const categories = useLiveQuery(() => db.categories.toArray()) ?? [];
+  const rawVariants = useLiveQuery(() => db.variants.toArray());
+  const rawCategories = useLiveQuery(() => db.categories.toArray());
 
   const inventoryData = useMemo(() => {
+    const products = rawProducts ?? [];
+    const variants = rawVariants ?? [];
+    const categories = rawCategories ?? [];
     const productMap = new Map(products.map(p => [p.id, p]));
     const bizMap = new Map(businesses.map(b => [b.id, b]));
     const catMap = new Map(categories.map(c => [c.id, c]));
@@ -104,7 +107,7 @@ export default function Inventory() {
     }
 
     return results;
-  }, [products, variants, businesses, categories, search, showLowStockOnly]);
+  }, [rawProducts, rawVariants, businesses, rawCategories, search, showLowStockOnly]);
 
   const metrics = useMemo(() => {
     const totalItems = inventoryData.length;

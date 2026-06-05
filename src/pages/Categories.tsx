@@ -70,9 +70,9 @@ export default function Categories() {
     setDialogOpen(false);
   }
 
-  async function handleDelete(id: number) {
+  async function handleDelete(id: string) {
     const children = await db.categories.where('parentId').equals(id).count();
-    const products = await db.products.where('categoryId').equals(id).count();
+    const products = await db.products.where('categoryId').equals(id).count().catch(() => 0);
     if (children > 0 || products > 0) {
       toast({ title: 'Cannot delete', description: 'Category has subcategories or products.', variant: 'destructive' });
       return;
@@ -81,7 +81,7 @@ export default function Categories() {
     toast({ title: 'Category deleted' });
   }
 
-  async function seedDefaults(bizId: number) {
+  async function seedDefaults(bizId: string) {
     const biz = businesses.find(b => b.id === bizId);
     if (!biz) return;
     const config = getBusinessConfig(biz.type);
@@ -91,7 +91,7 @@ export default function Categories() {
       return;
     }
     await db.categories.bulkAdd(
-      config.defaultCategories.map(name => ({ businessId: bizId, name }))
+      config.defaultCategories.map(name => ({ id: crypto.randomUUID(), businessId: bizId, name }))
     );
     toast({ title: 'Defaults added', description: `${config.defaultCategories.length} categories created.` });
   }
@@ -99,7 +99,7 @@ export default function Categories() {
   const groupedByBusiness = businesses.reduce((acc, biz) => {
     acc[biz.id!] = categories.filter(c => c.businessId === biz.id);
     return acc;
-  }, {} as Record<number, Category[]>);
+  }, {} as Record<string, Category[]>);
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
@@ -212,9 +212,9 @@ function CategoryTree({
   onDelete,
 }: {
   categories: Category[];
-  getChildren: (id: number) => Category[];
+  getChildren: (id: string) => Category[];
   onEdit: (c: Category) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }) {
   if (categories.length === 0) {
     return <p className="text-sm text-muted-foreground py-4 text-center">No categories yet. Add one or seed defaults.</p>;

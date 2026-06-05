@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Building2, MapPin, Plus, BedDouble, Bath, Maximize, Pencil, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function Properties() {
   const { businesses } = useBusiness();
@@ -106,14 +107,17 @@ export default function Properties() {
 
     try {
       await db.transaction('rw', [db.products, db.propertyListings], async () => {
-        let productId: number;
+        let productId: string;
         if (editingListing) {
           productId = editingListing.productId;
           await db.products.update(productId, productData);
           await db.propertyListings.update(editingListing.id!, listingData);
         } else {
-          productId = await db.products.add({ ...productData, createdAt: new Date() } as Product);
-          await db.propertyListings.add({ ...listingData, productId });
+          const { generateId } = await import('@/lib/db');
+          productId = generateId();
+          await db.products.add({ id: productId, ...productData, createdAt: new Date() });
+          const newListingId = generateId();
+          await db.propertyListings.add({ id: newListingId, ...listingData, productId });
         }
       });
 
@@ -283,7 +287,7 @@ export default function Properties() {
               </div>
               <div>
                 <Label>Availability</Label>
-                <Select value={availability} onValueChange={v => setAvailability(v as any)}>
+                <Select value={availability} onValueChange={v => setAvailability(v as 'available' | 'sold' | 'rented' | 'pending')}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="available">Available</SelectItem>

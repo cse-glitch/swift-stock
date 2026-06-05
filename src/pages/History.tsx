@@ -20,9 +20,9 @@ const REASONS = ["All", "Restock", "Sold", "Damaged", "Expired", "Returned", "Ad
 
 const History = () => {
   const { businesses, activeBusinessId } = useBusiness();
-  const logs = useLiveQuery(() => db.inventoryLog.orderBy("timestamp").reverse().toArray()) ?? [];
-  const products = useLiveQuery(() => db.products.toArray()) ?? [];
-  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
+  const rawLogs = useLiveQuery(() => db.inventoryLog.orderBy("timestamp").reverse().toArray());
+  const rawProducts = useLiveQuery(() => db.products.toArray());
+  const rawVariants = useLiveQuery(() => db.variants.toArray());
 
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("All");
@@ -31,11 +31,12 @@ const History = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
 
-  const productMap = useMemo(() => new Map(products.map(p => [p.id!, p])), [products]);
-  const variantMap = useMemo(() => new Map(variants.map(v => [v.id!, v])), [variants]);
+  const productMap = useMemo(() => new Map((rawProducts ?? []).map(p => [p.id!, p])), [rawProducts]);
+  const variantMap = useMemo(() => new Map((rawVariants ?? []).map(v => [v.id!, v])), [rawVariants]);
   const businessMap = useMemo(() => new Map(businesses.map(b => [b.id!, b])), [businesses]);
 
   const filtered = useMemo(() => {
+    const logs = rawLogs ?? [];
     const q = search.toLowerCase();
     return logs.filter(log => {
       if (businessFilter !== "All" && log.businessId !== businessFilter) return false;
@@ -57,7 +58,7 @@ const History = () => {
       }
       return true;
     });
-  }, [logs, search, actionFilter, reasonFilter, businessFilter, dateFrom, dateTo, productMap, variantMap]);
+  }, [rawLogs, search, actionFilter, reasonFilter, businessFilter, dateFrom, dateTo, productMap, variantMap]);
 
   const totalMoved = filtered.reduce((s, l) => s + l.quantity, 0);
 

@@ -374,7 +374,7 @@ function ProductDialog({
       return;
     }
     setSaving(true);
-    const bizId = Number(businessId);
+    const bizId = businessId;
     const normalizedVariantSkus = variantsList.map(v => normalizeSku(v.sku));
     const { productError, variantErrors, conflicts } = await checkSkuConflicts(
       bizId, normalizedSku, normalizedVariantSkus, product?.id
@@ -400,8 +400,8 @@ function ProductDialog({
     const normalizedSku = finalSku ?? normalizeSku(sku);
     const normalizedVarSkus = finalVariantSkus ?? variantsList.map(v => normalizeSku(v.sku));
     const productData: Omit<Product, 'id'> = {
-      businessId: Number(businessId),
-      categoryId: categoryId !== 'none' ? Number(categoryId) : undefined,
+      businessId: businessId,
+      categoryId: categoryId !== 'none' ? categoryId : undefined,
       name: name.trim(),
       sku: normalizedSku,
       type: productType,
@@ -419,21 +419,25 @@ function ProductDialog({
       updatedAt: new Date(),
     };
     try {
-      let productId: number;
+      let productId: string;
       if (isEdit && product?.id) {
         await db.products.update(product.id, productData);
         productId = product.id;
         await db.variants.where('productId').equals(productId).delete();
       } else {
-        productId = await db.products.add(productData as Product);
+        const { generateId } = await import('@/lib/db');
+        productId = generateId();
+        await db.products.add({ id: productId, ...productData });
       }
       if (variantsList.length > 0) {
+        const { generateId } = await import('@/lib/db');
         await db.variants.bulkAdd(
           variantsList.map((v, i) => ({
+            id: generateId(),
             ...v,
             sku: normalizedVarSkus[i],
             productId,
-          }) as Variant)
+          }))
         );
       }
       toast({ title: isEdit ? 'Product updated' : 'Product added' });

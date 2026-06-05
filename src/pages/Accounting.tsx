@@ -59,8 +59,8 @@ export default function Accounting() {
     [activeBusinessId]
   ) ?? [];
 
-  const expenses = useMemo(() => rawExpenses, [rawExpenses]);
-  const orders   = useMemo(() => rawOrders,   [rawOrders]);
+  const expenses = rawExpenses;
+  const orders   = rawOrders;
 
   const stats = useMemo(() => {
     const totalIncome   = orders.reduce((s, o) => s + o.totalPrice, 0);

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, ProductType } from "@/lib/db";
+import { db, ProductType, generateId } from "@/lib/db";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,7 @@ const AddStock = () => {
   
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{row: number, message: string}[]>([]);
-  const [validatedData, setValidatedData] = useState<any[] | null>(null);
+  const [validatedData, setValidatedData] = useState<Record<string, unknown>[] | null>(null);
 
   const { toast } = useToast();
 
@@ -103,6 +103,7 @@ const AddStock = () => {
           if (!v) continue;
           await db.variants.update(item.variant.id!, { stock: v.stock + item.addQty });
           await db.inventoryLog.add({
+            id: generateId(),
             productId: item.product.id!,
             variantId: item.variant.id!,
             businessId: item.product.businessId,
@@ -122,8 +123,8 @@ const AddStock = () => {
       });
       setQuantities(new Map());
       setNote("");
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
@@ -158,9 +159,9 @@ const AddStock = () => {
     }
 
     try {
-      let rawData: any[] = [];
+      let rawData: Record<string, unknown>[] = [];
       if (fileExt === 'csv') {
-        rawData = await new Promise<any[]>((resolve, reject) => {
+        rawData = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
           Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
@@ -177,7 +178,7 @@ const AddStock = () => {
 
       const expectedCols = getTemplateColumns(selectedBusiness.type);
       const errors: {row: number, message: string}[] = [];
-      const parsedData: any[] = [];
+      const parsedData: Record<string, unknown>[] = [];
       
       if (rawData.length === 0) {
         errors.push({ row: 0, message: "File is empty or could not be read." });
@@ -242,8 +243,8 @@ const AddStock = () => {
       }
       setIsUploadDialogOpen(true);
 
-    } catch (error: any) {
-      toast({ title: "Parsing failed", description: error.message, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Parsing failed", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       e.target.value = '';
     }
@@ -262,8 +263,9 @@ const AddStock = () => {
           const categoryName = String(getVal('Category')).trim();
           let category = await db.categories.where({ businessId: selectedBusiness.id!, name: categoryName }).first();
           if (!category) {
-            const catId = await db.categories.add({ businessId: selectedBusiness.id!, name: categoryName });
-            category = { id: catId as number, businessId: selectedBusiness.id!, name: categoryName };
+            const newCatId = generateId();
+            await db.categories.add({ id: newCatId, businessId: selectedBusiness.id!, name: categoryName });
+            category = { id: newCatId, businessId: selectedBusiness.id!, name: categoryName };
           }
 
           const productSku = String(getVal('Product SKU')).trim();
@@ -274,7 +276,7 @@ const AddStock = () => {
           if (selectedBusiness.type === 'services') productType = 'service';
 
           const basePrice = parseFloat(String(getVal('Base Price')));
-          const attributes: Record<string, any> = {};
+          const attributes: Record<string, string | number> = {};
           
           const standardCols = getTemplateColumns(selectedBusiness.type).map(c => c.toLowerCase().trim());
           Object.keys(row).forEach(k => {
@@ -284,7 +286,9 @@ const AddStock = () => {
           });
 
           if (!product) {
-            const pid = await db.products.add({
+            const newPid = generateId();
+            await db.products.add({
+              id: newPid,
               businessId: selectedBusiness.id!,
               categoryId: category.id!,
               name: String(getVal('Product Name')).trim(),
@@ -300,16 +304,16 @@ const AddStock = () => {
               createdAt: new Date(),
               updatedAt: new Date()
             });
-            product = await db.products.get(pid as number);
+            product = await db.products.get(newPid);
           }
 
           if (productType === 'physical') {
              const variantSku = String(getVal('Variant SKU')).trim();
-             let variant = await db.variants.where('sku').equals(variantSku).first();
+             const variant = await db.variants.where('sku').equals(variantSku).first();
              const stockQty = parseInt(String(getVal('Stock')), 10) || 0;
              const lowStock = parseInt(String(getVal('Low Stock Threshold')), 10) || 5;
              
-             const vAttr: Record<string, any> = {};
+             const vAttr: Record<string, string | number> = {};
              if (selectedBusiness.type === 'fashion') {
                if(getVal('Material')) vAttr.material = getVal('Material');
                if(getVal('Color')) vAttr.color = getVal('Color');
@@ -330,6 +334,7 @@ const AddStock = () => {
              let diff = 0;
              if (!variant) {
                await db.variants.add({
+                 id: generateId(),
                  productId: product!.id!,
                  name: String(getVal('Variant Name')).trim(),
                  sku: variantSku,
@@ -350,6 +355,7 @@ const AddStock = () => {
              if (diff !== 0) {
                 const addedVariant = await db.variants.where('sku').equals(variantSku).first();
                 await db.inventoryLog.add({
+                  id: generateId(),
                   productId: product!.id!,
                   variantId: addedVariant!.id!,
                   businessId: selectedBusiness.id!,
@@ -360,23 +366,25 @@ const AddStock = () => {
                 });
              }
           } else if (productType === 'listing') {
-             let listing = await db.propertyListings.where('productId').equals(product!.id!).first();
+             const listing = await db.propertyListings.where('productId').equals(product!.id!).first();
              if (!listing) {
                await db.propertyListings.add({
+                 id: generateId(),
                  productId: product!.id!,
-                 listingType: String(getVal('Listing Type')).toLowerCase() as any || 'sale',
+                 listingType: (String(getVal('Listing Type')).toLowerCase() as 'sale' | 'rent') || 'sale',
                  location: String(getVal('Location')),
                  area: parseFloat(String(getVal('Area'))),
                  bedrooms: parseInt(String(getVal('Bedrooms'))),
                  bathrooms: parseInt(String(getVal('Bathrooms'))),
-                 availability: String(getVal('Availability')).toLowerCase() as any || 'available'
+                 availability: (String(getVal('Availability')).toLowerCase() as 'available' | 'sold' | 'rented' | 'pending') || 'available'
                });
              }
           } else if (productType === 'service') {
-             let service = await db.services.where('productId').equals(product!.id!).first();
+             const service = await db.services.where('productId').equals(product!.id!).first();
              if (!service) {
                const days = String(getVal('Available Days')).split(',').map(d => d.trim());
                await db.services.add({
+                 id: generateId(),
                  productId: product!.id!,
                  duration: String(getVal('Duration')),
                  capacity: parseInt(String(getVal('Capacity'))),
@@ -390,8 +398,8 @@ const AddStock = () => {
       toast({ title: "Success", description: "Products and stock updated successfully from file." });
       setIsUploadDialogOpen(false);
       setValidatedData(null);
-    } catch (err: any) {
-      toast({ title: "Database Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Database Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 

@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type Business } from '@/lib/db';
+import { db, generateId, type Business } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,7 +58,7 @@ const BusinessManager = () => {
       await db.businesses.update(editingBusiness.id!, { name: form.name, slug: form.slug, type: form.type, icon: form.icon });
       toast.success('Business updated');
     } else {
-      await db.businesses.add({ ...form, color: '230 65% 52%', isActive: true, createdAt: new Date() });
+      await db.businesses.add({ id: generateId(), ...form, color: '230 65% 52%', isActive: true, createdAt: new Date() });
       toast.success('Business added');
     }
     setIsDialogOpen(false);

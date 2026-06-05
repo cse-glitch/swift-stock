@@ -122,7 +122,7 @@ export default function AuditLogs() {
             const cfg = getActionConfig(log.action);
             const Icon = cfg.icon;
             let parsedDetails: Record<string, unknown> | null = null;
-            try { if (log.details) parsedDetails = JSON.parse(log.details); } catch {}
+            try { if (log.details) parsedDetails = JSON.parse(log.details); } catch (_) { /* invalid JSON */ }
 
             return (
               <div key={log.id} className="flex items-start gap-3.5 px-4 py-3 active:bg-accent/40 transition-colors">

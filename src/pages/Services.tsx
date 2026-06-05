@@ -99,14 +99,17 @@ export default function ServicesPage() {
 
     try {
       await db.transaction('rw', [db.products, db.services], async () => {
-        let productId: number;
+        let productId: string;
         if (editingService) {
           productId = editingService.productId;
           await db.products.update(productId, productData);
           await db.services.update(editingService.id!, serviceData);
         } else {
-          productId = await db.products.add({ ...productData, createdAt: new Date() } as Product);
-          await db.services.add({ ...serviceData, productId });
+          const { generateId } = await import('@/lib/db');
+          productId = generateId();
+          await db.products.add({ id: productId, ...productData, createdAt: new Date() });
+          const newSvcId = generateId();
+          await db.services.add({ id: newSvcId, ...serviceData, productId });
         }
       });
 

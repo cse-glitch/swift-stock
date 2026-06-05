@@ -24,7 +24,7 @@ const generateSparkData = (seed: number) => {
   }));
 };
 
-const Sparkline = ({ data, color }: { data: any[], color: string }) => (
+const Sparkline = ({ data, color }: { data: { value: number }[], color: string }) => (
   <div className="h-[40px] w-full mt-2">
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data}>
@@ -82,7 +82,7 @@ const Analytics = () => {
   const businessMap = useMemo(() => new Map(businesses.map(b => [b.id, b])), [businesses]);
 
   const variantsByProduct = useMemo(() => {
-    const m = new Map<number, typeof variants>();
+    const m = new Map<string, typeof variants>();
     for (const v of variants) {
       const arr = m.get(v.productId) ?? [];
       arr.push(v);
@@ -92,7 +92,7 @@ const Analytics = () => {
   }, [variants]);
 
   const productsByBusiness = useMemo(() => {
-    const m = new Map<number, typeof products>();
+    const m = new Map<string, typeof products>();
     for (const p of products) {
       const arr = m.get(p.businessId) ?? [];
       arr.push(p);
@@ -111,7 +111,7 @@ const Analytics = () => {
 
   const revenueByBusiness = useMemo(() => {
     const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
-    const revenueMap = new Map<number, number>();
+    const revenueMap = new Map<string, number>();
 
     for (const log of soldLogs) {
       const v = variantMap.get(log.variantId!);
@@ -167,7 +167,7 @@ const Analytics = () => {
   
   const topProducts = useMemo(() => {
     const soldLogs = filteredLogs.filter(l => l.type === "remove" && l.reason === "Sold");
-    const productRevenue = new Map<number, number>();
+    const productRevenue = new Map<string, number>();
 
     for (const log of soldLogs) {
       const v = variantMap.get(log.variantId!);
@@ -266,12 +266,17 @@ const Analytics = () => {
     return val.toString();
   };
 
-  const CustomTooltip = ({ active, payload, label, prefix = "" }: any) => {
+  const CustomTooltip = ({ active, payload, label, prefix = "" }: {
+    active?: boolean;
+    payload?: Array<{ color?: string; fill?: string; value: number; name: string }>;
+    label?: string;
+    prefix?: string;
+  }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-card border border-border shadow-xl rounded-xl p-3 backdrop-blur-md bg-card/90">
+        <div className="bg-card border border-border shadow-xl rounded-xl p-3 backdrop-blur-md">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-bold">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <div key={index} className="flex items-center gap-2 py-1">
               <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color || entry.fill }} />
               <span className="text-sm font-mono font-bold text-foreground">

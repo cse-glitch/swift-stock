@@ -128,7 +128,6 @@ export default function BackupRestore() {
   }
 
   return (
-  return (
     <div className="space-y-6 max-w-2xl mx-auto pb-20 md:pb-0">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">

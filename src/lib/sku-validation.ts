@@ -28,10 +28,10 @@ export interface SkuConflict {
  * Returns { productError, variantErrors, conflicts }.
  */
 export async function checkSkuConflicts(
-  businessId: number,
+  businessId: string,
   productSku: string,
   variantSkus: string[],
-  excludeProductId?: number,
+  excludeProductId?: string,
 ): Promise<{
   productError: string | null;
   variantErrors: Record<number, string>;
@@ -92,8 +92,8 @@ export async function checkSkuConflicts(
  * Returns rows with errors and rows that are clean.
  */
 export async function validateCsvSkus(
-  rows: { sku: string; name: string; [key: string]: any }[],
-  businessId: number,
+  rows: { sku: string; name: string; [key: string]: unknown }[],
+  businessId: string,
 ): Promise<{
   validRows: typeof rows;
   errorRows: { row: number; sku: string; name: string; error: string }[];

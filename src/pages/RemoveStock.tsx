@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { db, generateId } from "@/lib/db";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -87,6 +87,7 @@ const RemoveStock = () => {
           const newStock = Math.max(0, v.stock - item.removeQty);
           await db.variants.update(item.variant.id!, { stock: newStock });
           await db.inventoryLog.add({
+            id: generateId(),
             productId: item.product.id!,
             variantId: item.variant.id!,
             businessId: item.product.businessId,
@@ -107,8 +108,8 @@ const RemoveStock = () => {
       setRemovals(new Map());
       setReason("");
       setNote("");
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : String(err), variant: "destructive" });
     }
   };
 
