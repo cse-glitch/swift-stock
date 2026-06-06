@@ -460,12 +460,15 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <div className="space-y-3">
           <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">Quick Actions</h2>
-          <div className="grid grid-cols-4 gap-3 justify-items-center">
+          <div className="grid grid-cols-4 gap-3">
             {/* Action 1: Create Order */}
             <PlaceOrderModal
               trigger={
-                <button className="h-12 w-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-emerald-500/10">
-                  <ShoppingCart className="h-5 w-5" />
+                <button className="flex flex-col items-center gap-1.5 group">
+                  <span className="h-12 w-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-emerald-500/10 group-active:scale-95">
+                    <ShoppingCart className="h-5 w-5" />
+                  </span>
+                  <span className="text-[10px] font-semibold text-muted-foreground leading-tight text-center">Order</span>
                 </button>
               }
             />
@@ -473,57 +476,78 @@ const Dashboard = () => {
             {/* Action 2: Add Expense */}
             <button
               onClick={() => setIsExpenseOpen(true)}
-              className="h-12 w-12 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-rose-500/10"
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <Plus className="h-5 w-5" />
+              <span className="h-12 w-12 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-rose-500/10">
+                <Plus className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground leading-tight text-center">Expense</span>
             </button>
 
             {/* Action 3: Add Stock */}
             <button
               onClick={() => navigate('/inventory?tab=stock')}
-              className="h-12 w-12 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-blue-500/10"
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <Package className="h-5 w-5" />
+              <span className="h-12 w-12 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-blue-500/10">
+                <Package className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground leading-tight text-center">Stock</span>
             </button>
 
             {/* Action 4: Suppliers */}
             <button
               onClick={() => navigate('/suppliers')}
-              className="h-12 w-12 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-purple-500/10"
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <Users className="h-5 w-5" />
+              <span className="h-12 w-12 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-purple-500/10">
+                <Users className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground leading-tight text-center">Suppliers</span>
             </button>
 
             {/* Action 5: Products */}
             <button
               onClick={() => navigate('/inventory?tab=catalog')}
-              className="h-12 w-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-amber-500/10"
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <BoxesIcon className="h-5 w-5" />
+              <span className="h-12 w-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-amber-500/10">
+                <BoxesIcon className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground leading-tight text-center">Products</span>
             </button>
 
             {/* Action 6: Analytics */}
             <button
               onClick={() => navigate('/analytics')}
-              className="h-12 w-12 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-cyan-500/10"
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <BarChart3 className="h-5 w-5" />
+              <span className="h-12 w-12 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-cyan-500/10">
+                <BarChart3 className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground leading-tight text-center">Analytics</span>
             </button>
 
             {/* Action 7: History */}
             <button
               onClick={() => navigate('/history')}
-              className="h-12 w-12 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-yellow-500/10"
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <Clock className="h-5 w-5" />
+              <span className="h-12 w-12 rounded-xl bg-yellow-500/10 text-yellow-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-yellow-500/10">
+                <Clock className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground leading-tight text-center">History</span>
             </button>
 
             {/* Action 8: Utilities */}
             <button
               onClick={() => navigate('/utilities')}
-              className="h-12 w-12 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-slate-500/10"
+              className="flex flex-col items-center gap-1.5 group"
             >
-              <Wrench className="h-5 w-5" />
+              <span className="h-12 w-12 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-sm border border-slate-500/10">
+                <Wrench className="h-5 w-5" />
+              </span>
+              <span className="text-[10px] font-semibold text-muted-foreground leading-tight text-center">Utilities</span>
             </button>
           </div>
         </div>

@@ -52,20 +52,24 @@ export function BusinessDetailDialog({ business, open, onOpenChange }: BusinessD
     businessId ? db.products.where('businessId').equals(businessId).toArray() : []
     , [businessId]) ?? [];
 
-  const variants = useLiveQuery(async () => {
+  const rawVariants = useLiveQuery(async () => {
     if (!businessId) return [];
     const bProducts = await db.products.where('businessId').equals(businessId).toArray();
     const ids = bProducts.map(p => p.id!);
     if (ids.length === 0) return [];
     return db.variants.where('productId').anyOf(ids).toArray();
-  }, [businessId]) ?? [];
+  }, [businessId]);
 
-  const orders = useLiveQuery(() =>
+  const variants = useMemo(() => rawVariants ?? [], [rawVariants]);
+
+  const rawOrders = useLiveQuery(() =>
     businessId ? db.orders.where('businessId').equals(businessId).toArray() : []
-    , [businessId]) ?? [];
+    , [businessId]);
+
+  const orders = useMemo(() => rawOrders ?? [], [rawOrders]);
 
   const variantsByProduct = useMemo(() => {
-    const m = new Map<number, typeof variants>();
+    const m = new Map<string, typeof variants>();
     for (const v of variants) {
       const arr = m.get(v.productId) ?? [];
       arr.push(v);
@@ -83,7 +87,7 @@ export function BusinessDetailDialog({ business, open, onOpenChange }: BusinessD
 
   if (!business) return null;
 
-  const Icon = (LucideIcons as any)[business.icon] || Store;
+  const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[business.icon] ?? Store;
 
   const renderStats = () => (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
@@ -154,7 +158,7 @@ export function BusinessDetailDialog({ business, open, onOpenChange }: BusinessD
             </div>
           ) : (
             products.map((product) => {
-              const pVariants = variantsByProduct.get(product.id!) ?? [];
+              const pVariants = variantsByProduct.get(product.id!) ?? [];  // string key
               const pStock = pVariants.reduce((sum, v) => sum + v.stock, 0);
               const isLow = pVariants.some(v => v.stock > 0 && v.stock <= v.lowStockThreshold);
               const isOut = pVariants.length > 0 && pVariants.every(v => v.stock === 0);
@@ -226,7 +230,7 @@ export function BusinessDetailDialog({ business, open, onOpenChange }: BusinessD
               </TableRow>
             ) : (
               products.map((product) => {
-                const pVariants = variantsByProduct.get(product.id!) ?? [];
+                const pVariants = variantsByProduct.get(product.id!) ?? [];  // string key
                 const pStock = pVariants.reduce((sum, v) => sum + v.stock, 0);
                 const isLow = pVariants.some(v => v.stock > 0 && v.stock <= v.lowStockThreshold);
                 const isOut = pVariants.length > 0 && pVariants.every(v => v.stock === 0);

@@ -1,6 +1,6 @@
 import { db } from './db';
 
-const SKU_REGEX = /^[A-Z0-9][A-Z0-9\-]{0,28}[A-Z0-9]$/;
+const SKU_REGEX = /^[A-Z0-9][A-Z0-9-]{0,28}[A-Z0-9]$/;
 const SKU_MIN = 2;
 const SKU_MAX = 30;
 

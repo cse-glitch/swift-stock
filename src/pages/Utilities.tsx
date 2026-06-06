@@ -38,8 +38,10 @@ interface ImportError {
 
 const Utilities = () => {
   const { businesses, activeBusinessId } = useBusiness();
-  const products = useLiveQuery(() => db.products.toArray()) ?? [];
-  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
+  const rawProducts = useLiveQuery(() => db.products.toArray());
+  const rawVariants = useLiveQuery(() => db.variants.toArray());
+  const products = useMemo(() => rawProducts ?? [], [rawProducts]);
+  const variants = useMemo(() => rawVariants ?? [], [rawVariants]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -50,7 +52,8 @@ const Utilities = () => {
   const [importData, setImportData] = useState<ImportRow[] | null>(null);
   const [importErrors, setImportErrors] = useState<ImportError[]>([]);
   const [importFileName, setImportFileName] = useState("");
-  const [restoreData, setRestoreData] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [restoreData, setRestoreData] = useState<Record<string, any> | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handlePushSync = async () => {
@@ -58,8 +61,9 @@ const Utilities = () => {
     try {
       await pushLocalToSupabase();
       toast({ title: "Cloud Sync Complete", description: "All local data has been pushed to Supabase." });
-    } catch (err: any) {
-      toast({ title: "Sync Failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      toast({ title: "Sync Failed", description: e.message, variant: "destructive" });
     } finally {
       setIsSyncing(false);
     }
@@ -70,8 +74,9 @@ const Utilities = () => {
     try {
       await pullSupabaseToLocal();
       toast({ title: "Cloud Sync Complete", description: "Data has been updated from Supabase." });
-    } catch (err: any) {
-      toast({ title: "Sync Failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      toast({ title: "Sync Failed", description: e.message, variant: "destructive" });
     } finally {
       setIsSyncing(false);
     }
@@ -104,7 +109,7 @@ const Utilities = () => {
   const orphanedLogs = logs.filter(l => !products.some(p => p.id === l.productId));
 
   const handleExportIssues = () => {
-    const rows: any[] = [];
+    const rows: { Type: string; BusinessID?: string; Product?: string; Variant: string; SKU: string; ID?: string }[] = [];
     
     duplicates.forEach(group => {
       group.forEach(v => {
@@ -139,30 +144,31 @@ const Utilities = () => {
         }
       });
       toast({ title: "Cleanup complete", description: `Removed ${orphanedVariants.length} variants and ${orphanedLogs.length} logs.` });
-    } catch (err: any) {
-      toast({ title: "Cleanup failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      toast({ title: "Cleanup failed", description: e.message, variant: "destructive" });
     }
   };
 
   const [reconBizId, setReconBizId] = useState<string>("all");
-  const [physicalCounts, setPhysicalCounts] = useState<Record<number, string>>({});
+  const [physicalCounts, setPhysicalCounts] = useState<Record<string, string>>({});
 
   const reconVariants = variants.filter(v => {
     const p = products.find(p => p.id === v.productId);
     if (!p) return false;
-    if (reconBizId !== "all" && p.businessId.toString() !== reconBizId) return false;
+    if (reconBizId !== "all" && p.businessId !== reconBizId) return false;
     return true;
   });
 
   const handleReconcile = async () => {
-    const updates: { variantId: number; oldStock: number; newStock: number; diff: number; pId: number; bId: number }[] = [];
+    const updates: { variantId: string; oldStock: number; newStock: number; diff: number; pId: string; bId: string }[] = [];
     
     for (const [vIdStr, countStr] of Object.entries(physicalCounts)) {
       if (countStr.trim() === '') continue;
       const count = parseInt(countStr);
       if (isNaN(count) || count < 0) continue;
 
-      const vId = parseInt(vIdStr);
+      const vId = vIdStr;
       const v = variants.find(vx => vx.id === vId);
       if (!v) continue;
       
@@ -185,6 +191,7 @@ const Utilities = () => {
         for (const u of updates) {
           await db.variants.update(u.variantId, { stock: u.newStock });
           await db.inventoryLog.add({
+            id: crypto.randomUUID(),
             businessId: u.bId,
             productId: u.pId,
             variantId: u.variantId,
@@ -198,8 +205,9 @@ const Utilities = () => {
       });
       toast({ title: "Reconciliation applied", description: `Updated stock for ${updates.length} items.` });
       setPhysicalCounts({});
-    } catch (err: any) {
-      toast({ title: "Reconciliation failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      toast({ title: "Reconciliation failed", description: e.message, variant: "destructive" });
     }
   };
 
@@ -249,8 +257,9 @@ const Utilities = () => {
       });
       toast({ title: "Backup restored", description: "All data has been restored from backup." });
       setRestoreData(null);
-    } catch (err: any) {
-      toast({ title: "Restore error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      toast({ title: "Restore error", description: e.message, variant: "destructive" });
     }
   };
 
@@ -383,17 +392,21 @@ const Utilities = () => {
           const first = rows[0];
           const biz = businesses.find(b => b.slug === first.business_slug.trim())!;
 
-          let categoryId: number | undefined;
+          let categoryId: string | undefined;
           if (first.category?.trim()) {
-            let cat = await db.categories.where({ businessId: biz.id!, name: first.category.trim() }).first();
+            const cat = await db.categories.where({ businessId: biz.id!, name: first.category.trim() }).first();
             if (!cat) {
-              categoryId = await db.categories.add({ businessId: biz.id!, name: first.category.trim() });
+              const newCatId = crypto.randomUUID();
+              await db.categories.add({ id: newCatId, businessId: biz.id!, name: first.category.trim() });
+              categoryId = newCatId;
             } else {
               categoryId = cat.id;
             }
           }
 
-          const productId = await db.products.add({
+          const productId = crypto.randomUUID();
+          await db.products.add({
+            id: productId,
             businessId: biz.id!,
             categoryId,
             name: first.product_name.trim(),
@@ -412,7 +425,9 @@ const Utilities = () => {
 
           for (const row of rows) {
             const stock = parseInt(row.stock) || 0;
-            const variantId = await db.variants.add({
+            const variantId = crypto.randomUUID();
+            await db.variants.add({
+              id: variantId,
               productId,
               name: row.variant_name?.trim() || "Default",
               sku: normalizeSku(row.variant_sku),
@@ -426,6 +441,7 @@ const Utilities = () => {
 
             if (stock > 0) {
               await db.inventoryLog.add({
+                id: crypto.randomUUID(),
                 productId,
                 variantId,
                 businessId: biz.id!,
@@ -443,8 +459,9 @@ const Utilities = () => {
       toast({ title: "Import complete", description: `${productsCreated} products, ${variantsCreated} variants, ${totalStock} total stock.` });
       setImportData(null);
       setImportErrors([]);
-    } catch (err: any) {
-      toast({ title: "Import error", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const e = err as { message?: string };
+      toast({ title: "Import error", description: e.message, variant: "destructive" });
     }
   };
 

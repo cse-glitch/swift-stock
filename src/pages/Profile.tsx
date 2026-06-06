@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { db, seedBusinesses } from "@/lib/db";
 import { useAuth } from "@/contexts/use-auth";
 import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -368,13 +369,8 @@ const Profile = () => {
           sublabel="Manage alerts and push notifications"
           href="/settings"
         />
-        <SettingsRow
-          icon={<Palette className="h-4 w-4 text-pink-500" />}
-          iconBg="bg-pink-500/10"
-          label="Appearance"
-          sublabel="Theme, display & language"
-          href="/settings"
-        />
+        {/* Live dark/light mode toggle */}
+        <ThemeToggle showLabel className="divide-y-0" />
       </SettingsSection>
 
       {/* ── About & Support ── */}

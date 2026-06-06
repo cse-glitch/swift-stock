@@ -61,48 +61,59 @@
   }
 
   .dark {
-    --background: 225 25% 8%;
-    --foreground: 220 15% 92%;
+    /* ── Core backgrounds ── */
+    --background: 222 28% 7%;
+    --foreground: 215 20% 93%;
 
-    --card: 225 22% 12%;
-    --card-foreground: 220 15% 92%;
+    /* ── Cards / surfaces ── */
+    --card: 222 25% 11%;
+    --card-foreground: 215 20% 93%;
 
-    --popover: 225 22% 12%;
-    --popover-foreground: 220 15% 92%;
+    /* ── Popovers / dropdowns ── */
+    --popover: 222 25% 10%;
+    --popover-foreground: 215 20% 93%;
 
-    --primary: 230 65% 60%;
+    /* ── Brand primary — a richer indigo/blue in dark ── */
+    --primary: 228 72% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 225 18% 18%;
-    --secondary-foreground: 220 15% 90%;
+    /* ── Muted surfaces ── */
+    --secondary: 222 20% 17%;
+    --secondary-foreground: 215 15% 88%;
 
-    --muted: 225 18% 16%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 222 20% 14%;
+    --muted-foreground: 215 12% 52%;
 
-    --accent: 160 50% 45%;
+    /* ── Accent — emerald stays vivid in dark ── */
+    --accent: 160 55% 42%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 30.6%;
+    /* ── Destructive — softened red for dark context ── */
+    --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    /* ── Warning ── */
+    --warning: 38 90% 52%;
     --warning-foreground: 0 0% 100%;
 
-    --success: 152 60% 40%;
+    /* ── Success ── */
+    --success: 152 58% 42%;
     --success-foreground: 0 0% 100%;
 
-    --border: 225 18% 20%;
-    --input: 225 18% 20%;
-    --ring: 230 65% 60%;
+    /* ── Borders & inputs ── */
+    --border: 222 20% 19%;
+    --input: 222 20% 16%;
+    --ring: 228 72% 65%;
 
-    --sidebar-background: 225 28% 6%;
-    --sidebar-foreground: 220 15% 80%;
-    --sidebar-primary: 230 65% 60%;
+    /* ── Sidebar — deepest surface ── */
+    --sidebar-background: 222 30% 5%;
+    --sidebar-foreground: 215 18% 78%;
+    --sidebar-primary: 228 72% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 225 22% 12%;
-    --sidebar-accent-foreground: 220 15% 85%;
-    --sidebar-border: 225 22% 12%;
-    --sidebar-ring: 230 65% 60%;
+    --sidebar-accent: 222 25% 11%;
+    --sidebar-accent-foreground: 215 18% 88%;
+    --sidebar-border: 222 25% 13%;
+    --sidebar-ring: 228 72% 65%;
   }
 }
 
@@ -131,6 +142,8 @@
     font-display: swap;
     /* Isolate paint to reduce repaint scope */
     isolation: isolate;
+    /* Smooth theme transition — only color properties, not layout */
+    transition: background-color 300ms ease, color 300ms ease;
   }
 
   code, pre, .font-mono {
@@ -159,19 +172,42 @@
   }
 
   /* Mobile drawer — dashboard dark palette (Android / md breakpoint) */
+  /* Mobile drawer — always uses dark palette regardless of host theme */
   [data-mobile="true"][data-sidebar="sidebar"] {
-    --sidebar-background: 225 25% 8%;
-    --sidebar-foreground: 220 15% 92%;
-    --sidebar-primary: 230 65% 60%;
+    --sidebar-background: 222 30% 6%;
+    --sidebar-foreground: 215 18% 88%;
+    --sidebar-primary: 228 72% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 225 22% 14%;
-    --sidebar-accent-foreground: 220 15% 92%;
-    --sidebar-border: 225 18% 22%;
-    --sidebar-ring: 230 65% 60%;
+    --sidebar-accent: 222 25% 12%;
+    --sidebar-accent-foreground: 215 18% 90%;
+    --sidebar-border: 222 25% 15%;
+    --sidebar-ring: 228 72% 65%;
     background-image:
-      radial-gradient(ellipse 120% 80% at 100% -20%, hsl(230 65% 52% / 0.14), transparent 55%),
-      radial-gradient(ellipse 80% 50% at -10% 100%, hsl(160 50% 45% / 0.08), transparent 50%);
+      radial-gradient(ellipse 120% 80% at 100% -20%, hsl(228 65% 55% / 0.14), transparent 55%),
+      radial-gradient(ellipse 80% 50% at -10% 100%, hsl(160 55% 42% / 0.08), transparent 50%);
   }
+}
+
+/* ── Smooth theme switching ── */
+/* Transition all colour-related properties when .dark class is toggled */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* Exclude transitions from animations & transforms so they still snap */
+.animate-page-enter,
+.animate-page-enter *,
+[style*="transform"],
+[class*="transition-transform"],
+[class*="translate"],
+[class*="scale"],
+[class*="rotate"],
+[class*="animate-"] {
+  transition-property: transform, opacity !important;
 }
 
 /* ── Page entry animation ── */

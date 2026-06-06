@@ -64,12 +64,17 @@ const Analytics = () => {
   const { businesses, activeBusinessId, setActiveBusinessId } = useBusiness();
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
 
-  const products  = useLiveQuery(() => db.products.toArray(),  []) ?? [];
-  const variants  = useLiveQuery(() => db.variants.toArray(),   []) ?? [];
-  const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
-  const logs = useLiveQuery(
+  const rawProducts  = useLiveQuery(() => db.products.toArray(),  []);
+  const rawVariants  = useLiveQuery(() => db.variants.toArray(),   []);
+  const rawCategories = useLiveQuery(() => db.categories.toArray(), []);
+  const rawLogs = useLiveQuery(
     () => db.inventoryLog.orderBy('timestamp').toArray(), []
-  ) ?? [];
+  );
+
+  const products   = useMemo(() => rawProducts   ?? [], [rawProducts]);
+  const variants   = useMemo(() => rawVariants   ?? [], [rawVariants]);
+  const categories = useMemo(() => rawCategories ?? [], [rawCategories]);
+  const logs       = useMemo(() => rawLogs       ?? [], [rawLogs]);
 
   const activeBusinesses = useMemo(
     () => businesses.filter(b => b.isActive),

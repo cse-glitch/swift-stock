@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "next-themes";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -38,6 +39,7 @@ const App = () => {
   useAutoSync();
 
   return (
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="saman-theme">
     <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -87,6 +89,7 @@ const App = () => {
       </HashRouter>
     </TooltipProvider>
   </QueryClientProvider>
+    </ThemeProvider>
 );
 };
 

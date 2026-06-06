@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type Supplier, type Business } from '@/lib/db';
+import { db, type Supplier } from '@/lib/db';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -39,9 +39,9 @@ export default function Suppliers() {
       return query.toArray();
     },
     [activeBusinessId]
-  ) ?? [];
+  );
 
-  const suppliers = useMemo(() => rawSuppliers, [rawSuppliers]);
+  const suppliers = useMemo(() => rawSuppliers ?? [], [rawSuppliers]);
 
   const filteredSuppliers = useMemo(() => {
     return suppliers.filter(s => 

@@ -17,11 +17,13 @@ import { cn } from "@/lib/utils";
 
 export function LowStockAlert() {
   const { businesses } = useBusiness();
-  const products = useLiveQuery(() => db.products.toArray()) ?? [];
-  const variants = useLiveQuery(() => db.variants.toArray()) ?? [];
+  const rawProducts = useLiveQuery(() => db.products.toArray());
+  const rawVariants = useLiveQuery(() => db.variants.toArray());
+  const products = useMemo(() => rawProducts ?? [], [rawProducts]);
+  const variants = useMemo(() => rawVariants ?? [], [rawVariants]);
   const navigate = useNavigate();
 
-  const [dismissedIds, setDismissedIds] = useState<number[]>(() => {
+  const [dismissedIds, setDismissedIds] = useState<string[]>(() => {
     const saved = localStorage.getItem("dismissed_stock_alerts");
     return saved ? JSON.parse(saved) : [];
   });
@@ -62,7 +64,7 @@ export function LowStockAlert() {
     return Array.from(map.entries());
   }, [alerts]);
 
-  const handleDismiss = (id: number) => {
+  const handleDismiss = (id: string) => {
     setDismissedIds(prev => [...prev, id]);
   };
 

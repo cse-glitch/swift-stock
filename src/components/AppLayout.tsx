@@ -16,6 +16,7 @@ import { User, Settings, LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/use-auth";
 import { MobileNav } from "@/components/MobileNav";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const ROLE_LABEL: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   super_admin: { label: 'Super Admin', variant: 'default' },
@@ -60,6 +61,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Right actions */}
             <div className="flex items-center gap-2 sm:gap-3">
               <LowStockAlert />
+
+              {/* ── Dark / Light mode toggle ── */}
+              <ThemeToggle size="sm" />
 
               {/* ── Mobile: compact avatar dropdown ── */}
               <div className="sm:hidden">
