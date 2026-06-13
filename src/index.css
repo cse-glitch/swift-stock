@@ -140,8 +140,6 @@
     font-family: 'Space Grotesk', system-ui, sans-serif;
     /* Prevent layout shifts during font load */
     font-display: swap;
-    /* Isolate paint to reduce repaint scope */
-    isolation: isolate;
     /* Smooth theme transition — only color properties, not layout */
     transition: background-color 300ms ease, color 300ms ease;
   }
@@ -208,6 +206,17 @@
 [class*="rotate"],
 [class*="animate-"] {
   transition-property: transform, opacity !important;
+}
+
+/* Exclude Radix UI popper/portal containers from the global colour transition
+   so their data-[state] open/close keyframe animations play correctly.
+   We target the outer wrapper element only, not all [data-state] children. */
+[data-radix-popper-content-wrapper] {
+  transition: none !important;
+}
+[role="listbox"],
+[role="menu"] {
+  transition: none !important;
 }
 
 /* ── Page entry animation ── */

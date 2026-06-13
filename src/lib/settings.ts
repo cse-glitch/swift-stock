@@ -39,6 +39,12 @@ export interface AppSettings {
   accountingMode: 'accrual' | 'cash';
   profitCalculation: 'margin' | 'markup';
   autoReorderThreshold: number;
+  primaryColor: string;
+  themeMode: 'light' | 'dark' | 'system';
+  currencyPosition: 'left' | 'right';
+  inAppNotificationsEnabled: boolean;
+  alertEmail: string;
+  alertPhone: string;
 }
 
 const defaults: AppSettings = {
@@ -78,6 +84,12 @@ const defaults: AppSettings = {
   apiAccessEnabled: false,
   backupIntervalHours: 24,
   autoSyncCloud: true,
+  primaryColor: "#0f172a",
+  themeMode: "system",
+  currencyPosition: "left",
+  inAppNotificationsEnabled: true,
+  alertEmail: "admin@example.com",
+  alertPhone: "+1234567890",
 };
 
 export const getSettings = (): AppSettings => {

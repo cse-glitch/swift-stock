@@ -5,6 +5,7 @@ import { db, type Business } from '@/lib/db';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { BusinessDetailDialog } from '@/components/BusinessDetailDialog';
 import { PlaceOrderModal } from '@/components/PlaceOrderModal';
+import DashboardWidgets from '@/components/DashboardWidgets';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -660,6 +661,7 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+        <DashboardWidgets />
       </div>
 
       {/* ============================================================ */}
@@ -981,6 +983,7 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+        <DashboardWidgets />
       </div>
 
       <BusinessDetailDialog

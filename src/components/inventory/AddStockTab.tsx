@@ -31,7 +31,7 @@ const getTemplateColumns = (businessType: string) => {
   }
 };
 
-const AddStock = () => {
+const AddStock = ({ mode = 'add' }: { mode?: 'add' | 'remove' }) => {
   const { businesses, activeBusinessId } = useBusiness();
   const activeBusinesses = businesses.filter(b => b.isActive);
 
@@ -94,34 +94,51 @@ const AddStock = () => {
 
   const handleConfirm = async () => {
     if (pendingItems.length === 0) {
-      toast({ title: "Nothing to add", description: "Set a quantity for at least one item.", variant: "destructive" });
+      toast({ title: mode === 'add' ? "Nothing to add" : "Nothing to remove", description: "Set a quantity for at least one item.", variant: "destructive" });
       return;
     }
 
     try {
+      let validationErrorMsg = "";
+      if (mode === 'remove') {
+        for (const item of pendingItems) {
+          const v = await db.variants.get(item.variant.id!);
+          if (!v || v.stock < item.addQty) {
+            validationErrorMsg = `Cannot remove ${item.addQty} units of ${item.label} (only ${v?.stock ?? 0} available).`;
+            break;
+          }
+        }
+      }
+
+      if (validationErrorMsg) {
+        toast({ title: "Insufficient stock", description: validationErrorMsg, variant: "destructive" });
+        return;
+      }
+
       await db.transaction("rw", db.variants, db.inventoryLog, async () => {
         for (const item of pendingItems) {
           const v = await db.variants.get(item.variant.id!);
           if (!v) continue;
-          await db.variants.update(item.variant.id!, { stock: v.stock + item.addQty });
+          const newStock = mode === 'add' ? v.stock + item.addQty : Math.max(0, v.stock - item.addQty);
+          await db.variants.update(item.variant.id!, { stock: newStock });
           await db.inventoryLog.add({
             id: generateId(),
             productId: item.product.id!,
             variantId: item.variant.id!,
             businessId: item.product.businessId,
-            type: 'add',
+            type: mode,
             quantity: item.addQty,
-            reason: 'Restock',
+            reason: mode === 'add' ? 'Restock' : 'Manual Reduction',
             note: note.trim() || undefined,
             timestamp: new Date(),
           });
         }
       });
 
-      const totalAdded = pendingItems.reduce((s, i) => s + i.addQty, 0);
+      const totalQty = pendingItems.reduce((s, i) => s + i.addQty, 0);
       toast({
-        title: "Stock added",
-        description: `Added ${totalAdded} units across ${pendingItems.length} variant(s).`,
+        title: mode === 'add' ? "Stock added" : "Stock removed",
+        description: `Successfully ${mode === 'add' ? 'added' : 'removed'} ${totalQty} units across ${pendingItems.length} variant(s).`,
       });
       setQuantities(new Map());
       setNote("");
@@ -409,14 +426,21 @@ const AddStock = () => {
     <div className="max-w-3xl mx-auto space-y-6 pb-20 md:pb-0">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Add Stock</h1>
-          <p className="text-muted-foreground">Search for products and add quantities to their variants</p>
+          <h1 className="text-2xl font-bold tracking-tight">{mode === 'add' ? 'Add Stock' : 'Remove Stock'}</h1>
+          <p className="text-muted-foreground">{mode === 'add' ? 'Search for products and add quantities to their variants' : 'Search for products and remove quantities from their variants'}</p>
         </div>
         <Button variant="outline" size="sm" asChild className="gap-2">
-          <Link to="/remove">
-            <PackageMinus className="h-4 w-4" />
-            Remove Stock
-          </Link>
+          {mode === 'add' ? (
+            <Link to="/remove">
+              <PackageMinus className="h-4 w-4" />
+              Remove Stock
+            </Link>
+          ) : (
+            <Link to="/add">
+              <PackagePlus className="h-4 w-4" />
+              Add Stock
+            </Link>
+          )}
         </Button>
       </div>
 
@@ -437,34 +461,36 @@ const AddStock = () => {
               ))}
             </SelectContent>
           </Select>
-          {!bizId && (
+          {!bizId && mode === 'add' && (
             <p className="text-xs text-muted-foreground mt-2">Select a business to download template and enable file upload.</p>
           )}
         </div>
         
-        {bizId && (
+        {mode === 'add' && bizId && (
           <Button variant="outline" onClick={downloadTemplate} className="gap-2 shrink-0">
             <Download className="w-4 h-4" />
             Template
           </Button>
         )}
 
-        <div>
-          <input
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-            id="stock-upload"
-            onChange={handleFileUpload}
-            disabled={!bizId}
-          />
-          <Label htmlFor="stock-upload" className={!bizId ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
-            <div className={`flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md h-10 ${!bizId ? "" : "hover:bg-primary/90"}`}>
-              <Upload className="w-4 h-4" />
-              Upload
-            </div>
-          </Label>
-        </div>
+        {mode === 'add' && (
+          <div>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              id="stock-upload"
+              onChange={handleFileUpload}
+              disabled={!bizId}
+            />
+            <Label htmlFor="stock-upload" className={!bizId ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
+              <div className={`flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md h-10 ${!bizId ? "" : "hover:bg-primary/90"}`}>
+                <Upload className="w-4 h-4" />
+                Upload
+              </div>
+            </Label>
+          </div>
+        )}
       </div>
 
       {/* Search */}
@@ -547,9 +573,9 @@ const AddStock = () => {
 
       {/* Confirm panel */}
       {pendingItems.length > 0 && (
-        <Card className="border-primary/30">
+        <Card className={mode === 'add' ? "border-primary/30" : "border-destructive/30"}>
           <CardHeader>
-            <CardTitle className="text-lg">Confirm Addition</CardTitle>
+            <CardTitle className="text-lg">{mode === 'add' ? 'Confirm Addition' : 'Confirm Removal'}</CardTitle>
             <CardDescription>{pendingItems.length} variant(s) selected</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -557,13 +583,13 @@ const AddStock = () => {
               {pendingItems.map(item => (
                 <div key={item.variant.id} className="flex justify-between">
                   <span>{item.label} <span className="text-muted-foreground">({item.variant.sku})</span></span>
-                  <span className={`font-medium ${item.addQty < 0 ? 'text-destructive' : 'text-primary'}`}>
-                    {item.addQty > 0 ? '+' : ''}{item.addQty}
+                  <span className={`font-medium ${mode === 'remove' ? 'text-destructive' : 'text-primary'}`}>
+                    {mode === 'remove' ? '-' : '+'}{item.addQty}
                   </span>
                 </div>
               ))}
             </div>
-            {pendingItems.some(i => i.addQty < 0) && (
+            {mode === 'add' && pendingItems.some(i => i.addQty < 0) && (
               <div className="flex gap-2 p-3 bg-destructive/10 rounded-lg text-destructive text-xs border border-destructive/20">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>Some items will have their stock reduced to match the replacement target.</span>
@@ -580,9 +606,13 @@ const AddStock = () => {
               />
             </div>
 
-            <Button className="w-full" onClick={handleConfirm}>
-              <PackagePlus className="mr-2 h-4 w-4" />
-              Add/Adjust {pendingItems.reduce((s, i) => s + i.addQty, 0)} Unit(s)
+            <Button 
+              className="w-full" 
+              onClick={handleConfirm}
+              variant={mode === 'remove' ? 'destructive' : 'default'}
+            >
+              {mode === 'add' ? <PackagePlus className="mr-2 h-4 w-4" /> : <PackageMinus className="mr-2 h-4 w-4" />}
+              {mode === 'add' ? 'Add' : 'Remove'}/Adjust {pendingItems.reduce((s, i) => s + i.addQty, 0)} Unit(s)
             </Button>
           </CardContent>
         </Card>

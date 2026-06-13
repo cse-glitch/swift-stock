@@ -32,6 +32,7 @@ import Warehouses from "./pages/Warehouses";
 import Suppliers from "./pages/Suppliers";
 import Accounting from "./pages/Accounting";
 import { Toaster as ToasterSonner } from "@/components/ui/sonner";
+import AddStock from "@/components/inventory/AddStockTab";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,8 @@ const App = () => {
                         <Route path="/backup" element={<ProtectedRoute permission="export.data"><BackupRestore /></ProtectedRoute>} />
                         <Route path="/audit-logs" element={<ProtectedRoute permission="settings.manage"><AuditLogs /></ProtectedRoute>} />
                         <Route path="/profile" element={<Profile />} />
+                        <Route path="/add" element={<AddStock mode="add" />} />
+                        <Route path="/remove" element={<AddStock mode="remove" />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </AppLayout>
